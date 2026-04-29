@@ -1,0 +1,24 @@
+{
+  "components": [
+    {
+      "type": "BarChart",
+      "allowedProps": ["xKey", "yKey", "data", "title", "color"],
+      "requiredProps": ["xKey", "yKey", "data"]
+    },
+    {
+      "type": "LineChart",
+      "allowedProps": ["xKey", "yKey", "data", "title", "smooth"],
+      "requiredProps": ["xKey", "yKey", "data"]
+    },
+    {
+      "type": "Table",
+      "allowedProps": ["columns", "rows", "title", "pageSize"],
+      "requiredProps": ["columns", "rows"]
+    },
+    {
+      "type": "KPI",
+      "allowedProps": ["value", "title", "trend", "label"],
+      "requiredProps": ["value", "title"]
+    }
+  ]
+}

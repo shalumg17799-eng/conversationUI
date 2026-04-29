@@ -1,0 +1,17 @@
+[
+  { "query": "Show performance by region", "expected": "BarChart" },
+  { "query": "Show revenue over time", "expected": "LineChart" },
+  { "query": "What is the total sales", "expected": "KPI" },
+  { "query": "List all products", "expected": "Table" },
+  { "query": "Compare growth by channel", "expected": "BarChart" },
+  { "query": "Revenue trend monthly", "expected": "LineChart" },
+  { "query": "How many users today", "expected": "KPI" },
+  { "query": "Show sales by country", "expected": "BarChart" },
+  { "query": "Daily performance last week", "expected": "LineChart" },
+  { "query": "Total profit last quarter", "expected": "KPI" },
+  { "query": "Performance by department", "expected": "BarChart" },
+  { "query": "Revenue vs last year", "expected": "BarChart" },
+  { "query": "Show all records for Q1", "expected": "Table" },
+  { "query": "Growth over time", "expected": "LineChart" },
+  { "query": "Current traffic", "expected": "KPI" }
+]
