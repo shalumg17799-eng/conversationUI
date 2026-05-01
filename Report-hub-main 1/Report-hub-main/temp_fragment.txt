@@ -1,0 +1,21 @@
+                         </div>
+
+                         {/* Report Owner */}
+                         <div className="flex items-center gap-1.5 mb-2">
+                           <span className="text-[10px] text-[#9CA3AF] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                             Owner:
+                           </span>
+                           <span className="text-[11px] text-[#374151] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                             {report.owner || report.created_by || 'Assigned Admin'}
+                           </span>
+                         </div>
+
+                         {/* Access Restriction Notice */}
+                         <div className="flex items-start gap-1.5 mb-3 p-2 bg-blue-50 border border-blue-200 rounded">
+                           <Shield className="w-3 h-3 text-blue-600 flex-shrink-0 mt-0.5" />
+                           <p className="text-[10px] text-blue-800" style={{ fontFamily: 'Inter, sans-serif' }}>
+                             Access restricted. You must request approval to view or modify this report.
+                           </p>
+                         </div>
+
+                         {/* Key Dimensions */}

@@ -7,6 +7,7 @@ import { mapProps } from '../services/propMapper';
 import { composeReport } from '../services/reportComposer';
 import registry from '../registry/componentRegistry.json';
 import { UITypeTree } from '../types';
+import { cacheService, generateKey } from '../services/cacheService';
 
 export interface PipelineResult {
   uiTree: UITypeTree;
@@ -15,6 +16,14 @@ export interface PipelineResult {
 }
 
 export async function runPipeline(query: string): Promise<PipelineResult> {
+  // Report-level cache check
+  const reportCacheKey = generateKey({ query });
+  const cachedReport = cacheService.get<PipelineResult>(reportCacheKey);
+  
+  if (cachedReport) {
+    return cachedReport;
+  }
+
   const start = Date.now();
 
   // Layer 1: Intent & Retrieval
@@ -89,9 +98,14 @@ export async function runPipeline(query: string): Promise<PipelineResult> {
     ].filter(s => s.components.length > 0) as any // Filter out empty sections
   };
 
-  return {
+  const result = {
     uiTree,
     wasShortCircuited: true,
     durationMs: Date.now() - start
   };
+  
+  // Cache the final successful report (5 minutes TTL)
+  cacheService.set(reportCacheKey, result, 5 * 60 * 1000);
+  
+  return result;
 }

@@ -1,0 +1,31 @@
+employee_id,employee_name,box_close_pct,inb_aht_sec,transfer_pct,sales_time_pct,hold_pct,status,date,team,territory_id,calls_handled,csat_score
+EMP-001,Sarah Martinez,86,257,7.6,57.6,6.6,good,,Inbound Sales,T-001,90,8.4
+EMP-002,James Wilson,85.1,255,8.5,53.9,10.5,good,,Retention,T-002,133,8.3
+EMP-003,Emily Chen,81.8,219,9,62.5,7.1,good,,Tech Support,T-003,117,8.6
+EMP-004,Michael Brown,76.8,251,10,59,6.3,warning,,New Accounts,T-004,127,8.4
+EMP-005,Jessica Taylor,92.5,215,10.3,39.9,0,good,,Inbound Sales,T-005,107,7.6
+EMP-006,David Anderson,93.1,295,3.1,58.8,4,good,,Retention,T-006,118,8
+EMP-007,Rachel Kim,87.8,302,10.6,54.8,8.9,good,,Tech Support,T-007,129,7.8
+EMP-008,Christopher Lee,82,244,10,50,14,warning,,New Accounts,T-008,103,7.4
+EMP-009,Amanda Johnson,92.4,329,10,58.7,11.3,good,,Inbound Sales,T-009,118,7.2
+EMP-010,Kevin Davis,83.3,308,2.2,52.3,7.8,good,,Retention,T-010,113,8.7
+EMP-011,Stephanie Thompson,91.1,369,10.5,47.1,5.3,warning,,Tech Support,T-011,103,8.9
+EMP-012,Brian Garcia,83,262,11,46.2,6.1,good,,New Accounts,T-012,83,7.4
+EMP-013,Megan White,83,284,12.8,51.9,7.8,good,,Inbound Sales,T-013,123,9
+EMP-014,Jason Harris,93.3,277,4,59.2,8.1,good,,Retention,T-014,144,8.2
+EMP-015,Ashley Clark,100,249,14.4,52.9,5.5,good,,Tech Support,T-015,97,8.1
+EMP-016,Ryan Lewis,97,302,10.8,33,9.1,warning,,New Accounts,T-016,131,7.8
+EMP-017,Lauren Robinson,82.6,265,14.9,43.6,5.7,good,,Inbound Sales,T-017,147,7.9
+EMP-018,Matthew Walker,84.5,269,3,53.8,3.4,good,,Retention,T-018,137,8.2
+EMP-019,Kimberly Hall,100,278,13.5,41.6,6.6,good,,Tech Support,T-019,126,9.4
+EMP-020,Nathan Young,75.2,310,10.4,64.3,9.1,warning,,New Accounts,T-020,121,7.8
+EMP-021,Brittany Allen,78.3,274,7.2,68.2,5.2,warning,,Inbound Sales,T-001,126,7.1
+EMP-022,Tyler King,84.2,277,11.3,63.6,6.9,good,,Retention,T-002,97,8.5
+EMP-023,Danielle Wright,90.6,287,5.2,61.1,7.3,good,,Tech Support,T-003,133,9.1
+EMP-024,Austin Scott,91.3,278,16.6,53.9,6.1,warning,,New Accounts,T-004,122,9.2
+EMP-025,Heather Green,87.8,288,12.8,47.9,1.8,good,,Inbound Sales,T-005,125,8.4
+EMP-026,Brandon Adams,82.7,304,10.4,44,8.6,good,,Retention,T-006,116,7.2
+EMP-027,Samantha Baker,90.2,263,5,56.2,8.5,good,,Tech Support,T-007,108,8.5
+EMP-028,Justin Nelson,94.1,233,9.5,52,13.8,warning,,New Accounts,T-008,82,8.7
+EMP-029,Kayla Carter,84.9,260,15.6,51.9,13.7,critical,,Inbound Sales,T-009,111,8.4
+EMP-030,Daniel Mitchell,83.6,234,8.2,49.7,7.6,good,,Retention,T-010,77,9.6

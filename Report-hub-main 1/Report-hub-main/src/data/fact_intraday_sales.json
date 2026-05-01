@@ -1,0 +1,3602 @@
+[
+  {
+    "date_id": 20250428,
+    "hour": 0,
+    "hour_label": "00:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Phone",
+    "sales_units": 5,
+    "sales_revenue": 3925.36
+  },
+  {
+    "date_id": 20250428,
+    "hour": 0,
+    "hour_label": "00:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Tablet",
+    "sales_units": 3,
+    "sales_revenue": 1474.36
+  },
+  {
+    "date_id": 20250428,
+    "hour": 0,
+    "hour_label": "00:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 344.82
+  },
+  {
+    "date_id": 20250428,
+    "hour": 1,
+    "hour_label": "01:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Phone",
+    "sales_units": 4,
+    "sales_revenue": 3253.72
+  },
+  {
+    "date_id": 20250428,
+    "hour": 1,
+    "hour_label": "01:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Tablet",
+    "sales_units": 4,
+    "sales_revenue": 1881.71
+  },
+  {
+    "date_id": 20250428,
+    "hour": 1,
+    "hour_label": "01:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 328.42
+  },
+  {
+    "date_id": 20250428,
+    "hour": 2,
+    "hour_label": "02:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Phone",
+    "sales_units": 5,
+    "sales_revenue": 3501.81
+  },
+  {
+    "date_id": 20250428,
+    "hour": 2,
+    "hour_label": "02:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Tablet",
+    "sales_units": 3,
+    "sales_revenue": 1482.4
+  },
+  {
+    "date_id": 20250428,
+    "hour": 2,
+    "hour_label": "02:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 368.95
+  },
+  {
+    "date_id": 20250428,
+    "hour": 3,
+    "hour_label": "03:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Phone",
+    "sales_units": 5,
+    "sales_revenue": 3436.88
+  },
+  {
+    "date_id": 20250428,
+    "hour": 3,
+    "hour_label": "03:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Tablet",
+    "sales_units": 4,
+    "sales_revenue": 1926.52
+  },
+  {
+    "date_id": 20250428,
+    "hour": 3,
+    "hour_label": "03:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 333.54
+  },
+  {
+    "date_id": 20250428,
+    "hour": 4,
+    "hour_label": "04:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Phone",
+    "sales_units": 5,
+    "sales_revenue": 4018.39
+  },
+  {
+    "date_id": 20250428,
+    "hour": 4,
+    "hour_label": "04:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Tablet",
+    "sales_units": 3,
+    "sales_revenue": 1245.12
+  },
+  {
+    "date_id": 20250428,
+    "hour": 4,
+    "hour_label": "04:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 366.61
+  },
+  {
+    "date_id": 20250428,
+    "hour": 5,
+    "hour_label": "05:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Phone",
+    "sales_units": 5,
+    "sales_revenue": 3709.99
+  },
+  {
+    "date_id": 20250428,
+    "hour": 5,
+    "hour_label": "05:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Tablet",
+    "sales_units": 4,
+    "sales_revenue": 1714.05
+  },
+  {
+    "date_id": 20250428,
+    "hour": 5,
+    "hour_label": "05:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 358.91
+  },
+  {
+    "date_id": 20250428,
+    "hour": 6,
+    "hour_label": "06:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Phone",
+    "sales_units": 6,
+    "sales_revenue": 4825.81
+  },
+  {
+    "date_id": 20250428,
+    "hour": 6,
+    "hour_label": "06:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Tablet",
+    "sales_units": 3,
+    "sales_revenue": 1237.79
+  },
+  {
+    "date_id": 20250428,
+    "hour": 6,
+    "hour_label": "06:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 391.24
+  },
+  {
+    "date_id": 20250428,
+    "hour": 7,
+    "hour_label": "07:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Phone",
+    "sales_units": 5,
+    "sales_revenue": 3746.96
+  },
+  {
+    "date_id": 20250428,
+    "hour": 7,
+    "hour_label": "07:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Tablet",
+    "sales_units": 4,
+    "sales_revenue": 1897.33
+  },
+  {
+    "date_id": 20250428,
+    "hour": 7,
+    "hour_label": "07:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 355.69
+  },
+  {
+    "date_id": 20250428,
+    "hour": 8,
+    "hour_label": "08:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Phone",
+    "sales_units": 6,
+    "sales_revenue": 4239.77
+  },
+  {
+    "date_id": 20250428,
+    "hour": 8,
+    "hour_label": "08:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Tablet",
+    "sales_units": 4,
+    "sales_revenue": 1744.23
+  },
+  {
+    "date_id": 20250428,
+    "hour": 8,
+    "hour_label": "08:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 378.39
+  },
+  {
+    "date_id": 20250428,
+    "hour": 9,
+    "hour_label": "09:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Phone",
+    "sales_units": 38,
+    "sales_revenue": 26605.32
+  },
+  {
+    "date_id": 20250428,
+    "hour": 9,
+    "hour_label": "09:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Tablet",
+    "sales_units": 28,
+    "sales_revenue": 12099.45
+  },
+  {
+    "date_id": 20250428,
+    "hour": 9,
+    "hour_label": "09:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Wearable",
+    "sales_units": 19,
+    "sales_revenue": 3592.66
+  },
+  {
+    "date_id": 20250428,
+    "hour": 10,
+    "hour_label": "10:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Phone",
+    "sales_units": 45,
+    "sales_revenue": 32938.66
+  },
+  {
+    "date_id": 20250428,
+    "hour": 10,
+    "hour_label": "10:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Tablet",
+    "sales_units": 32,
+    "sales_revenue": 14326.82
+  },
+  {
+    "date_id": 20250428,
+    "hour": 10,
+    "hour_label": "10:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Wearable",
+    "sales_units": 15,
+    "sales_revenue": 2899.95
+  },
+  {
+    "date_id": 20250428,
+    "hour": 11,
+    "hour_label": "11:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Phone",
+    "sales_units": 36,
+    "sales_revenue": 29307.0
+  },
+  {
+    "date_id": 20250428,
+    "hour": 11,
+    "hour_label": "11:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Tablet",
+    "sales_units": 29,
+    "sales_revenue": 13515.87
+  },
+  {
+    "date_id": 20250428,
+    "hour": 11,
+    "hour_label": "11:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Wearable",
+    "sales_units": 21,
+    "sales_revenue": 3918.25
+  },
+  {
+    "date_id": 20250428,
+    "hour": 12,
+    "hour_label": "12:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Phone",
+    "sales_units": 55,
+    "sales_revenue": 44696.13
+  },
+  {
+    "date_id": 20250428,
+    "hour": 12,
+    "hour_label": "12:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Tablet",
+    "sales_units": 47,
+    "sales_revenue": 23079.66
+  },
+  {
+    "date_id": 20250428,
+    "hour": 12,
+    "hour_label": "12:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Wearable",
+    "sales_units": 26,
+    "sales_revenue": 5071.29
+  },
+  {
+    "date_id": 20250428,
+    "hour": 13,
+    "hour_label": "13:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Phone",
+    "sales_units": 77,
+    "sales_revenue": 55843.87
+  },
+  {
+    "date_id": 20250428,
+    "hour": 13,
+    "hour_label": "13:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Tablet",
+    "sales_units": 40,
+    "sales_revenue": 16553.8
+  },
+  {
+    "date_id": 20250428,
+    "hour": 13,
+    "hour_label": "13:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Wearable",
+    "sales_units": 28,
+    "sales_revenue": 4930.28
+  },
+  {
+    "date_id": 20250428,
+    "hour": 14,
+    "hour_label": "14:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Phone",
+    "sales_units": 74,
+    "sales_revenue": 58264.91
+  },
+  {
+    "date_id": 20250428,
+    "hour": 14,
+    "hour_label": "14:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Tablet",
+    "sales_units": 49,
+    "sales_revenue": 22441.27
+  },
+  {
+    "date_id": 20250428,
+    "hour": 14,
+    "hour_label": "14:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Wearable",
+    "sales_units": 23,
+    "sales_revenue": 4005.37
+  },
+  {
+    "date_id": 20250428,
+    "hour": 15,
+    "hour_label": "15:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Phone",
+    "sales_units": 72,
+    "sales_revenue": 50543.1
+  },
+  {
+    "date_id": 20250428,
+    "hour": 15,
+    "hour_label": "15:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Tablet",
+    "sales_units": 45,
+    "sales_revenue": 20949.85
+  },
+  {
+    "date_id": 20250428,
+    "hour": 15,
+    "hour_label": "15:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Wearable",
+    "sales_units": 30,
+    "sales_revenue": 4872.92
+  },
+  {
+    "date_id": 20250428,
+    "hour": 16,
+    "hour_label": "16:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Phone",
+    "sales_units": 56,
+    "sales_revenue": 38672.82
+  },
+  {
+    "date_id": 20250428,
+    "hour": 16,
+    "hour_label": "16:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Tablet",
+    "sales_units": 44,
+    "sales_revenue": 18688.89
+  },
+  {
+    "date_id": 20250428,
+    "hour": 16,
+    "hour_label": "16:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Wearable",
+    "sales_units": 24,
+    "sales_revenue": 4054.82
+  },
+  {
+    "date_id": 20250428,
+    "hour": 17,
+    "hour_label": "17:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Phone",
+    "sales_units": 54,
+    "sales_revenue": 37194.72
+  },
+  {
+    "date_id": 20250428,
+    "hour": 17,
+    "hour_label": "17:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Tablet",
+    "sales_units": 52,
+    "sales_revenue": 24132.91
+  },
+  {
+    "date_id": 20250428,
+    "hour": 17,
+    "hour_label": "17:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Wearable",
+    "sales_units": 30,
+    "sales_revenue": 5886.53
+  },
+  {
+    "date_id": 20250428,
+    "hour": 18,
+    "hour_label": "18:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Phone",
+    "sales_units": 71,
+    "sales_revenue": 55466.0
+  },
+  {
+    "date_id": 20250428,
+    "hour": 18,
+    "hour_label": "18:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Tablet",
+    "sales_units": 38,
+    "sales_revenue": 18319.03
+  },
+  {
+    "date_id": 20250428,
+    "hour": 18,
+    "hour_label": "18:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Wearable",
+    "sales_units": 23,
+    "sales_revenue": 4269.49
+  },
+  {
+    "date_id": 20250428,
+    "hour": 19,
+    "hour_label": "19:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Phone",
+    "sales_units": 52,
+    "sales_revenue": 39515.34
+  },
+  {
+    "date_id": 20250428,
+    "hour": 19,
+    "hour_label": "19:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Tablet",
+    "sales_units": 35,
+    "sales_revenue": 16997.41
+  },
+  {
+    "date_id": 20250428,
+    "hour": 19,
+    "hour_label": "19:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Wearable",
+    "sales_units": 19,
+    "sales_revenue": 3251.28
+  },
+  {
+    "date_id": 20250428,
+    "hour": 20,
+    "hour_label": "20:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Phone",
+    "sales_units": 44,
+    "sales_revenue": 35878.8
+  },
+  {
+    "date_id": 20250428,
+    "hour": 20,
+    "hour_label": "20:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Tablet",
+    "sales_units": 31,
+    "sales_revenue": 15129.32
+  },
+  {
+    "date_id": 20250428,
+    "hour": 20,
+    "hour_label": "20:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Wearable",
+    "sales_units": 16,
+    "sales_revenue": 2837.94
+  },
+  {
+    "date_id": 20250428,
+    "hour": 21,
+    "hour_label": "21:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Phone",
+    "sales_units": 52,
+    "sales_revenue": 41105.07
+  },
+  {
+    "date_id": 20250428,
+    "hour": 21,
+    "hour_label": "21:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Tablet",
+    "sales_units": 27,
+    "sales_revenue": 11328.58
+  },
+  {
+    "date_id": 20250428,
+    "hour": 21,
+    "hour_label": "21:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Wearable",
+    "sales_units": 14,
+    "sales_revenue": 2659.66
+  },
+  {
+    "date_id": 20250428,
+    "hour": 22,
+    "hour_label": "22:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Phone",
+    "sales_units": 5,
+    "sales_revenue": 3624.49
+  },
+  {
+    "date_id": 20250428,
+    "hour": 22,
+    "hour_label": "22:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Tablet",
+    "sales_units": 3,
+    "sales_revenue": 1473.01
+  },
+  {
+    "date_id": 20250428,
+    "hour": 22,
+    "hour_label": "22:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 355.72
+  },
+  {
+    "date_id": 20250428,
+    "hour": 23,
+    "hour_label": "23:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Phone",
+    "sales_units": 5,
+    "sales_revenue": 4071.44
+  },
+  {
+    "date_id": 20250428,
+    "hour": 23,
+    "hour_label": "23:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Tablet",
+    "sales_units": 4,
+    "sales_revenue": 1684.24
+  },
+  {
+    "date_id": 20250428,
+    "hour": 23,
+    "hour_label": "23:00",
+    "outlet_id": "OUT-001",
+    "territory_id": "T-001",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 334.36
+  },
+  {
+    "date_id": 20250428,
+    "hour": 0,
+    "hour_label": "00:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Phone",
+    "sales_units": 6,
+    "sales_revenue": 4246.55
+  },
+  {
+    "date_id": 20250428,
+    "hour": 0,
+    "hour_label": "00:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Tablet",
+    "sales_units": 4,
+    "sales_revenue": 1948.54
+  },
+  {
+    "date_id": 20250428,
+    "hour": 0,
+    "hour_label": "00:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 331.44
+  },
+  {
+    "date_id": 20250428,
+    "hour": 1,
+    "hour_label": "01:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Phone",
+    "sales_units": 4,
+    "sales_revenue": 3042.81
+  },
+  {
+    "date_id": 20250428,
+    "hour": 1,
+    "hour_label": "01:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Tablet",
+    "sales_units": 3,
+    "sales_revenue": 1335.39
+  },
+  {
+    "date_id": 20250428,
+    "hour": 1,
+    "hour_label": "01:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 334.72
+  },
+  {
+    "date_id": 20250428,
+    "hour": 2,
+    "hour_label": "02:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Phone",
+    "sales_units": 6,
+    "sales_revenue": 4889.6
+  },
+  {
+    "date_id": 20250428,
+    "hour": 2,
+    "hour_label": "02:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Tablet",
+    "sales_units": 4,
+    "sales_revenue": 1715.92
+  },
+  {
+    "date_id": 20250428,
+    "hour": 2,
+    "hour_label": "02:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 389.13
+  },
+  {
+    "date_id": 20250428,
+    "hour": 3,
+    "hour_label": "03:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Phone",
+    "sales_units": 6,
+    "sales_revenue": 4513.84
+  },
+  {
+    "date_id": 20250428,
+    "hour": 3,
+    "hour_label": "03:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Tablet",
+    "sales_units": 4,
+    "sales_revenue": 1796.64
+  },
+  {
+    "date_id": 20250428,
+    "hour": 3,
+    "hour_label": "03:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 384.77
+  },
+  {
+    "date_id": 20250428,
+    "hour": 4,
+    "hour_label": "04:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Phone",
+    "sales_units": 6,
+    "sales_revenue": 4756.84
+  },
+  {
+    "date_id": 20250428,
+    "hour": 4,
+    "hour_label": "04:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Tablet",
+    "sales_units": 4,
+    "sales_revenue": 1621.19
+  },
+  {
+    "date_id": 20250428,
+    "hour": 4,
+    "hour_label": "04:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 382.89
+  },
+  {
+    "date_id": 20250428,
+    "hour": 5,
+    "hour_label": "05:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Phone",
+    "sales_units": 5,
+    "sales_revenue": 3800.43
+  },
+  {
+    "date_id": 20250428,
+    "hour": 5,
+    "hour_label": "05:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Tablet",
+    "sales_units": 4,
+    "sales_revenue": 1749.21
+  },
+  {
+    "date_id": 20250428,
+    "hour": 5,
+    "hour_label": "05:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 352.84
+  },
+  {
+    "date_id": 20250428,
+    "hour": 6,
+    "hour_label": "06:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Phone",
+    "sales_units": 6,
+    "sales_revenue": 4912.94
+  },
+  {
+    "date_id": 20250428,
+    "hour": 6,
+    "hour_label": "06:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Tablet",
+    "sales_units": 3,
+    "sales_revenue": 1359.35
+  },
+  {
+    "date_id": 20250428,
+    "hour": 6,
+    "hour_label": "06:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 329.79
+  },
+  {
+    "date_id": 20250428,
+    "hour": 7,
+    "hour_label": "07:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Phone",
+    "sales_units": 5,
+    "sales_revenue": 3949.88
+  },
+  {
+    "date_id": 20250428,
+    "hour": 7,
+    "hour_label": "07:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Tablet",
+    "sales_units": 4,
+    "sales_revenue": 1683.58
+  },
+  {
+    "date_id": 20250428,
+    "hour": 7,
+    "hour_label": "07:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Wearable",
+    "sales_units": 1,
+    "sales_revenue": 175.83
+  },
+  {
+    "date_id": 20250428,
+    "hour": 8,
+    "hour_label": "08:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Phone",
+    "sales_units": 5,
+    "sales_revenue": 3896.91
+  },
+  {
+    "date_id": 20250428,
+    "hour": 8,
+    "hour_label": "08:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Tablet",
+    "sales_units": 4,
+    "sales_revenue": 1847.02
+  },
+  {
+    "date_id": 20250428,
+    "hour": 8,
+    "hour_label": "08:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 330.11
+  },
+  {
+    "date_id": 20250428,
+    "hour": 9,
+    "hour_label": "09:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Phone",
+    "sales_units": 47,
+    "sales_revenue": 36909.04
+  },
+  {
+    "date_id": 20250428,
+    "hour": 9,
+    "hour_label": "09:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Tablet",
+    "sales_units": 25,
+    "sales_revenue": 10559.46
+  },
+  {
+    "date_id": 20250428,
+    "hour": 9,
+    "hour_label": "09:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Wearable",
+    "sales_units": 19,
+    "sales_revenue": 3483.57
+  },
+  {
+    "date_id": 20250428,
+    "hour": 10,
+    "hour_label": "10:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Phone",
+    "sales_units": 44,
+    "sales_revenue": 30115.75
+  },
+  {
+    "date_id": 20250428,
+    "hour": 10,
+    "hour_label": "10:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Tablet",
+    "sales_units": 30,
+    "sales_revenue": 12980.87
+  },
+  {
+    "date_id": 20250428,
+    "hour": 10,
+    "hour_label": "10:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Wearable",
+    "sales_units": 18,
+    "sales_revenue": 3456.59
+  },
+  {
+    "date_id": 20250428,
+    "hour": 11,
+    "hour_label": "11:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Phone",
+    "sales_units": 44,
+    "sales_revenue": 36272.5
+  },
+  {
+    "date_id": 20250428,
+    "hour": 11,
+    "hour_label": "11:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Tablet",
+    "sales_units": 24,
+    "sales_revenue": 9841.08
+  },
+  {
+    "date_id": 20250428,
+    "hour": 11,
+    "hour_label": "11:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Wearable",
+    "sales_units": 20,
+    "sales_revenue": 3270.83
+  },
+  {
+    "date_id": 20250428,
+    "hour": 12,
+    "hour_label": "12:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Phone",
+    "sales_units": 57,
+    "sales_revenue": 45375.74
+  },
+  {
+    "date_id": 20250428,
+    "hour": 12,
+    "hour_label": "12:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Tablet",
+    "sales_units": 48,
+    "sales_revenue": 21420.16
+  },
+  {
+    "date_id": 20250428,
+    "hour": 12,
+    "hour_label": "12:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Wearable",
+    "sales_units": 28,
+    "sales_revenue": 5417.25
+  },
+  {
+    "date_id": 20250428,
+    "hour": 13,
+    "hour_label": "13:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Phone",
+    "sales_units": 58,
+    "sales_revenue": 44190.31
+  },
+  {
+    "date_id": 20250428,
+    "hour": 13,
+    "hour_label": "13:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Tablet",
+    "sales_units": 52,
+    "sales_revenue": 21232.59
+  },
+  {
+    "date_id": 20250428,
+    "hour": 13,
+    "hour_label": "13:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Wearable",
+    "sales_units": 23,
+    "sales_revenue": 4267.37
+  },
+  {
+    "date_id": 20250428,
+    "hour": 14,
+    "hour_label": "14:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Phone",
+    "sales_units": 66,
+    "sales_revenue": 53638.39
+  },
+  {
+    "date_id": 20250428,
+    "hour": 14,
+    "hour_label": "14:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Tablet",
+    "sales_units": 36,
+    "sales_revenue": 16852.2
+  },
+  {
+    "date_id": 20250428,
+    "hour": 14,
+    "hour_label": "14:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Wearable",
+    "sales_units": 23,
+    "sales_revenue": 3868.62
+  },
+  {
+    "date_id": 20250428,
+    "hour": 15,
+    "hour_label": "15:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Phone",
+    "sales_units": 55,
+    "sales_revenue": 39660.53
+  },
+  {
+    "date_id": 20250428,
+    "hour": 15,
+    "hour_label": "15:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Tablet",
+    "sales_units": 50,
+    "sales_revenue": 22302.83
+  },
+  {
+    "date_id": 20250428,
+    "hour": 15,
+    "hour_label": "15:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Wearable",
+    "sales_units": 23,
+    "sales_revenue": 4215.38
+  },
+  {
+    "date_id": 20250428,
+    "hour": 16,
+    "hour_label": "16:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Phone",
+    "sales_units": 76,
+    "sales_revenue": 52512.18
+  },
+  {
+    "date_id": 20250428,
+    "hour": 16,
+    "hour_label": "16:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Tablet",
+    "sales_units": 44,
+    "sales_revenue": 20984.73
+  },
+  {
+    "date_id": 20250428,
+    "hour": 16,
+    "hour_label": "16:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Wearable",
+    "sales_units": 23,
+    "sales_revenue": 4392.09
+  },
+  {
+    "date_id": 20250428,
+    "hour": 17,
+    "hour_label": "17:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Phone",
+    "sales_units": 65,
+    "sales_revenue": 51787.33
+  },
+  {
+    "date_id": 20250428,
+    "hour": 17,
+    "hour_label": "17:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Tablet",
+    "sales_units": 53,
+    "sales_revenue": 24700.96
+  },
+  {
+    "date_id": 20250428,
+    "hour": 17,
+    "hour_label": "17:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Wearable",
+    "sales_units": 25,
+    "sales_revenue": 4928.27
+  },
+  {
+    "date_id": 20250428,
+    "hour": 18,
+    "hour_label": "18:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Phone",
+    "sales_units": 69,
+    "sales_revenue": 47996.36
+  },
+  {
+    "date_id": 20250428,
+    "hour": 18,
+    "hour_label": "18:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Tablet",
+    "sales_units": 51,
+    "sales_revenue": 24295.34
+  },
+  {
+    "date_id": 20250428,
+    "hour": 18,
+    "hour_label": "18:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Wearable",
+    "sales_units": 29,
+    "sales_revenue": 5317.18
+  },
+  {
+    "date_id": 20250428,
+    "hour": 19,
+    "hour_label": "19:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Phone",
+    "sales_units": 42,
+    "sales_revenue": 29110.7
+  },
+  {
+    "date_id": 20250428,
+    "hour": 19,
+    "hour_label": "19:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Tablet",
+    "sales_units": 25,
+    "sales_revenue": 11059.1
+  },
+  {
+    "date_id": 20250428,
+    "hour": 19,
+    "hour_label": "19:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Wearable",
+    "sales_units": 19,
+    "sales_revenue": 3456.53
+  },
+  {
+    "date_id": 20250428,
+    "hour": 20,
+    "hour_label": "20:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Phone",
+    "sales_units": 43,
+    "sales_revenue": 34995.61
+  },
+  {
+    "date_id": 20250428,
+    "hour": 20,
+    "hour_label": "20:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Tablet",
+    "sales_units": 24,
+    "sales_revenue": 9935.93
+  },
+  {
+    "date_id": 20250428,
+    "hour": 20,
+    "hour_label": "20:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Wearable",
+    "sales_units": 20,
+    "sales_revenue": 3680.96
+  },
+  {
+    "date_id": 20250428,
+    "hour": 21,
+    "hour_label": "21:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Phone",
+    "sales_units": 49,
+    "sales_revenue": 33189.88
+  },
+  {
+    "date_id": 20250428,
+    "hour": 21,
+    "hour_label": "21:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Tablet",
+    "sales_units": 29,
+    "sales_revenue": 11761.57
+  },
+  {
+    "date_id": 20250428,
+    "hour": 21,
+    "hour_label": "21:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Wearable",
+    "sales_units": 15,
+    "sales_revenue": 2478.14
+  },
+  {
+    "date_id": 20250428,
+    "hour": 22,
+    "hour_label": "22:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Phone",
+    "sales_units": 6,
+    "sales_revenue": 4848.22
+  },
+  {
+    "date_id": 20250428,
+    "hour": 22,
+    "hour_label": "22:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Tablet",
+    "sales_units": 3,
+    "sales_revenue": 1433.0
+  },
+  {
+    "date_id": 20250428,
+    "hour": 22,
+    "hour_label": "22:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 373.85
+  },
+  {
+    "date_id": 20250428,
+    "hour": 23,
+    "hour_label": "23:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Phone",
+    "sales_units": 5,
+    "sales_revenue": 3854.87
+  },
+  {
+    "date_id": 20250428,
+    "hour": 23,
+    "hour_label": "23:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Tablet",
+    "sales_units": 4,
+    "sales_revenue": 1768.33
+  },
+  {
+    "date_id": 20250428,
+    "hour": 23,
+    "hour_label": "23:00",
+    "outlet_id": "OUT-011",
+    "territory_id": "T-005",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 367.96
+  },
+  {
+    "date_id": 20250428,
+    "hour": 0,
+    "hour_label": "00:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Phone",
+    "sales_units": 4,
+    "sales_revenue": 2808.0
+  },
+  {
+    "date_id": 20250428,
+    "hour": 0,
+    "hour_label": "00:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Tablet",
+    "sales_units": 3,
+    "sales_revenue": 1471.58
+  },
+  {
+    "date_id": 20250428,
+    "hour": 0,
+    "hour_label": "00:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 380.35
+  },
+  {
+    "date_id": 20250428,
+    "hour": 1,
+    "hour_label": "01:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Phone",
+    "sales_units": 5,
+    "sales_revenue": 3378.43
+  },
+  {
+    "date_id": 20250428,
+    "hour": 1,
+    "hour_label": "01:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Tablet",
+    "sales_units": 3,
+    "sales_revenue": 1246.73
+  },
+  {
+    "date_id": 20250428,
+    "hour": 1,
+    "hour_label": "01:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 330.89
+  },
+  {
+    "date_id": 20250428,
+    "hour": 2,
+    "hour_label": "02:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Phone",
+    "sales_units": 5,
+    "sales_revenue": 3945.85
+  },
+  {
+    "date_id": 20250428,
+    "hour": 2,
+    "hour_label": "02:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Tablet",
+    "sales_units": 4,
+    "sales_revenue": 1698.94
+  },
+  {
+    "date_id": 20250428,
+    "hour": 2,
+    "hour_label": "02:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 371.47
+  },
+  {
+    "date_id": 20250428,
+    "hour": 3,
+    "hour_label": "03:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Phone",
+    "sales_units": 5,
+    "sales_revenue": 3520.29
+  },
+  {
+    "date_id": 20250428,
+    "hour": 3,
+    "hour_label": "03:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Tablet",
+    "sales_units": 4,
+    "sales_revenue": 1866.69
+  },
+  {
+    "date_id": 20250428,
+    "hour": 3,
+    "hour_label": "03:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 358.16
+  },
+  {
+    "date_id": 20250428,
+    "hour": 4,
+    "hour_label": "04:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Phone",
+    "sales_units": 5,
+    "sales_revenue": 3877.61
+  },
+  {
+    "date_id": 20250428,
+    "hour": 4,
+    "hour_label": "04:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Tablet",
+    "sales_units": 3,
+    "sales_revenue": 1389.11
+  },
+  {
+    "date_id": 20250428,
+    "hour": 4,
+    "hour_label": "04:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 355.3
+  },
+  {
+    "date_id": 20250428,
+    "hour": 5,
+    "hour_label": "05:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Phone",
+    "sales_units": 5,
+    "sales_revenue": 3978.87
+  },
+  {
+    "date_id": 20250428,
+    "hour": 5,
+    "hour_label": "05:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Tablet",
+    "sales_units": 4,
+    "sales_revenue": 1635.59
+  },
+  {
+    "date_id": 20250428,
+    "hour": 5,
+    "hour_label": "05:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 390.59
+  },
+  {
+    "date_id": 20250428,
+    "hour": 6,
+    "hour_label": "06:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Phone",
+    "sales_units": 5,
+    "sales_revenue": 3964.12
+  },
+  {
+    "date_id": 20250428,
+    "hour": 6,
+    "hour_label": "06:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Tablet",
+    "sales_units": 3,
+    "sales_revenue": 1246.34
+  },
+  {
+    "date_id": 20250428,
+    "hour": 6,
+    "hour_label": "06:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 375.94
+  },
+  {
+    "date_id": 20250428,
+    "hour": 7,
+    "hour_label": "07:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Phone",
+    "sales_units": 6,
+    "sales_revenue": 4343.38
+  },
+  {
+    "date_id": 20250428,
+    "hour": 7,
+    "hour_label": "07:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Tablet",
+    "sales_units": 3,
+    "sales_revenue": 1397.75
+  },
+  {
+    "date_id": 20250428,
+    "hour": 7,
+    "hour_label": "07:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 380.09
+  },
+  {
+    "date_id": 20250428,
+    "hour": 8,
+    "hour_label": "08:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Phone",
+    "sales_units": 5,
+    "sales_revenue": 3448.55
+  },
+  {
+    "date_id": 20250428,
+    "hour": 8,
+    "hour_label": "08:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Tablet",
+    "sales_units": 4,
+    "sales_revenue": 1933.16
+  },
+  {
+    "date_id": 20250428,
+    "hour": 8,
+    "hour_label": "08:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 339.89
+  },
+  {
+    "date_id": 20250428,
+    "hour": 9,
+    "hour_label": "09:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Phone",
+    "sales_units": 44,
+    "sales_revenue": 32897.09
+  },
+  {
+    "date_id": 20250428,
+    "hour": 9,
+    "hour_label": "09:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Tablet",
+    "sales_units": 34,
+    "sales_revenue": 14213.52
+  },
+  {
+    "date_id": 20250428,
+    "hour": 9,
+    "hour_label": "09:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Wearable",
+    "sales_units": 21,
+    "sales_revenue": 3745.97
+  },
+  {
+    "date_id": 20250428,
+    "hour": 10,
+    "hour_label": "10:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Phone",
+    "sales_units": 42,
+    "sales_revenue": 29209.35
+  },
+  {
+    "date_id": 20250428,
+    "hour": 10,
+    "hour_label": "10:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Tablet",
+    "sales_units": 32,
+    "sales_revenue": 14780.22
+  },
+  {
+    "date_id": 20250428,
+    "hour": 10,
+    "hour_label": "10:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Wearable",
+    "sales_units": 21,
+    "sales_revenue": 3554.87
+  },
+  {
+    "date_id": 20250428,
+    "hour": 11,
+    "hour_label": "11:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Phone",
+    "sales_units": 38,
+    "sales_revenue": 29595.6
+  },
+  {
+    "date_id": 20250428,
+    "hour": 11,
+    "hour_label": "11:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Tablet",
+    "sales_units": 24,
+    "sales_revenue": 10014.84
+  },
+  {
+    "date_id": 20250428,
+    "hour": 11,
+    "hour_label": "11:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Wearable",
+    "sales_units": 20,
+    "sales_revenue": 3570.18
+  },
+  {
+    "date_id": 20250428,
+    "hour": 12,
+    "hour_label": "12:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Phone",
+    "sales_units": 58,
+    "sales_revenue": 42139.11
+  },
+  {
+    "date_id": 20250428,
+    "hour": 12,
+    "hour_label": "12:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Tablet",
+    "sales_units": 51,
+    "sales_revenue": 23425.69
+  },
+  {
+    "date_id": 20250428,
+    "hour": 12,
+    "hour_label": "12:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Wearable",
+    "sales_units": 30,
+    "sales_revenue": 5549.04
+  },
+  {
+    "date_id": 20250428,
+    "hour": 13,
+    "hour_label": "13:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Phone",
+    "sales_units": 70,
+    "sales_revenue": 49034.32
+  },
+  {
+    "date_id": 20250428,
+    "hour": 13,
+    "hour_label": "13:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Tablet",
+    "sales_units": 53,
+    "sales_revenue": 25543.37
+  },
+  {
+    "date_id": 20250428,
+    "hour": 13,
+    "hour_label": "13:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Wearable",
+    "sales_units": 22,
+    "sales_revenue": 4242.72
+  },
+  {
+    "date_id": 20250428,
+    "hour": 14,
+    "hour_label": "14:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Phone",
+    "sales_units": 67,
+    "sales_revenue": 55231.43
+  },
+  {
+    "date_id": 20250428,
+    "hour": 14,
+    "hour_label": "14:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Tablet",
+    "sales_units": 46,
+    "sales_revenue": 22095.13
+  },
+  {
+    "date_id": 20250428,
+    "hour": 14,
+    "hour_label": "14:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Wearable",
+    "sales_units": 24,
+    "sales_revenue": 4518.74
+  },
+  {
+    "date_id": 20250428,
+    "hour": 15,
+    "hour_label": "15:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Phone",
+    "sales_units": 73,
+    "sales_revenue": 51975.86
+  },
+  {
+    "date_id": 20250428,
+    "hour": 15,
+    "hour_label": "15:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Tablet",
+    "sales_units": 41,
+    "sales_revenue": 18743.23
+  },
+  {
+    "date_id": 20250428,
+    "hour": 15,
+    "hour_label": "15:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Wearable",
+    "sales_units": 31,
+    "sales_revenue": 5682.42
+  },
+  {
+    "date_id": 20250428,
+    "hour": 16,
+    "hour_label": "16:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Phone",
+    "sales_units": 58,
+    "sales_revenue": 44141.2
+  },
+  {
+    "date_id": 20250428,
+    "hour": 16,
+    "hour_label": "16:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Tablet",
+    "sales_units": 36,
+    "sales_revenue": 17755.8
+  },
+  {
+    "date_id": 20250428,
+    "hour": 16,
+    "hour_label": "16:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Wearable",
+    "sales_units": 22,
+    "sales_revenue": 3936.76
+  },
+  {
+    "date_id": 20250428,
+    "hour": 17,
+    "hour_label": "17:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Phone",
+    "sales_units": 74,
+    "sales_revenue": 50323.19
+  },
+  {
+    "date_id": 20250428,
+    "hour": 17,
+    "hour_label": "17:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Tablet",
+    "sales_units": 45,
+    "sales_revenue": 20166.04
+  },
+  {
+    "date_id": 20250428,
+    "hour": 17,
+    "hour_label": "17:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Wearable",
+    "sales_units": 30,
+    "sales_revenue": 5746.99
+  },
+  {
+    "date_id": 20250428,
+    "hour": 18,
+    "hour_label": "18:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Phone",
+    "sales_units": 66,
+    "sales_revenue": 46931.06
+  },
+  {
+    "date_id": 20250428,
+    "hour": 18,
+    "hour_label": "18:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Tablet",
+    "sales_units": 46,
+    "sales_revenue": 18681.43
+  },
+  {
+    "date_id": 20250428,
+    "hour": 18,
+    "hour_label": "18:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Wearable",
+    "sales_units": 29,
+    "sales_revenue": 5689.73
+  },
+  {
+    "date_id": 20250428,
+    "hour": 19,
+    "hour_label": "19:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Phone",
+    "sales_units": 38,
+    "sales_revenue": 27336.01
+  },
+  {
+    "date_id": 20250428,
+    "hour": 19,
+    "hour_label": "19:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Tablet",
+    "sales_units": 31,
+    "sales_revenue": 12808.14
+  },
+  {
+    "date_id": 20250428,
+    "hour": 19,
+    "hour_label": "19:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Wearable",
+    "sales_units": 17,
+    "sales_revenue": 2940.56
+  },
+  {
+    "date_id": 20250428,
+    "hour": 20,
+    "hour_label": "20:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Phone",
+    "sales_units": 48,
+    "sales_revenue": 38577.04
+  },
+  {
+    "date_id": 20250428,
+    "hour": 20,
+    "hour_label": "20:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Tablet",
+    "sales_units": 32,
+    "sales_revenue": 13030.31
+  },
+  {
+    "date_id": 20250428,
+    "hour": 20,
+    "hour_label": "20:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Wearable",
+    "sales_units": 17,
+    "sales_revenue": 3226.36
+  },
+  {
+    "date_id": 20250428,
+    "hour": 21,
+    "hour_label": "21:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Phone",
+    "sales_units": 51,
+    "sales_revenue": 37526.01
+  },
+  {
+    "date_id": 20250428,
+    "hour": 21,
+    "hour_label": "21:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Tablet",
+    "sales_units": 33,
+    "sales_revenue": 14465.15
+  },
+  {
+    "date_id": 20250428,
+    "hour": 21,
+    "hour_label": "21:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Wearable",
+    "sales_units": 17,
+    "sales_revenue": 3141.64
+  },
+  {
+    "date_id": 20250428,
+    "hour": 22,
+    "hour_label": "22:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Phone",
+    "sales_units": 6,
+    "sales_revenue": 4113.63
+  },
+  {
+    "date_id": 20250428,
+    "hour": 22,
+    "hour_label": "22:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Tablet",
+    "sales_units": 4,
+    "sales_revenue": 1739.85
+  },
+  {
+    "date_id": 20250428,
+    "hour": 22,
+    "hour_label": "22:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Wearable",
+    "sales_units": 1,
+    "sales_revenue": 177.33
+  },
+  {
+    "date_id": 20250428,
+    "hour": 23,
+    "hour_label": "23:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Phone",
+    "sales_units": 5,
+    "sales_revenue": 4084.57
+  },
+  {
+    "date_id": 20250428,
+    "hour": 23,
+    "hour_label": "23:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Tablet",
+    "sales_units": 4,
+    "sales_revenue": 1906.01
+  },
+  {
+    "date_id": 20250428,
+    "hour": 23,
+    "hour_label": "23:00",
+    "outlet_id": "OUT-021",
+    "territory_id": "T-009",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 329.83
+  },
+  {
+    "date_id": 20250428,
+    "hour": 0,
+    "hour_label": "00:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Phone",
+    "sales_units": 6,
+    "sales_revenue": 4712.18
+  },
+  {
+    "date_id": 20250428,
+    "hour": 0,
+    "hour_label": "00:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Tablet",
+    "sales_units": 3,
+    "sales_revenue": 1470.24
+  },
+  {
+    "date_id": 20250428,
+    "hour": 0,
+    "hour_label": "00:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 387.93
+  },
+  {
+    "date_id": 20250428,
+    "hour": 1,
+    "hour_label": "01:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Phone",
+    "sales_units": 5,
+    "sales_revenue": 3649.19
+  },
+  {
+    "date_id": 20250428,
+    "hour": 1,
+    "hour_label": "01:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Tablet",
+    "sales_units": 4,
+    "sales_revenue": 1751.61
+  },
+  {
+    "date_id": 20250428,
+    "hour": 1,
+    "hour_label": "01:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 364.23
+  },
+  {
+    "date_id": 20250428,
+    "hour": 2,
+    "hour_label": "02:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Phone",
+    "sales_units": 4,
+    "sales_revenue": 3125.6
+  },
+  {
+    "date_id": 20250428,
+    "hour": 2,
+    "hour_label": "02:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Tablet",
+    "sales_units": 3,
+    "sales_revenue": 1479.94
+  },
+  {
+    "date_id": 20250428,
+    "hour": 2,
+    "hour_label": "02:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 332.18
+  },
+  {
+    "date_id": 20250428,
+    "hour": 3,
+    "hour_label": "03:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Phone",
+    "sales_units": 5,
+    "sales_revenue": 4079.36
+  },
+  {
+    "date_id": 20250428,
+    "hour": 3,
+    "hour_label": "03:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Tablet",
+    "sales_units": 4,
+    "sales_revenue": 1965.28
+  },
+  {
+    "date_id": 20250428,
+    "hour": 3,
+    "hour_label": "03:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 377.64
+  },
+  {
+    "date_id": 20250428,
+    "hour": 4,
+    "hour_label": "04:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Phone",
+    "sales_units": 5,
+    "sales_revenue": 3639.53
+  },
+  {
+    "date_id": 20250428,
+    "hour": 4,
+    "hour_label": "04:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Tablet",
+    "sales_units": 3,
+    "sales_revenue": 1398.66
+  },
+  {
+    "date_id": 20250428,
+    "hour": 4,
+    "hour_label": "04:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 328.56
+  },
+  {
+    "date_id": 20250428,
+    "hour": 5,
+    "hour_label": "05:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Phone",
+    "sales_units": 5,
+    "sales_revenue": 3739.67
+  },
+  {
+    "date_id": 20250428,
+    "hour": 5,
+    "hour_label": "05:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Tablet",
+    "sales_units": 4,
+    "sales_revenue": 1664.18
+  },
+  {
+    "date_id": 20250428,
+    "hour": 5,
+    "hour_label": "05:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 372.84
+  },
+  {
+    "date_id": 20250428,
+    "hour": 6,
+    "hour_label": "06:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Phone",
+    "sales_units": 6,
+    "sales_revenue": 4313.04
+  },
+  {
+    "date_id": 20250428,
+    "hour": 6,
+    "hour_label": "06:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Tablet",
+    "sales_units": 4,
+    "sales_revenue": 1907.97
+  },
+  {
+    "date_id": 20250428,
+    "hour": 6,
+    "hour_label": "06:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 382.23
+  },
+  {
+    "date_id": 20250428,
+    "hour": 7,
+    "hour_label": "07:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Phone",
+    "sales_units": 7,
+    "sales_revenue": 4793.91
+  },
+  {
+    "date_id": 20250428,
+    "hour": 7,
+    "hour_label": "07:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Tablet",
+    "sales_units": 4,
+    "sales_revenue": 1784.83
+  },
+  {
+    "date_id": 20250428,
+    "hour": 7,
+    "hour_label": "07:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Wearable",
+    "sales_units": 1,
+    "sales_revenue": 194.33
+  },
+  {
+    "date_id": 20250428,
+    "hour": 8,
+    "hour_label": "08:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Phone",
+    "sales_units": 5,
+    "sales_revenue": 4092.47
+  },
+  {
+    "date_id": 20250428,
+    "hour": 8,
+    "hour_label": "08:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Tablet",
+    "sales_units": 3,
+    "sales_revenue": 1289.5
+  },
+  {
+    "date_id": 20250428,
+    "hour": 8,
+    "hour_label": "08:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 359.74
+  },
+  {
+    "date_id": 20250428,
+    "hour": 9,
+    "hour_label": "09:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Phone",
+    "sales_units": 51,
+    "sales_revenue": 38408.26
+  },
+  {
+    "date_id": 20250428,
+    "hour": 9,
+    "hour_label": "09:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Tablet",
+    "sales_units": 31,
+    "sales_revenue": 13372.94
+  },
+  {
+    "date_id": 20250428,
+    "hour": 9,
+    "hour_label": "09:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Wearable",
+    "sales_units": 21,
+    "sales_revenue": 3811.32
+  },
+  {
+    "date_id": 20250428,
+    "hour": 10,
+    "hour_label": "10:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Phone",
+    "sales_units": 38,
+    "sales_revenue": 27626.19
+  },
+  {
+    "date_id": 20250428,
+    "hour": 10,
+    "hour_label": "10:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Tablet",
+    "sales_units": 29,
+    "sales_revenue": 13427.63
+  },
+  {
+    "date_id": 20250428,
+    "hour": 10,
+    "hour_label": "10:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Wearable",
+    "sales_units": 16,
+    "sales_revenue": 2628.26
+  },
+  {
+    "date_id": 20250428,
+    "hour": 11,
+    "hour_label": "11:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Phone",
+    "sales_units": 51,
+    "sales_revenue": 36202.31
+  },
+  {
+    "date_id": 20250428,
+    "hour": 11,
+    "hour_label": "11:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Tablet",
+    "sales_units": 35,
+    "sales_revenue": 16205.72
+  },
+  {
+    "date_id": 20250428,
+    "hour": 11,
+    "hour_label": "11:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Wearable",
+    "sales_units": 17,
+    "sales_revenue": 2963.79
+  },
+  {
+    "date_id": 20250428,
+    "hour": 12,
+    "hour_label": "12:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Phone",
+    "sales_units": 71,
+    "sales_revenue": 51400.16
+  },
+  {
+    "date_id": 20250428,
+    "hour": 12,
+    "hour_label": "12:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Tablet",
+    "sales_units": 46,
+    "sales_revenue": 21515.02
+  },
+  {
+    "date_id": 20250428,
+    "hour": 12,
+    "hour_label": "12:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Wearable",
+    "sales_units": 30,
+    "sales_revenue": 5340.88
+  },
+  {
+    "date_id": 20250428,
+    "hour": 13,
+    "hour_label": "13:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Phone",
+    "sales_units": 62,
+    "sales_revenue": 43077.17
+  },
+  {
+    "date_id": 20250428,
+    "hour": 13,
+    "hour_label": "13:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Tablet",
+    "sales_units": 50,
+    "sales_revenue": 21022.82
+  },
+  {
+    "date_id": 20250428,
+    "hour": 13,
+    "hour_label": "13:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Wearable",
+    "sales_units": 24,
+    "sales_revenue": 4306.39
+  },
+  {
+    "date_id": 20250428,
+    "hour": 14,
+    "hour_label": "14:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Phone",
+    "sales_units": 80,
+    "sales_revenue": 63237.0
+  },
+  {
+    "date_id": 20250428,
+    "hour": 14,
+    "hour_label": "14:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Tablet",
+    "sales_units": 36,
+    "sales_revenue": 15724.11
+  },
+  {
+    "date_id": 20250428,
+    "hour": 14,
+    "hour_label": "14:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Wearable",
+    "sales_units": 26,
+    "sales_revenue": 4367.72
+  },
+  {
+    "date_id": 20250428,
+    "hour": 15,
+    "hour_label": "15:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Phone",
+    "sales_units": 78,
+    "sales_revenue": 60978.2
+  },
+  {
+    "date_id": 20250428,
+    "hour": 15,
+    "hour_label": "15:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Tablet",
+    "sales_units": 41,
+    "sales_revenue": 20196.13
+  },
+  {
+    "date_id": 20250428,
+    "hour": 15,
+    "hour_label": "15:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Wearable",
+    "sales_units": 30,
+    "sales_revenue": 5608.29
+  },
+  {
+    "date_id": 20250428,
+    "hour": 16,
+    "hour_label": "16:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Phone",
+    "sales_units": 71,
+    "sales_revenue": 49559.61
+  },
+  {
+    "date_id": 20250428,
+    "hour": 16,
+    "hour_label": "16:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Tablet",
+    "sales_units": 40,
+    "sales_revenue": 16348.15
+  },
+  {
+    "date_id": 20250428,
+    "hour": 16,
+    "hour_label": "16:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Wearable",
+    "sales_units": 25,
+    "sales_revenue": 4163.83
+  },
+  {
+    "date_id": 20250428,
+    "hour": 17,
+    "hour_label": "17:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Phone",
+    "sales_units": 61,
+    "sales_revenue": 42863.14
+  },
+  {
+    "date_id": 20250428,
+    "hour": 17,
+    "hour_label": "17:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Tablet",
+    "sales_units": 46,
+    "sales_revenue": 18773.61
+  },
+  {
+    "date_id": 20250428,
+    "hour": 17,
+    "hour_label": "17:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Wearable",
+    "sales_units": 25,
+    "sales_revenue": 4359.46
+  },
+  {
+    "date_id": 20250428,
+    "hour": 18,
+    "hour_label": "18:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Phone",
+    "sales_units": 64,
+    "sales_revenue": 48382.72
+  },
+  {
+    "date_id": 20250428,
+    "hour": 18,
+    "hour_label": "18:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Tablet",
+    "sales_units": 38,
+    "sales_revenue": 16421.33
+  },
+  {
+    "date_id": 20250428,
+    "hour": 18,
+    "hour_label": "18:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Wearable",
+    "sales_units": 31,
+    "sales_revenue": 5473.49
+  },
+  {
+    "date_id": 20250428,
+    "hour": 19,
+    "hour_label": "19:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Phone",
+    "sales_units": 44,
+    "sales_revenue": 30659.53
+  },
+  {
+    "date_id": 20250428,
+    "hour": 19,
+    "hour_label": "19:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Tablet",
+    "sales_units": 29,
+    "sales_revenue": 12580.77
+  },
+  {
+    "date_id": 20250428,
+    "hour": 19,
+    "hour_label": "19:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Wearable",
+    "sales_units": 14,
+    "sales_revenue": 2640.2
+  },
+  {
+    "date_id": 20250428,
+    "hour": 20,
+    "hour_label": "20:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Phone",
+    "sales_units": 53,
+    "sales_revenue": 38408.68
+  },
+  {
+    "date_id": 20250428,
+    "hour": 20,
+    "hour_label": "20:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Tablet",
+    "sales_units": 32,
+    "sales_revenue": 14324.86
+  },
+  {
+    "date_id": 20250428,
+    "hour": 20,
+    "hour_label": "20:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Wearable",
+    "sales_units": 16,
+    "sales_revenue": 3135.75
+  },
+  {
+    "date_id": 20250428,
+    "hour": 21,
+    "hour_label": "21:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Phone",
+    "sales_units": 53,
+    "sales_revenue": 40336.13
+  },
+  {
+    "date_id": 20250428,
+    "hour": 21,
+    "hour_label": "21:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Tablet",
+    "sales_units": 25,
+    "sales_revenue": 11396.77
+  },
+  {
+    "date_id": 20250428,
+    "hour": 21,
+    "hour_label": "21:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Wearable",
+    "sales_units": 20,
+    "sales_revenue": 3558.32
+  },
+  {
+    "date_id": 20250428,
+    "hour": 22,
+    "hour_label": "22:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Phone",
+    "sales_units": 6,
+    "sales_revenue": 4708.48
+  },
+  {
+    "date_id": 20250428,
+    "hour": 22,
+    "hour_label": "22:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Tablet",
+    "sales_units": 4,
+    "sales_revenue": 1670.19
+  },
+  {
+    "date_id": 20250428,
+    "hour": 22,
+    "hour_label": "22:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 346.18
+  },
+  {
+    "date_id": 20250428,
+    "hour": 23,
+    "hour_label": "23:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Phone",
+    "sales_units": 5,
+    "sales_revenue": 4005.66
+  },
+  {
+    "date_id": 20250428,
+    "hour": 23,
+    "hour_label": "23:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Tablet",
+    "sales_units": 3,
+    "sales_revenue": 1239.97
+  },
+  {
+    "date_id": 20250428,
+    "hour": 23,
+    "hour_label": "23:00",
+    "outlet_id": "OUT-031",
+    "territory_id": "T-013",
+    "device_group": "Wearable",
+    "sales_units": 1,
+    "sales_revenue": 185.09
+  },
+  {
+    "date_id": 20250428,
+    "hour": 0,
+    "hour_label": "00:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Phone",
+    "sales_units": 6,
+    "sales_revenue": 4249.93
+  },
+  {
+    "date_id": 20250428,
+    "hour": 0,
+    "hour_label": "00:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Tablet",
+    "sales_units": 4,
+    "sales_revenue": 1720.05
+  },
+  {
+    "date_id": 20250428,
+    "hour": 0,
+    "hour_label": "00:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Wearable",
+    "sales_units": 1,
+    "sales_revenue": 181.38
+  },
+  {
+    "date_id": 20250428,
+    "hour": 1,
+    "hour_label": "01:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Phone",
+    "sales_units": 5,
+    "sales_revenue": 3878.67
+  },
+  {
+    "date_id": 20250428,
+    "hour": 1,
+    "hour_label": "01:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Tablet",
+    "sales_units": 3,
+    "sales_revenue": 1353.18
+  },
+  {
+    "date_id": 20250428,
+    "hour": 1,
+    "hour_label": "01:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 346.88
+  },
+  {
+    "date_id": 20250428,
+    "hour": 2,
+    "hour_label": "02:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Phone",
+    "sales_units": 6,
+    "sales_revenue": 4899.06
+  },
+  {
+    "date_id": 20250428,
+    "hour": 2,
+    "hour_label": "02:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Tablet",
+    "sales_units": 4,
+    "sales_revenue": 1749.98
+  },
+  {
+    "date_id": 20250428,
+    "hour": 2,
+    "hour_label": "02:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 385.47
+  },
+  {
+    "date_id": 20250428,
+    "hour": 3,
+    "hour_label": "03:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Phone",
+    "sales_units": 5,
+    "sales_revenue": 3654.62
+  },
+  {
+    "date_id": 20250428,
+    "hour": 3,
+    "hour_label": "03:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Tablet",
+    "sales_units": 3,
+    "sales_revenue": 1309.87
+  },
+  {
+    "date_id": 20250428,
+    "hour": 3,
+    "hour_label": "03:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 386.95
+  },
+  {
+    "date_id": 20250428,
+    "hour": 4,
+    "hour_label": "04:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Phone",
+    "sales_units": 5,
+    "sales_revenue": 3920.89
+  },
+  {
+    "date_id": 20250428,
+    "hour": 4,
+    "hour_label": "04:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Tablet",
+    "sales_units": 3,
+    "sales_revenue": 1483.0
+  },
+  {
+    "date_id": 20250428,
+    "hour": 4,
+    "hour_label": "04:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 344.78
+  },
+  {
+    "date_id": 20250428,
+    "hour": 5,
+    "hour_label": "05:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Phone",
+    "sales_units": 6,
+    "sales_revenue": 4923.32
+  },
+  {
+    "date_id": 20250428,
+    "hour": 5,
+    "hour_label": "05:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Tablet",
+    "sales_units": 3,
+    "sales_revenue": 1457.04
+  },
+  {
+    "date_id": 20250428,
+    "hour": 5,
+    "hour_label": "05:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 366.28
+  },
+  {
+    "date_id": 20250428,
+    "hour": 6,
+    "hour_label": "06:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Phone",
+    "sales_units": 5,
+    "sales_revenue": 3530.84
+  },
+  {
+    "date_id": 20250428,
+    "hour": 6,
+    "hour_label": "06:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Tablet",
+    "sales_units": 3,
+    "sales_revenue": 1449.23
+  },
+  {
+    "date_id": 20250428,
+    "hour": 6,
+    "hour_label": "06:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 328.76
+  },
+  {
+    "date_id": 20250428,
+    "hour": 7,
+    "hour_label": "07:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Phone",
+    "sales_units": 7,
+    "sales_revenue": 5518.92
+  },
+  {
+    "date_id": 20250428,
+    "hour": 7,
+    "hour_label": "07:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Tablet",
+    "sales_units": 3,
+    "sales_revenue": 1325.55
+  },
+  {
+    "date_id": 20250428,
+    "hour": 7,
+    "hour_label": "07:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 353.85
+  },
+  {
+    "date_id": 20250428,
+    "hour": 8,
+    "hour_label": "08:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Phone",
+    "sales_units": 6,
+    "sales_revenue": 4689.22
+  },
+  {
+    "date_id": 20250428,
+    "hour": 8,
+    "hour_label": "08:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Tablet",
+    "sales_units": 4,
+    "sales_revenue": 1669.29
+  },
+  {
+    "date_id": 20250428,
+    "hour": 8,
+    "hour_label": "08:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 351.49
+  },
+  {
+    "date_id": 20250428,
+    "hour": 9,
+    "hour_label": "09:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Phone",
+    "sales_units": 45,
+    "sales_revenue": 30660.07
+  },
+  {
+    "date_id": 20250428,
+    "hour": 9,
+    "hour_label": "09:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Tablet",
+    "sales_units": 33,
+    "sales_revenue": 15843.72
+  },
+  {
+    "date_id": 20250428,
+    "hour": 9,
+    "hour_label": "09:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Wearable",
+    "sales_units": 16,
+    "sales_revenue": 2914.15
+  },
+  {
+    "date_id": 20250428,
+    "hour": 10,
+    "hour_label": "10:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Phone",
+    "sales_units": 44,
+    "sales_revenue": 29877.14
+  },
+  {
+    "date_id": 20250428,
+    "hour": 10,
+    "hour_label": "10:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Tablet",
+    "sales_units": 24,
+    "sales_revenue": 10287.38
+  },
+  {
+    "date_id": 20250428,
+    "hour": 10,
+    "hour_label": "10:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Wearable",
+    "sales_units": 21,
+    "sales_revenue": 4032.69
+  },
+  {
+    "date_id": 20250428,
+    "hour": 11,
+    "hour_label": "11:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Phone",
+    "sales_units": 44,
+    "sales_revenue": 34015.17
+  },
+  {
+    "date_id": 20250428,
+    "hour": 11,
+    "hour_label": "11:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Tablet",
+    "sales_units": 34,
+    "sales_revenue": 15046.5
+  },
+  {
+    "date_id": 20250428,
+    "hour": 11,
+    "hour_label": "11:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Wearable",
+    "sales_units": 17,
+    "sales_revenue": 3174.96
+  },
+  {
+    "date_id": 20250428,
+    "hour": 12,
+    "hour_label": "12:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Phone",
+    "sales_units": 60,
+    "sales_revenue": 41574.19
+  },
+  {
+    "date_id": 20250428,
+    "hour": 12,
+    "hour_label": "12:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Tablet",
+    "sales_units": 40,
+    "sales_revenue": 19779.6
+  },
+  {
+    "date_id": 20250428,
+    "hour": 12,
+    "hour_label": "12:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Wearable",
+    "sales_units": 22,
+    "sales_revenue": 4154.49
+  },
+  {
+    "date_id": 20250428,
+    "hour": 13,
+    "hour_label": "13:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Phone",
+    "sales_units": 69,
+    "sales_revenue": 52428.7
+  },
+  {
+    "date_id": 20250428,
+    "hour": 13,
+    "hour_label": "13:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Tablet",
+    "sales_units": 51,
+    "sales_revenue": 23537.5
+  },
+  {
+    "date_id": 20250428,
+    "hour": 13,
+    "hour_label": "13:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Wearable",
+    "sales_units": 26,
+    "sales_revenue": 4861.81
+  },
+  {
+    "date_id": 20250428,
+    "hour": 14,
+    "hour_label": "14:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Phone",
+    "sales_units": 57,
+    "sales_revenue": 42857.1
+  },
+  {
+    "date_id": 20250428,
+    "hour": 14,
+    "hour_label": "14:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Tablet",
+    "sales_units": 46,
+    "sales_revenue": 22129.46
+  },
+  {
+    "date_id": 20250428,
+    "hour": 14,
+    "hour_label": "14:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Wearable",
+    "sales_units": 23,
+    "sales_revenue": 3774.45
+  },
+  {
+    "date_id": 20250428,
+    "hour": 15,
+    "hour_label": "15:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Phone",
+    "sales_units": 62,
+    "sales_revenue": 50018.35
+  },
+  {
+    "date_id": 20250428,
+    "hour": 15,
+    "hour_label": "15:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Tablet",
+    "sales_units": 38,
+    "sales_revenue": 15948.52
+  },
+  {
+    "date_id": 20250428,
+    "hour": 15,
+    "hour_label": "15:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Wearable",
+    "sales_units": 24,
+    "sales_revenue": 4250.46
+  },
+  {
+    "date_id": 20250428,
+    "hour": 16,
+    "hour_label": "16:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Phone",
+    "sales_units": 78,
+    "sales_revenue": 56815.02
+  },
+  {
+    "date_id": 20250428,
+    "hour": 16,
+    "hour_label": "16:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Tablet",
+    "sales_units": 41,
+    "sales_revenue": 18559.27
+  },
+  {
+    "date_id": 20250428,
+    "hour": 16,
+    "hour_label": "16:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Wearable",
+    "sales_units": 31,
+    "sales_revenue": 5595.48
+  },
+  {
+    "date_id": 20250428,
+    "hour": 17,
+    "hour_label": "17:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Phone",
+    "sales_units": 74,
+    "sales_revenue": 51984.05
+  },
+  {
+    "date_id": 20250428,
+    "hour": 17,
+    "hour_label": "17:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Tablet",
+    "sales_units": 37,
+    "sales_revenue": 17491.25
+  },
+  {
+    "date_id": 20250428,
+    "hour": 17,
+    "hour_label": "17:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Wearable",
+    "sales_units": 27,
+    "sales_revenue": 5222.01
+  },
+  {
+    "date_id": 20250428,
+    "hour": 18,
+    "hour_label": "18:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Phone",
+    "sales_units": 76,
+    "sales_revenue": 59108.63
+  },
+  {
+    "date_id": 20250428,
+    "hour": 18,
+    "hour_label": "18:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Tablet",
+    "sales_units": 41,
+    "sales_revenue": 19134.29
+  },
+  {
+    "date_id": 20250428,
+    "hour": 18,
+    "hour_label": "18:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Wearable",
+    "sales_units": 29,
+    "sales_revenue": 4798.05
+  },
+  {
+    "date_id": 20250428,
+    "hour": 19,
+    "hour_label": "19:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Phone",
+    "sales_units": 46,
+    "sales_revenue": 36730.87
+  },
+  {
+    "date_id": 20250428,
+    "hour": 19,
+    "hour_label": "19:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Tablet",
+    "sales_units": 24,
+    "sales_revenue": 10839.25
+  },
+  {
+    "date_id": 20250428,
+    "hour": 19,
+    "hour_label": "19:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Wearable",
+    "sales_units": 17,
+    "sales_revenue": 3050.76
+  },
+  {
+    "date_id": 20250428,
+    "hour": 20,
+    "hour_label": "20:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Phone",
+    "sales_units": 42,
+    "sales_revenue": 34087.96
+  },
+  {
+    "date_id": 20250428,
+    "hour": 20,
+    "hour_label": "20:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Tablet",
+    "sales_units": 25,
+    "sales_revenue": 10472.75
+  },
+  {
+    "date_id": 20250428,
+    "hour": 20,
+    "hour_label": "20:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Wearable",
+    "sales_units": 15,
+    "sales_revenue": 2531.75
+  },
+  {
+    "date_id": 20250428,
+    "hour": 21,
+    "hour_label": "21:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Phone",
+    "sales_units": 52,
+    "sales_revenue": 39884.74
+  },
+  {
+    "date_id": 20250428,
+    "hour": 21,
+    "hour_label": "21:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Tablet",
+    "sales_units": 33,
+    "sales_revenue": 14926.19
+  },
+  {
+    "date_id": 20250428,
+    "hour": 21,
+    "hour_label": "21:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Wearable",
+    "sales_units": 18,
+    "sales_revenue": 3273.12
+  },
+  {
+    "date_id": 20250428,
+    "hour": 22,
+    "hour_label": "22:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Phone",
+    "sales_units": 6,
+    "sales_revenue": 4152.57
+  },
+  {
+    "date_id": 20250428,
+    "hour": 22,
+    "hour_label": "22:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Tablet",
+    "sales_units": 3,
+    "sales_revenue": 1235.63
+  },
+  {
+    "date_id": 20250428,
+    "hour": 22,
+    "hour_label": "22:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 390.49
+  },
+  {
+    "date_id": 20250428,
+    "hour": 23,
+    "hour_label": "23:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Phone",
+    "sales_units": 5,
+    "sales_revenue": 3608.68
+  },
+  {
+    "date_id": 20250428,
+    "hour": 23,
+    "hour_label": "23:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Tablet",
+    "sales_units": 3,
+    "sales_revenue": 1435.6
+  },
+  {
+    "date_id": 20250428,
+    "hour": 23,
+    "hour_label": "23:00",
+    "outlet_id": "OUT-041",
+    "territory_id": "T-017",
+    "device_group": "Wearable",
+    "sales_units": 2,
+    "sales_revenue": 367.03
+  }
+]

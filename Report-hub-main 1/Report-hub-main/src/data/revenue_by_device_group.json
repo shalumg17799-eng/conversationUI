@@ -1,0 +1,17 @@
+[
+  {
+    "device_group": "Phone",
+    "revenue": 3840000,
+    "percentage": 60
+  },
+  {
+    "device_group": "Tablet",
+    "revenue": 1790000,
+    "percentage": 28
+  },
+  {
+    "device_group": "Wearable",
+    "revenue": 770000,
+    "percentage": 12
+  }
+]

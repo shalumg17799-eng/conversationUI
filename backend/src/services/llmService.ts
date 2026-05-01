@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { IntentResult, ShapeSignature, UITypeTree } from '../types';
 import dotenv from 'dotenv';
+import { cacheService, generateKey } from '../services/cacheService';
 
 dotenv.config();
 
@@ -14,6 +15,19 @@ export const generateUITypeTree = async (
   shape: ShapeSignature,
   allowedComponents: string[]
 ): Promise<UITypeTree> => {
+  // LLM selection layer - caching applied
+  // Create deterministic cache key including query
+  const llmCacheKey = generateKey({ query, intent, shape, allowedComponents });
+  const cached = cacheService.get<{ renderType: string }>(llmCacheKey);
+  if (cached) {
+    // Return cached render type wrapped in UITypeTree structure
+    return {
+      renderType: cached.renderType,
+      props: {},
+      children: []
+    };
+  }
+
   console.log('Layer 3 - LLM selecting components');
 
   const prompt = `
@@ -37,14 +51,14 @@ EXPECTED FORMAT:
 {
   "renderType": "ComponentName"
 }
-  `;
+`;
 
   try {
     const response = await anthropic.messages.create({
       model: 'claude-3-haiku-20240307',
       max_tokens: 100,
       temperature: 0,
-      messages: [{ role: 'user', content: prompt }],
+      messages: [{ role: 'user', content: prompt }]
     });
 
     const content = response.content[0];
@@ -52,18 +66,19 @@ EXPECTED FORMAT:
 
     const jsonMatch = content.text.match(/\{[\s\S]*\}/);
     const jsonString = jsonMatch ? jsonMatch[0] : content.text;
-    
     const output = JSON.parse(jsonString);
-    
-    return {
+
+    const result: UITypeTree = {
       renderType: output.renderType,
-      props: {}, // Props will be mapped in the next layer
+      props: {},
       children: []
     };
-
+    // Cache successful LLM decision for 10 minutes
+    cacheService.set(llmCacheKey, { renderType: output.renderType }, 10 * 60 * 1000);
+    return result;
   } catch (error) {
     console.error('LLM Layer Error:', error);
-    // Fallback to Table
+    // Do not cache fallback; return Table as safe default
     return {
       renderType: 'Table',
       props: {},

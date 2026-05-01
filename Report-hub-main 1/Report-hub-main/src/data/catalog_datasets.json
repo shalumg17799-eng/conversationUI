@@ -1,0 +1,953 @@
+[
+  {
+    "dataset_id": "DS-001",
+    "dataset_name": "SU&G Sales Transactions",
+    "domain": "Sales",
+    "last_refresh_ts": "2025-04-29T06:15:00Z",
+    "refresh_frequency": "Hourly",
+    "certified_flag": true,
+    "source_system": "BigQuery",
+    "row_count": 1820000,
+    "field_count": 25,
+    "key_fields": [
+      {
+        "field_name": "date_id",
+        "field_type": "Integer",
+        "description": "Date key (YYYYMMDD)"
+      },
+      {
+        "field_name": "outlet_id",
+        "field_type": "String",
+        "description": "Retail outlet identifier"
+      },
+      {
+        "field_name": "territory_id",
+        "field_type": "String",
+        "description": "Geographic territory identifier"
+      },
+      {
+        "field_name": "device_id",
+        "field_type": "String",
+        "description": "Device SKU identifier"
+      },
+      {
+        "field_name": "sug_sales_revenue",
+        "field_type": "Decimal",
+        "description": "Total SU&G revenue in USD"
+      },
+      {
+        "field_name": "sug_sales_units",
+        "field_type": "Integer",
+        "description": "Units sold"
+      },
+      {
+        "field_name": "eligible_device_units",
+        "field_type": "Integer",
+        "description": "Devices eligible for SU&G program"
+      },
+      {
+        "field_name": "take_rate_pct",
+        "field_type": "Decimal",
+        "description": "Take rate percentage (0-100)"
+      },
+      {
+        "field_name": "return_rate_pct",
+        "field_type": "Decimal",
+        "description": "Return rate percentage"
+      },
+      {
+        "field_name": "accessory_revenue",
+        "field_type": "Decimal",
+        "description": "Accessory attach revenue"
+      }
+    ],
+    "dataset_health": {
+      "freshness_status": "Current",
+      "quality_score": 96,
+      "known_issues": []
+    },
+    "primary_use_cases": [
+      "Sales performance analysis",
+      "Territory take rate tracking",
+      "Outlet scoring"
+    ],
+    "connected_reports": [
+      {
+        "report_id": "RPT-001",
+        "report_name": "SU&G Performance Dashboard"
+      },
+      {
+        "report_id": "RPT-003",
+        "report_name": "Territory Take Rate Analysis"
+      },
+      {
+        "report_id": "RPT-005",
+        "report_name": "Outlet Performance Scorecard"
+      },
+      {
+        "report_id": "RPT-014",
+        "report_name": "Accessory Attach Rate Tracker"
+      }
+    ],
+    "data_owner": "Sarah Johnson (Sales Analytics)",
+    "migration_readiness": {
+      "readiness_score": 88,
+      "risk_level": "Low",
+      "estimated_effort": "Medium",
+      "key_blockers": [],
+      "migration_window_recommendation": "Off-peak hours (10 PM \u2013 2 AM EST)"
+    },
+    "pii_flag": false,
+    "downstream_systems": [
+      "Salesforce",
+      "Tableau",
+      "Finance DW"
+    ],
+    "schema_tables_count": 4,
+    "null_rate": 0.018,
+    "duplication_rate": 0.0008,
+    "migration_target_recommendation": "BigQuery",
+    "migration_recommendation_reason": "Optimal for high-frequency transactional data; BigQuery's streaming inserts match hourly refresh cadence",
+    "storage_type": "Data Warehouse"
+  },
+  {
+    "dataset_id": "DS-002",
+    "dataset_name": "Customer Feedback & RIS",
+    "domain": "Customer Experience",
+    "last_refresh_ts": "2025-04-29T08:00:00Z",
+    "refresh_frequency": "Daily",
+    "certified_flag": true,
+    "source_system": "BigQuery",
+    "row_count": 1240000,
+    "field_count": 30,
+    "key_fields": [
+      {
+        "field_name": "survey_id",
+        "field_type": "String",
+        "description": "Unique survey response identifier"
+      },
+      {
+        "field_name": "survey_date",
+        "field_type": "Date",
+        "description": "Date survey was completed"
+      },
+      {
+        "field_name": "customer_id",
+        "field_type": "String",
+        "description": "Anonymized customer identifier (PII hashed)"
+      },
+      {
+        "field_name": "outlet_id",
+        "field_type": "String",
+        "description": "Store where interaction occurred"
+      },
+      {
+        "field_name": "ris_pct",
+        "field_type": "Decimal",
+        "description": "Retail Interaction Score (0-100)"
+      },
+      {
+        "field_name": "satisfaction_score",
+        "field_type": "Integer",
+        "description": "CSAT rating 1-10"
+      },
+      {
+        "field_name": "nps_score",
+        "field_type": "Integer",
+        "description": "NPS -100 to 100"
+      },
+      {
+        "field_name": "interaction_type",
+        "field_type": "String",
+        "description": "New activation, upgrade, accessory, support"
+      }
+    ],
+    "dataset_health": {
+      "freshness_status": "Current",
+      "quality_score": 91,
+      "known_issues": []
+    },
+    "primary_use_cases": [
+      "CX dashboard",
+      "Churn risk scoring",
+      "NPS trend analysis"
+    ],
+    "connected_reports": [
+      {
+        "report_id": "RPT-002",
+        "report_name": "Customer Experience Metrics"
+      },
+      {
+        "report_id": "RPT-CHURN-001",
+        "report_name": "Customer Churn \u2013 Monthly Variation Analysis"
+      },
+      {
+        "report_id": "RPT-010",
+        "report_name": "NPS & Satisfaction Trends"
+      }
+    ],
+    "data_owner": "Michael Chen (CX Insights)",
+    "migration_readiness": {
+      "readiness_score": 93,
+      "risk_level": "Low",
+      "estimated_effort": "Small",
+      "key_blockers": [],
+      "migration_window_recommendation": "Off-peak hours (11 PM \u2013 3 AM EST)"
+    },
+    "pii_flag": true,
+    "downstream_systems": [
+      "BigQuery",
+      "Zendesk",
+      "Qualtrics"
+    ],
+    "schema_tables_count": 2,
+    "null_rate": 0.009,
+    "duplication_rate": 0.0004,
+    "migration_target_recommendation": "BigQuery",
+    "migration_recommendation_reason": "Strong PII compliance tooling; CMEK and VPC-SC controls align with data privacy requirements",
+    "storage_type": "Data Lake"
+  },
+  {
+    "dataset_id": "DS-003",
+    "dataset_name": "Returns & Exchanges",
+    "domain": "Operations",
+    "last_refresh_ts": "2025-04-28T23:00:00Z",
+    "refresh_frequency": "Daily",
+    "certified_flag": true,
+    "source_system": "BigQuery",
+    "row_count": 610000,
+    "field_count": 22,
+    "key_fields": [
+      {
+        "field_name": "transaction_id",
+        "field_type": "String",
+        "description": "Unique return/exchange transaction ID"
+      },
+      {
+        "field_name": "transaction_date",
+        "field_type": "Date",
+        "description": "Date of return/exchange"
+      },
+      {
+        "field_name": "outlet_id",
+        "field_type": "String",
+        "description": "Store where transaction occurred"
+      },
+      {
+        "field_name": "device_id",
+        "field_type": "String",
+        "description": "Device being returned/exchanged"
+      },
+      {
+        "field_name": "return_units",
+        "field_type": "Integer",
+        "description": "Number of units returned"
+      },
+      {
+        "field_name": "return_reason",
+        "field_type": "String",
+        "description": "Reason code (changed_mind, defective, plan_change, other)"
+      },
+      {
+        "field_name": "aard_pct",
+        "field_type": "Decimal",
+        "description": "All-Accessory Return Damage rate"
+      }
+    ],
+    "dataset_health": {
+      "freshness_status": "Current",
+      "quality_score": 87,
+      "known_issues": []
+    },
+    "primary_use_cases": [
+      "Return rate analysis",
+      "AARD rate tracking",
+      "Root cause analysis"
+    ],
+    "connected_reports": [
+      {
+        "report_id": "RPT-004",
+        "report_name": "Returns & AARD Deep Dive"
+      },
+      {
+        "report_id": "RPT-001",
+        "report_name": "SU&G Performance Dashboard"
+      }
+    ],
+    "data_owner": "Jessica Martinez (Operations)",
+    "migration_readiness": {
+      "readiness_score": 79,
+      "risk_level": "Medium",
+      "estimated_effort": "Medium",
+      "key_blockers": [
+        "Reason code schema normalization required"
+      ],
+      "migration_window_recommendation": "Weekend maintenance window"
+    },
+    "pii_flag": false,
+    "downstream_systems": [
+      "BigQuery",
+      "Operations Portal"
+    ],
+    "schema_tables_count": 2,
+    "null_rate": 0.048,
+    "duplication_rate": 0.0019,
+    "migration_target_recommendation": "BigQuery",
+    "migration_recommendation_reason": "Seamless Google Cloud integration; cost-effective for analytical workloads",
+    "storage_type": "Data Warehouse"
+  },
+  {
+    "dataset_id": "DS-004",
+    "dataset_name": "Market & Territory Master",
+    "domain": "Geography",
+    "last_refresh_ts": "2025-04-23T10:00:00Z",
+    "refresh_frequency": "Weekly",
+    "certified_flag": false,
+    "source_system": "Hadoop",
+    "row_count": 120000,
+    "field_count": 16,
+    "key_fields": [
+      {
+        "field_name": "territory_id",
+        "field_type": "String",
+        "description": "Territory identifier"
+      },
+      {
+        "field_name": "market_id",
+        "field_type": "String",
+        "description": "Market identifier"
+      },
+      {
+        "field_name": "region_name",
+        "field_type": "String",
+        "description": "Geographic region name"
+      },
+      {
+        "field_name": "outlet_count",
+        "field_type": "Integer",
+        "description": "Number of outlets in territory"
+      },
+      {
+        "field_name": "population",
+        "field_type": "Integer",
+        "description": "Population estimate in coverage area"
+      },
+      {
+        "field_name": "median_income",
+        "field_type": "Integer",
+        "description": "Median household income USD"
+      }
+    ],
+    "dataset_health": {
+      "freshness_status": "Stale",
+      "quality_score": 71,
+      "known_issues": [
+        "Population estimates from 2022 Census \u2014 pending 2024 update",
+        "2 territories with missing median_income values"
+      ]
+    },
+    "primary_use_cases": [
+      "Territory analysis",
+      "Market segmentation",
+      "Geo targeting"
+    ],
+    "connected_reports": [
+      {
+        "report_id": "RPT-006",
+        "report_name": "Market Segmentation Analysis"
+      },
+      {
+        "report_id": "RPT-003",
+        "report_name": "Territory Take Rate Analysis"
+      }
+    ],
+    "data_owner": "Robert Lee (Strategy & Planning)",
+    "migration_readiness": {
+      "readiness_score": 54,
+      "risk_level": "High",
+      "estimated_effort": "Large",
+      "key_blockers": [
+        "Data quality remediation required",
+        "Hadoop-to-BigQuery schema conversion complexity",
+        "Stale population data needs refresh before migration"
+      ],
+      "migration_window_recommendation": "Extended maintenance window \u2014 48h minimum"
+    },
+    "pii_flag": false,
+    "downstream_systems": [
+      "Hadoop",
+      "Strategy Portal",
+      "GIS Tool"
+    ],
+    "schema_tables_count": 5,
+    "null_rate": 0.142,
+    "duplication_rate": 0.009,
+    "migration_target_recommendation": "Hadoop",
+    "migration_recommendation_reason": "Retain on Hadoop until data quality issues resolved; complex spatial joins best handled natively",
+    "storage_type": "Data Lake"
+  },
+  {
+    "dataset_id": "DS-005",
+    "dataset_name": "Financial Planning Data",
+    "domain": "Finance",
+    "last_refresh_ts": "2025-04-28T19:00:00Z",
+    "refresh_frequency": "Daily",
+    "certified_flag": true,
+    "source_system": "Teradata",
+    "row_count": 2340000,
+    "field_count": 42,
+    "key_fields": [
+      {
+        "field_name": "fiscal_period",
+        "field_type": "String",
+        "description": "Fiscal period (YYYYMM)"
+      },
+      {
+        "field_name": "account_id",
+        "field_type": "String",
+        "description": "GL account identifier"
+      },
+      {
+        "field_name": "cost_center",
+        "field_type": "String",
+        "description": "Cost center code"
+      },
+      {
+        "field_name": "revenue",
+        "field_type": "Decimal",
+        "description": "Total revenue USD"
+      },
+      {
+        "field_name": "cost",
+        "field_type": "Decimal",
+        "description": "Total cost USD"
+      },
+      {
+        "field_name": "gross_margin",
+        "field_type": "Decimal",
+        "description": "Gross margin %"
+      },
+      {
+        "field_name": "forecast_variance",
+        "field_type": "Decimal",
+        "description": "Actual vs forecast delta"
+      },
+      {
+        "field_name": "budget_status",
+        "field_type": "String",
+        "description": "on_track / at_risk / over_budget"
+      }
+    ],
+    "dataset_health": {
+      "freshness_status": "Current",
+      "quality_score": 92,
+      "known_issues": []
+    },
+    "primary_use_cases": [
+      "Revenue forecasting",
+      "P&L reporting",
+      "Budget tracking"
+    ],
+    "connected_reports": [
+      {
+        "report_id": "RPT-007",
+        "report_name": "Revenue Forecasting Model"
+      },
+      {
+        "report_id": "RPT-008",
+        "report_name": "Financial P&L Summary"
+      }
+    ],
+    "data_owner": "David Thompson (Finance)",
+    "migration_readiness": {
+      "readiness_score": 68,
+      "risk_level": "Medium",
+      "estimated_effort": "Large",
+      "key_blockers": [
+        "Complex stored procedures require rewrite",
+        "2.3M rows need transformation",
+        "SAP integration dependency"
+      ],
+      "migration_window_recommendation": "Weekend, multi-day window (Fri 6PM \u2013 Mon 6AM)"
+    },
+    "pii_flag": false,
+    "downstream_systems": [
+      "Teradata",
+      "Finance Portal",
+      "SAP",
+      "Board Reporting Tool"
+    ],
+    "schema_tables_count": 9,
+    "null_rate": 0.027,
+    "duplication_rate": 0.0007,
+    "migration_target_recommendation": "Teradata",
+    "migration_recommendation_reason": "Retain Teradata for complex financial joins until SAP integration is decoupled",
+    "storage_type": "Lakehouse"
+  },
+  {
+    "dataset_id": "DS-006",
+    "dataset_name": "Network Site Performance",
+    "domain": "Network",
+    "last_refresh_ts": "2025-04-29T09:00:00Z",
+    "refresh_frequency": "Hourly",
+    "certified_flag": true,
+    "source_system": "BigQuery",
+    "row_count": 4800000,
+    "field_count": 18,
+    "key_fields": [
+      {
+        "field_name": "site_id",
+        "field_type": "String",
+        "description": "Network site identifier"
+      },
+      {
+        "field_name": "date_id",
+        "field_type": "Integer",
+        "description": "Date key (YYYYMMDD)"
+      },
+      {
+        "field_name": "hour",
+        "field_type": "Integer",
+        "description": "Hour of day (0-23)"
+      },
+      {
+        "field_name": "lat",
+        "field_type": "Decimal",
+        "description": "Site latitude"
+      },
+      {
+        "field_name": "lon",
+        "field_type": "Decimal",
+        "description": "Site longitude"
+      },
+      {
+        "field_name": "cqi",
+        "field_type": "Integer",
+        "description": "Channel Quality Indicator (0-15)"
+      },
+      {
+        "field_name": "rsrp",
+        "field_type": "Decimal",
+        "description": "Reference Signal Received Power (dBm)"
+      },
+      {
+        "field_name": "sinr",
+        "field_type": "Decimal",
+        "description": "Signal-to-Interference-plus-Noise Ratio (dB)"
+      },
+      {
+        "field_name": "score",
+        "field_type": "Decimal",
+        "description": "Composite quality score (0-100)"
+      }
+    ],
+    "dataset_health": {
+      "freshness_status": "Current",
+      "quality_score": 94,
+      "known_issues": []
+    },
+    "primary_use_cases": [
+      "Network health monitoring",
+      "Site remediation prioritization",
+      "Coverage planning"
+    ],
+    "connected_reports": [
+      {
+        "report_id": "RPT-009",
+        "report_name": "Network Quality KPI Dashboard"
+      }
+    ],
+    "data_owner": "Alex Rivera (Network Operations)",
+    "migration_readiness": {
+      "readiness_score": 91,
+      "risk_level": "Low",
+      "estimated_effort": "Small",
+      "key_blockers": [],
+      "migration_window_recommendation": "Off-peak hours (2 AM \u2013 5 AM EST)"
+    },
+    "pii_flag": false,
+    "downstream_systems": [
+      "BigQuery",
+      "NOC Dashboard",
+      "OSS Platform"
+    ],
+    "schema_tables_count": 2,
+    "null_rate": 0.004,
+    "duplication_rate": 0.0002,
+    "migration_target_recommendation": "BigQuery",
+    "migration_recommendation_reason": "High-volume time-series data; BigQuery partitioned tables provide optimal cost and query performance",
+    "storage_type": "Data Warehouse"
+  },
+  {
+    "dataset_id": "DS-007",
+    "dataset_name": "Contact Center Interactions",
+    "domain": "Operations",
+    "last_refresh_ts": "2025-04-29T05:30:00Z",
+    "refresh_frequency": "Daily",
+    "certified_flag": true,
+    "source_system": "BigQuery",
+    "row_count": 1560000,
+    "field_count": 28,
+    "key_fields": [
+      {
+        "field_name": "call_id",
+        "field_type": "String",
+        "description": "Unique call/interaction identifier"
+      },
+      {
+        "field_name": "employee_id",
+        "field_type": "String",
+        "description": "Agent identifier"
+      },
+      {
+        "field_name": "call_date",
+        "field_type": "Date",
+        "description": "Date of interaction"
+      },
+      {
+        "field_name": "aht_seconds",
+        "field_type": "Integer",
+        "description": "Average Handle Time in seconds"
+      },
+      {
+        "field_name": "box_close_pct",
+        "field_type": "Decimal",
+        "description": "% of calls ending in box close (positive resolution)"
+      },
+      {
+        "field_name": "transfer_pct",
+        "field_type": "Decimal",
+        "description": "% of calls transferred"
+      },
+      {
+        "field_name": "sales_time_pct",
+        "field_type": "Decimal",
+        "description": "% of call time in sales conversation"
+      },
+      {
+        "field_name": "hold_pct",
+        "field_type": "Decimal",
+        "description": "% of call time on hold"
+      },
+      {
+        "field_name": "csat_score",
+        "field_type": "Decimal",
+        "description": "Post-call CSAT 1-10"
+      }
+    ],
+    "dataset_health": {
+      "freshness_status": "Current",
+      "quality_score": 89,
+      "known_issues": []
+    },
+    "primary_use_cases": [
+      "Agent performance monitoring",
+      "Workforce optimization",
+      "Quality assurance"
+    ],
+    "connected_reports": [
+      {
+        "report_id": "RPT-011",
+        "report_name": "Contact Center Performance"
+      }
+    ],
+    "data_owner": "Jessica Martinez (Operations)",
+    "migration_readiness": {
+      "readiness_score": 82,
+      "risk_level": "Low",
+      "estimated_effort": "Medium",
+      "key_blockers": [
+        "QA scoring model requires revalidation post-migration"
+      ],
+      "migration_window_recommendation": "Off-peak weekend hours"
+    },
+    "pii_flag": true,
+    "downstream_systems": [
+      "BigQuery",
+      "Workforce Management",
+      "QA Platform"
+    ],
+    "schema_tables_count": 3,
+    "null_rate": 0.031,
+    "duplication_rate": 0.0011,
+    "migration_target_recommendation": "BigQuery",
+    "migration_recommendation_reason": "Existing BigQuery infrastructure \u2014 migration is a schema-level reorganization, not platform shift",
+    "storage_type": "Data Warehouse"
+  },
+  {
+    "dataset_id": "DS-008",
+    "dataset_name": "Outlet Metadata & Attributes",
+    "domain": "Geography",
+    "last_refresh_ts": "2025-04-16T00:00:00Z",
+    "refresh_frequency": "Monthly",
+    "certified_flag": true,
+    "source_system": "BigQuery",
+    "row_count": 52000,
+    "field_count": 16,
+    "key_fields": [
+      {
+        "field_name": "outlet_id",
+        "field_type": "String",
+        "description": "Unique outlet identifier"
+      },
+      {
+        "field_name": "territory_id",
+        "field_type": "String",
+        "description": "Territory the outlet belongs to"
+      },
+      {
+        "field_name": "outlet_name",
+        "field_type": "String",
+        "description": "Store display name"
+      },
+      {
+        "field_name": "city",
+        "field_type": "String",
+        "description": "City"
+      },
+      {
+        "field_name": "state",
+        "field_type": "String",
+        "description": "State abbreviation"
+      },
+      {
+        "field_name": "outlet_type",
+        "field_type": "String",
+        "description": "Flagship Store / Corporate Store / Express Kiosk"
+      },
+      {
+        "field_name": "sq_footage",
+        "field_type": "Integer",
+        "description": "Store square footage"
+      },
+      {
+        "field_name": "staff_count",
+        "field_type": "Integer",
+        "description": "Authorized FTE headcount"
+      }
+    ],
+    "dataset_health": {
+      "freshness_status": "Stale",
+      "quality_score": 76,
+      "known_issues": [
+        "3 outlets missing sq_footage",
+        "outlet_type reclassification in progress for kiosk locations"
+      ]
+    },
+    "primary_use_cases": [
+      "Outlet analysis",
+      "Territory segmentation",
+      "Capacity planning"
+    ],
+    "connected_reports": [
+      {
+        "report_id": "RPT-005",
+        "report_name": "Outlet Performance Scorecard"
+      },
+      {
+        "report_id": "RPT-012",
+        "report_name": "Device Inventory & Aging Report"
+      }
+    ],
+    "data_owner": "Sarah Johnson (Sales Analytics)",
+    "migration_readiness": {
+      "readiness_score": 62,
+      "risk_level": "High",
+      "estimated_effort": "Medium",
+      "key_blockers": [
+        "Data quality cleanup required before migration",
+        "outlet_type reclassification not complete"
+      ],
+      "migration_window_recommendation": "After Q2 data cleanup sprint"
+    },
+    "pii_flag": false,
+    "downstream_systems": [
+      "BigQuery",
+      "Geography Portal",
+      "Workforce Management"
+    ],
+    "schema_tables_count": 2,
+    "null_rate": 0.072,
+    "duplication_rate": 0.0028,
+    "migration_target_recommendation": "BigQuery",
+    "storage_type": "Data Warehouse"
+  },
+  {
+    "dataset_id": "DS-009",
+    "dataset_name": "Employee & HR Data",
+    "domain": "People & Culture",
+    "last_refresh_ts": "2025-04-28T12:00:00Z",
+    "refresh_frequency": "Weekly",
+    "certified_flag": true,
+    "source_system": "Teradata",
+    "row_count": 18000,
+    "field_count": 35,
+    "key_fields": [
+      {
+        "field_name": "employee_id",
+        "field_type": "String",
+        "description": "Anonymized employee identifier"
+      },
+      {
+        "field_name": "department",
+        "field_type": "String",
+        "description": "Department or cost center"
+      },
+      {
+        "field_name": "tenure_months",
+        "field_type": "Integer",
+        "description": "Months of employment"
+      },
+      {
+        "field_name": "engagement_score",
+        "field_type": "Decimal",
+        "description": "Engagement index (0-100)"
+      },
+      {
+        "field_name": "flight_risk_flag",
+        "field_type": "Boolean",
+        "description": "Model-flagged retention risk"
+      },
+      {
+        "field_name": "manager_id",
+        "field_type": "String",
+        "description": "Manager employee ID"
+      },
+      {
+        "field_name": "enps_score",
+        "field_type": "Integer",
+        "description": "Employee NPS (-100 to 100)"
+      }
+    ],
+    "dataset_health": {
+      "freshness_status": "Current",
+      "quality_score": 88,
+      "known_issues": []
+    },
+    "primary_use_cases": [
+      "Engagement tracking",
+      "Retention risk modeling",
+      "Manager effectiveness"
+    ],
+    "connected_reports": [
+      {
+        "report_id": "RPT-013",
+        "report_name": "Employee Engagement Index"
+      }
+    ],
+    "data_owner": "Lisa Park (People Analytics)",
+    "migration_readiness": {
+      "readiness_score": 74,
+      "risk_level": "Medium",
+      "estimated_effort": "Large",
+      "key_blockers": [
+        "Strict PII controls require legal review of migration approach",
+        "HRIS integration dependency on Workday"
+      ],
+      "migration_window_recommendation": "Requires legal & security sign-off before scheduling"
+    },
+    "pii_flag": true,
+    "downstream_systems": [
+      "Teradata",
+      "Workday",
+      "Benefits Portal"
+    ],
+    "schema_tables_count": 6,
+    "null_rate": 0.041,
+    "duplication_rate": 0.0014,
+    "migration_target_recommendation": "BigQuery",
+    "migration_recommendation_reason": "BigQuery supports required PII tokenization and access-controlled datasets for HR data",
+    "storage_type": "Lakehouse"
+  },
+  {
+    "dataset_id": "DS-010",
+    "dataset_name": "Accessory Sales Detailed",
+    "domain": "Sales",
+    "last_refresh_ts": "2025-04-29T07:30:00Z",
+    "refresh_frequency": "Hourly",
+    "certified_flag": false,
+    "source_system": "BigQuery",
+    "row_count": 920000,
+    "field_count": 22,
+    "key_fields": [
+      {
+        "field_name": "date_id",
+        "field_type": "Integer",
+        "description": "Date key"
+      },
+      {
+        "field_name": "outlet_id",
+        "field_type": "String",
+        "description": "Outlet identifier"
+      },
+      {
+        "field_name": "accessory_sku",
+        "field_type": "String",
+        "description": "Accessory product SKU"
+      },
+      {
+        "field_name": "accessory_category",
+        "field_type": "String",
+        "description": "Case / Screen Protector / Charger / Other"
+      },
+      {
+        "field_name": "attach_device_id",
+        "field_type": "String",
+        "description": "Device this accessory was attached to"
+      },
+      {
+        "field_name": "accessory_revenue",
+        "field_type": "Decimal",
+        "description": "Revenue from accessory sale"
+      },
+      {
+        "field_name": "attach_rate_pct",
+        "field_type": "Decimal",
+        "description": "Attach rate for this category"
+      }
+    ],
+    "dataset_health": {
+      "freshness_status": "Current",
+      "quality_score": 82,
+      "known_issues": [
+        "accessory_sku taxonomy inconsistent across regions \u2014 standardization in progress"
+      ]
+    },
+    "primary_use_cases": [
+      "Accessory attach rate analysis",
+      "Merchandise planning",
+      "Revenue optimization"
+    ],
+    "connected_reports": [
+      {
+        "report_id": "RPT-014",
+        "report_name": "Accessory Attach Rate Tracker"
+      },
+      {
+        "report_id": "RPT-001",
+        "report_name": "SU&G Performance Dashboard"
+      }
+    ],
+    "data_owner": "Sarah Johnson (Sales Analytics)",
+    "migration_readiness": {
+      "readiness_score": 85,
+      "risk_level": "Low",
+      "estimated_effort": "Small",
+      "key_blockers": [
+        "SKU taxonomy standardization preferred before migration but not blocking"
+      ],
+      "migration_window_recommendation": "Off-peak hours (10 PM \u2013 2 AM EST)"
+    },
+    "pii_flag": false,
+    "downstream_systems": [
+      "BigQuery",
+      "Tableau",
+      "Merchandising Portal"
+    ],
+    "schema_tables_count": 2,
+    "null_rate": 0.024,
+    "duplication_rate": 0.0009,
+    "migration_target_recommendation": "BigQuery",
+    "storage_type": "Data Warehouse"
+  }
+]

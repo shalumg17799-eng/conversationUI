@@ -1,0 +1,22 @@
+[
+  {
+    "market_id": "M-001",
+    "market_name": "Atlantic"
+  },
+  {
+    "market_id": "M-002",
+    "market_name": "Central"
+  },
+  {
+    "market_id": "M-003",
+    "market_name": "West"
+  },
+  {
+    "market_id": "M-004",
+    "market_name": "Texas"
+  },
+  {
+    "market_id": "M-005",
+    "market_name": "Florida"
+  }
+]

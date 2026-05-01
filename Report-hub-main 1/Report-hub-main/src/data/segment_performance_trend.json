@@ -1,0 +1,32 @@
+[
+  {
+    "month": "Nov",
+    "segmentShareIndex": 74.1,
+    "marketPenetration": 57.3
+  },
+  {
+    "month": "Dec",
+    "segmentShareIndex": 76.8,
+    "marketPenetration": 59.1
+  },
+  {
+    "month": "Jan",
+    "segmentShareIndex": 78.2,
+    "marketPenetration": 60.8
+  },
+  {
+    "month": "Feb",
+    "segmentShareIndex": 80.5,
+    "marketPenetration": 62.4
+  },
+  {
+    "month": "Mar",
+    "segmentShareIndex": 82.1,
+    "marketPenetration": 63.9
+  },
+  {
+    "month": "Apr",
+    "segmentShareIndex": 84.3,
+    "marketPenetration": 65.2
+  }
+]

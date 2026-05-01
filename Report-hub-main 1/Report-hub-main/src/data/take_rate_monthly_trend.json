@@ -1,0 +1,32 @@
+[
+  {
+    "month": "Nov",
+    "takeRate": 56.2,
+    "change_vs_previous_month": 0
+  },
+  {
+    "month": "Dec",
+    "takeRate": 59.1,
+    "change_vs_previous_month": 2.9
+  },
+  {
+    "month": "Jan",
+    "takeRate": 55.8,
+    "change_vs_previous_month": -3.3
+  },
+  {
+    "month": "Feb",
+    "takeRate": 61.4,
+    "change_vs_previous_month": 5.6
+  },
+  {
+    "month": "Mar",
+    "takeRate": 63.7,
+    "change_vs_previous_month": 2.3
+  },
+  {
+    "month": "Apr",
+    "takeRate": 62.1,
+    "change_vs_previous_month": -1.6
+  }
+]

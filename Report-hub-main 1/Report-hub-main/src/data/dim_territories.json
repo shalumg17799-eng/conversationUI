@@ -1,0 +1,102 @@
+[
+  {
+    "territory_id": "T-001",
+    "market_id": "M-001",
+    "territory_name": "Northeast Metro"
+  },
+  {
+    "territory_id": "T-002",
+    "market_id": "M-001",
+    "territory_name": "Mid-Atlantic"
+  },
+  {
+    "territory_id": "T-003",
+    "market_id": "M-001",
+    "territory_name": "Southeast Urban"
+  },
+  {
+    "territory_id": "T-004",
+    "market_id": "M-001",
+    "territory_name": "New England"
+  },
+  {
+    "territory_id": "T-005",
+    "market_id": "M-002",
+    "territory_name": "Midwest Central"
+  },
+  {
+    "territory_id": "T-006",
+    "market_id": "M-002",
+    "territory_name": "Great Lakes"
+  },
+  {
+    "territory_id": "T-007",
+    "market_id": "M-002",
+    "territory_name": "Ohio Valley"
+  },
+  {
+    "territory_id": "T-008",
+    "market_id": "M-002",
+    "territory_name": "Great Plains"
+  },
+  {
+    "territory_id": "T-009",
+    "market_id": "M-003",
+    "territory_name": "West Coast Premium"
+  },
+  {
+    "territory_id": "T-010",
+    "market_id": "M-003",
+    "territory_name": "Pacific Northwest"
+  },
+  {
+    "territory_id": "T-011",
+    "market_id": "M-003",
+    "territory_name": "Southwest Regional"
+  },
+  {
+    "territory_id": "T-012",
+    "market_id": "M-003",
+    "territory_name": "Mountain West"
+  },
+  {
+    "territory_id": "T-013",
+    "market_id": "M-004",
+    "territory_name": "Dallas-Fort Worth"
+  },
+  {
+    "territory_id": "T-014",
+    "market_id": "M-004",
+    "territory_name": "Houston Metro"
+  },
+  {
+    "territory_id": "T-015",
+    "market_id": "M-004",
+    "territory_name": "San Antonio"
+  },
+  {
+    "territory_id": "T-016",
+    "market_id": "M-004",
+    "territory_name": "Austin"
+  },
+  {
+    "territory_id": "T-017",
+    "market_id": "M-005",
+    "territory_name": "South Florida"
+  },
+  {
+    "territory_id": "T-018",
+    "market_id": "M-005",
+    "territory_name": "Tampa Bay"
+  },
+  {
+    "territory_id": "T-019",
+    "market_id": "M-005",
+    "territory_name": "Orlando Metro"
+  },
+  {
+    "territory_id": "T-020",
+    "market_id": "M-005",
+    "territory_name": "Jacksonville"
+  }
+]

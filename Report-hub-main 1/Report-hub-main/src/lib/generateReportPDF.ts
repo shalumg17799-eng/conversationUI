@@ -343,8 +343,8 @@ function renderKPISection(
       kpi.trend === 'up'
         ? PDF_CONFIG.colors.success
         : kpi.trend === 'down'
-          ? PDF_CONFIG.colors.danger
-          : PDF_CONFIG.colors.secondary;
+        ? PDF_CONFIG.colors.danger
+        : PDF_CONFIG.colors.secondary;
     const trendSymbol = kpi.trend === 'up' ? '↑' : kpi.trend === 'down' ? '↓' : '—';
     pdf.setTextColor(trendColor);
     pdf.text(trendSymbol, x + cardWidth - 6, y + 5);
@@ -519,8 +519,8 @@ export async function generateReportPDF(options: PDFGenerationOptions): Promise<
         reportData.domain === 'Sales'
           ? 'Top Products'
           : reportData.domain === 'Customer Experience'
-            ? 'Top Drivers'
-            : 'Top Segments',
+          ? 'Top Drivers'
+          : 'Top Segments',
         reportData.topDrivers,
         [
           { header: 'Name', dataKey: 'name' },
@@ -549,8 +549,8 @@ export async function generateReportPDF(options: PDFGenerationOptions): Promise<
         reportData.domain === 'Sales'
           ? 'Top Territories'
           : reportData.domain === 'Customer Experience'
-            ? 'Top Locations'
-            : 'Top Entities',
+          ? 'Top Locations'
+          : 'Top Entities',
         reportData.topEntities,
         [
           { header: 'Entity', dataKey: 'entity' },
@@ -578,7 +578,8 @@ export async function generateReportPDF(options: PDFGenerationOptions): Promise<
     // ========================================================================
     const finalFilename =
       filename ||
-      `${reportData.reportName.replace(/\s+/g, '_')}_Full_Report_${new Date().toISOString().split('T')[0]
+      `${reportData.reportName.replace(/\s+/g, '_')}_Full_Report_${
+        new Date().toISOString().split('T')[0]
       }.pdf`;
 
     onProgress?.('Saving PDF file...');
