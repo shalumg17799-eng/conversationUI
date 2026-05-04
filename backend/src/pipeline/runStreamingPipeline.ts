@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import { classifyIntent } from '../services/intentClassifier';
 import { executeQuery } from '../services/queryEngine';
 import { analyzeDataShape } from '../services/dataShapeAnalyzer';
-import { generateReport, ReportCard } from '../services/llmHandler';
+import { generateReport, clarifyOrGenerate, ReportCard } from '../services/llmHandler';
 import { UITypeTree } from '../types';
 import { cacheService, generateKey } from '../services/cacheService';
 
@@ -45,9 +45,11 @@ function hydrate(card: ReportCard, allRows: any[]): UITypeTree {
   }
 }
 
-export async function runStreamingPipeline(query: string, send: SendFn): Promise<void> {
+export async function runStreamingPipeline(query: string, send: SendFn, skipClarification = false): Promise<void> {
   const cacheKey = generateKey({ query, stream: true, v: 2 });
   const cached = cacheService.get<{ components: UITypeTree[]; title: string; message: string }>(cacheKey);
+
+  console.log(`[Pipeline] query="${query}" skipClarification=${skipClarification} cacheHit=${!!cached}`);
 
   if (cached) {
     send('meta', { title: cached.title, description: cached.message, cached: true });
@@ -57,13 +59,23 @@ export async function runStreamingPipeline(query: string, send: SendFn): Promise
 
   const start = Date.now();
 
+  // Step 0 — clarification gate: skip if user is answering a previous clarification
+  if (!skipClarification) {
+    send('status', { message: 'Understanding your query...' });
+    const clarification = await clarifyOrGenerate(query);
+
+    if (clarification.action === 'clarify') {
+      send('clarification', { questions: clarification.questions });
+      return;
+    }
+  }
+
   // Step 1 — route intent to the right BQ table
-  send('status', { message: 'Understanding your query...' });
   const intent = await classifyIntent(query);
 
   // Step 2 — fetch real BigQuery data
   send('status', { message: 'Querying BigQuery...' });
-  const allRows = await executeQuery(intent);
+  const allRows = await executeQuery(intent, (meta) => send('bq_debug', meta));
 
   if (allRows.length === 0) {
     send('error', { message: 'No data returned from BigQuery for this query. Try rephrasing with a specific metric (e.g. "show revenue by territory").' });

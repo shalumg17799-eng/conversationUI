@@ -8,6 +8,11 @@ const MODEL = 'gemma-4-31b-it';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
+export interface ClarifyResult {
+  action: 'generate' | 'clarify';
+  questions: string[];
+}
+
 export interface ReportCard {
   renderType: 'BarChart' | 'LineChart' | 'KPI' | 'KPIGrid' | 'GenerativeTable';
   props: Record<string, any>;
@@ -87,6 +92,62 @@ OUTPUT FORMAT — valid JSON only, no markdown, no code fences:
     { "label": "Short button label", "intent": "what this follow-up asks" }
   ]
 }`;
+
+// ── Clarification gate ────────────────────────────────────────────────────────
+
+const CLARIFY_SYSTEM = `You are a business intelligence assistant routing layer.
+Decide if a user query has enough context to generate a BI report, or if you need more information.
+
+A query is SPECIFIC ENOUGH if it mentions ANY of:
+- A metric (revenue, sales, churn, performance, take rate, calls, CSAT, scores, units)
+- A dimension (region, territory, market, employee, device, outlet, team, department)
+- A dataset or domain (contact center, sales, network, catalog)
+- A time period (monthly, Q1, last quarter, this year)
+
+A query is TOO VAGUE if it is:
+- A greeting or non-BI question ("hi", "hello", "how are you")
+- A generic request with no data context ("create a report", "show me something", "give me data")
+- Ambiguous with no clear metric or dimension
+
+RESPOND WITH JSON ONLY:
+{
+  "action": "generate",
+  "questions": []
+}
+OR
+{
+  "action": "clarify",
+  "questions": ["Question 1?", "Question 2?"]
+}
+Max 2 short, specific questions. Questions should guide the user to specify metric + dimension or time period.`;
+
+export async function clarifyOrGenerate(query: string): Promise<ClarifyResult> {
+  const ai = getAI();
+  try {
+    const response = await ai.models.generateContent({
+      model: MODEL,
+      config: {
+        temperature: 0,
+        maxOutputTokens: 256,
+        responseMimeType: 'application/json',
+        systemInstruction: CLARIFY_SYSTEM,
+      },
+      contents: [{ role: 'user', parts: [{ text: `User query: "${query}"` }] }],
+    });
+
+    const raw = stripThinkTags(response.text ?? '');
+    const parsed = JSON.parse(extractJSON(raw));
+
+    return {
+      action: parsed.action === 'clarify' ? 'clarify' : 'generate',
+      questions: Array.isArray(parsed.questions) ? parsed.questions : [],
+    };
+  } catch (err) {
+    console.error('clarifyOrGenerate error:', err);
+    // On error, default to generating — don't block the user
+    return { action: 'generate', questions: [] };
+  }
+}
 
 // ── Main export ──────────────────────────────────────────────────────────────
 

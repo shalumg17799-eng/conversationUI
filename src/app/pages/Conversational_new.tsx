@@ -63,8 +63,9 @@ interface Message {
   id: string;
   type: 'system' | 'user' | 'assistant';
   content: string;
-  renderType?: 'text' | 'context_cards' | 'starter_pills' | 'dataset_cards' | 'option_chips' | 'reports_list' | 'datasets_list' | 'chart_preview' | 'actions' | 'post_reports_actions' | 'report_context_prompts' | 'inline_chart' | 'create_report_step' | 'create_report_preview' | 'migration_dataset_list' | 'migration_intent_selection' | 'migration_platform_selection' | 'migration_plan' | 'migration_validation' | 'migration_pills' | 'marketplace_dataset_grid' | 'dimensions_with_filters' | 'usage_selection' | 'layout_builder' | 'report_generation_preview' | 'duplicate_detection' | 'execution_routing' | 'report_ready_cta' | 'Report' | 'generative_ui';
+  renderType?: 'text' | 'context_cards' | 'starter_pills' | 'dataset_cards' | 'option_chips' | 'reports_list' | 'datasets_list' | 'chart_preview' | 'actions' | 'post_reports_actions' | 'report_context_prompts' | 'inline_chart' | 'create_report_step' | 'create_report_preview' | 'migration_dataset_list' | 'migration_intent_selection' | 'migration_platform_selection' | 'migration_plan' | 'migration_validation' | 'migration_pills' | 'marketplace_dataset_grid' | 'dimensions_with_filters' | 'usage_selection' | 'layout_builder' | 'report_generation_preview' | 'duplicate_detection' | 'execution_routing' | 'report_ready_cta' | 'Report' | 'generative_ui' | 'clarification';
   isStreaming?: boolean;
+  originalQuery?: string;
   data?: any;
   timestamp: Date;
 }
@@ -288,6 +289,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
   const [inputValue, setInputValue] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [flowState, setFlowState] = useState<string>('new');
+  const [clarificationContext, setClarificationContext] = useState<string | null>(null);
   const [hoveredConvId, setHoveredConvId] = useState<string | null>(null);
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [isReportPanelOpen, setIsReportPanelOpen] = useState(false);
@@ -2499,9 +2501,15 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
     const userQuestion = inputValue.trim();
     if (!userQuestion) return;
 
+    const isClarificationAnswer = !!clarificationContext;
+    const queryToSend = clarificationContext
+      ? `${clarificationContext}. ${userQuestion}`
+      : userQuestion;
+
     const isFirstMessage = flowState === 'new';
     addUserMessage(userQuestion, isFirstMessage);
     setInputValue('');
+    setClarificationContext(null);
     setIsGenerating(true);
 
     // Create a streaming message slot
@@ -2520,7 +2528,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
       const res = await fetch("http://localhost:3001/api/conversational/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: userQuestion }),
+        body: JSON.stringify({ query: queryToSend, skipClarification: isClarificationAnswer }),
       });
 
       if (!res.ok || !res.body) throw new Error(`Backend error: ${res.status}`);
@@ -2553,6 +2561,17 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
               patchMsg(m => ({ ...m, data: { ...m.data, components: [...(m.data?.components || []), payload] } }));
             } else if (event === 'followUp') {
               patchMsg(m => ({ ...m, data: { ...m.data, followUp: payload } }));
+            } else if (event === 'bq_debug') {
+              console.group('%c[BigQuery] Data source confirmed', 'color:#4285F4;font-weight:bold');
+              console.log('Project :', payload.project);
+              console.log('Dataset :', payload.dataset);
+              console.log('Table   :', payload.table);
+              console.log('Rows    :', payload.rowCount);
+              console.log('Duration:', `${payload.durationMs}ms`);
+              console.log('Intent  :', payload.intent, '| metric:', payload.metric, '| dimension:', payload.dimension);
+              console.groupEnd();
+            } else if (event === 'clarification') {
+              patchMsg(m => ({ ...m, isStreaming: false, renderType: 'clarification', originalQuery: userQuestion, data: { questions: payload.questions } }));
             } else if (event === 'error') {
               patchMsg(m => ({ ...m, isStreaming: false, renderType: 'text', content: payload.message || 'Error' }));
             }
@@ -5248,6 +5267,31 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                     Open in Editor
                   </button>
                 </div>
+              </div>
+            )}
+
+            {/* Clarification — Gemma needs more context before generating */}
+            {message.renderType === 'clarification' && message.data?.questions && (
+              <div className="mt-3 space-y-3">
+                <p className="text-[13px] text-[#6B7280] leading-relaxed">
+                  I need a bit more context to generate the right report. Could you clarify:
+                </p>
+                <div className="space-y-2">
+                  {message.data.questions.map((q: string, i: number) => (
+                    <button
+                      key={i}
+                      onClick={() => {
+                        setClarificationContext(message.originalQuery || '');
+                        setInputValue('');
+                      }}
+                      className="w-full text-left px-4 py-2.5 bg-white border border-[#E5E7EB] rounded-xl text-[13px] text-[#374151] hover:bg-gray-50 hover:border-gray-300 transition-all flex items-center gap-2"
+                    >
+                      <span className="text-rose-400 font-bold">{i + 1}.</span>
+                      {q}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-[#9CA3AF]">Click a question to select it, then type your answer below.</p>
               </div>
             )}
 

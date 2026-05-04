@@ -26,8 +26,19 @@ export function qualifiedTable(tableName: string): string {
   return `\`${projectId}.${dataset}.${tableName}\``;
 }
 
-export async function runQuery(sql: string): Promise<any[]> {
+export async function runQueryWithMeta(sql: string): Promise<{ rows: any[]; durationMs: number; table: string; project: string; dataset: string }> {
+  const tableMatch = sql.match(/`[^`]+\.([^`]+)`/i);
+  const table = tableMatch?.[1] ?? 'unknown';
+  const t0 = Date.now();
+  console.log(`[BigQuery ENTRY] project=${PROJECT_ID} dataset=${DATASET} table=${table}`);
   const [job] = await bigqueryClient.createQueryJob({ query: sql, location: 'US' });
   const [rows] = await job.getQueryResults();
+  const durationMs = Date.now() - t0;
+  console.log(`[BigQuery EXIT]  table=${table} rows=${rows.length} duration=${durationMs}ms`);
+  return { rows, durationMs, table, project: PROJECT_ID, dataset: DATASET };
+}
+
+export async function runQuery(sql: string): Promise<any[]> {
+  const { rows } = await runQueryWithMeta(sql);
   return rows;
 }

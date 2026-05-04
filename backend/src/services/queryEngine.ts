@@ -1,88 +1,86 @@
-import { BigQueryService } from './bigqueryService';
+import { runQueryWithMeta, qualifiedTable } from '../lib/bigqueryClient';
 import { IntentResult } from '../types';
 
-// Maps intent signals to BigQuery fetch functions
-export const executeQuery = async (intent: IntentResult): Promise<any[]> => {
+export interface BQQueryMeta {
+  project: string;
+  dataset: string;
+  table: string;
+  rowCount: number;
+  durationMs: number;
+  intent: string;
+  metric: string;
+  dimension: string;
+}
+
+export const executeQuery = async (
+  intent: IntentResult,
+  onMeta?: (meta: BQQueryMeta) => void,
+): Promise<any[]> => {
   const { metric, dimension, timeRange, intent: intentType } = intent;
   const m = metric.toLowerCase();
   const d = dimension.toLowerCase();
 
   console.log(`BQ Query — intent: ${intentType}, metric: ${m}, dimension: ${d}, time: ${timeRange}`);
 
+  const withMeta = async (sql: string, slice?: number): Promise<any[]> => {
+    const result = await runQueryWithMeta(sql);
+    onMeta?.({
+      project: result.project,
+      dataset: result.dataset,
+      table: result.table,
+      rowCount: result.rows.length,
+      durationMs: result.durationMs,
+      intent: intentType,
+      metric: m,
+      dimension: d,
+    });
+    return slice ? result.rows.slice(0, slice) : result.rows;
+  };
+
   try {
-    // Revenue / sales trends → monthly rollup
     if (m === 'revenue' || m === 'sales' || intentType === 'trend') {
-      const rows = await BigQueryService.getMonthlyRollup();
-      return rows.slice(0, 50);
+      return await withMeta(`SELECT * FROM ${qualifiedTable('fact_sug_monthly_rollup')} ORDER BY month_id DESC`, 50);
     }
-
-    // Take rate
     if (m === 'take_rate' || m === 'takerate' || m.includes('take')) {
-      return await BigQueryService.getMonthlyRollup();
+      return await withMeta(`SELECT * FROM ${qualifiedTable('fact_sug_monthly_rollup')} ORDER BY month_id DESC`);
     }
-
-    // Churn
     if (m === 'churn' || m.includes('churn')) {
-      return await BigQueryService.getChurnMonthly();
+      return await withMeta(`SELECT * FROM ${qualifiedTable('churn_monthly')} ORDER BY month_date DESC`);
     }
-
-    // Performance by region/territory
     if (d === 'region' || m === 'performance' || m === 'score') {
-      return await BigQueryService.getPerformanceByRegion();
+      return await withMeta(`SELECT * FROM ${qualifiedTable('performance_by_region')} ORDER BY performance_score DESC`);
     }
-
-    // Device / product revenue
     if (d === 'device' || d === 'product' || m === 'device') {
-      return await BigQueryService.getRevenueByDeviceGroup();
+      return await withMeta(`SELECT * FROM ${qualifiedTable('revenue_by_device_group')} ORDER BY revenue DESC`);
     }
-
-    // Contact center / employee metrics
     if (m === 'contact' || m === 'agent' || m === 'employee' || d === 'employee') {
-      return await BigQueryService.getContactCenterMetrics();
+      return await withMeta(`SELECT * FROM ${qualifiedTable('fact_contact_center_metrics')} ORDER BY status`);
     }
-
-    // Dynamic scores / rankings
     if (m === 'rank' || m === 'score' || m === 'dynamic') {
-      return await BigQueryService.getDynamicScores();
+      return await withMeta(`SELECT * FROM ${qualifiedTable('fact_dynamic_scores')} ORDER BY rank`);
     }
-
-    // Markets / territories
     if (d === 'market' || m === 'market') {
-      return await BigQueryService.getMarkets();
+      return await withMeta(`SELECT * FROM ${qualifiedTable('dim_markets')} ORDER BY market_name`);
     }
-
     if (d === 'territory') {
-      return await BigQueryService.getTerritories();
+      return await withMeta(`SELECT * FROM ${qualifiedTable('dim_territories')} ORDER BY territory_name`);
     }
-
-    // Outlets / stores
     if (d === 'outlet' || d === 'store' || d === 'city') {
-      return await BigQueryService.getOutlets();
+      return await withMeta(`SELECT * FROM ${qualifiedTable('dim_outlets')} ORDER BY outlet_name`);
     }
-
-    // Catalog — reports
     if (m === 'report' || d === 'report') {
-      return await BigQueryService.getCatalogReports();
+      return await withMeta(`SELECT * FROM ${qualifiedTable('catalog_reports')} ORDER BY last_updated_ts DESC`);
     }
-
-    // Catalog — datasets
     if (m === 'dataset' || d === 'dataset') {
-      return await BigQueryService.getCatalogDatasets();
+      return await withMeta(`SELECT * FROM ${qualifiedTable('catalog_datasets')} ORDER BY last_refresh_ts DESC`);
     }
-
-    // Daily sales detail (default for sales + outlet/date combos)
-    if (m === 'sales' || m === 'units' || intentType === 'comparison') {
-      const rows = await BigQueryService.getDailySalesDetail();
-      return rows.slice(0, 100);
+    if (m === 'units' || intentType === 'comparison') {
+      return await withMeta(`SELECT * FROM ${qualifiedTable('v_daily_sales_detail')} ORDER BY date DESC, outlet_name`, 100);
     }
-
-    // Default: monthly territory performance — richest general dataset
-    const rows = await BigQueryService.getMonthlyTerritoryPerformance();
-    return rows.slice(0, 50);
+    return await withMeta(`SELECT * FROM ${qualifiedTable('v_monthly_territory_performance')} ORDER BY month_id DESC, territory_name`, 50);
 
   } catch (err: any) {
     console.error('BigQuery executeQuery error:', err.message);
-    // Return empty — pipeline handles gracefully
     return [];
   }
 };

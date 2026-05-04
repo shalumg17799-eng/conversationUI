@@ -26,7 +26,7 @@ app.get('/', (_req: Request, res: Response) => {
 
 // SSE streaming endpoint — preferred for Generative UI
 app.post('/api/conversational/stream', async (req: Request, res: Response) => {
-  const { query } = req.body;
+  const { query, skipClarification } = req.body;
   if (!query) return res.status(400).json({ error: 'Query is required' });
 
   res.writeHead(200, {
@@ -41,7 +41,7 @@ app.post('/api/conversational/stream', async (req: Request, res: Response) => {
   };
 
   try {
-    await runStreamingPipeline(query, send);
+    await runStreamingPipeline(query, send, !!skipClarification);
     send('done', { success: true });
   } catch (error: any) {
     send('error', { message: error.message || 'Internal Server Error' });
