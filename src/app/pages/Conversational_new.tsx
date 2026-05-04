@@ -30,6 +30,7 @@ import { ReportLayoutPreview } from '@/app/components/ReportLayoutPreview';
 import { ReportGenerationPreview } from '@/app/components/ReportGenerationPreview';
 import { GenerativeTable } from '@/app/components/GenerativeTable';
 import { ReportSkeleton } from '@/app/components/ReportSkeleton';
+import { UITreeRenderer, type UITreeNode } from '@/app/components/UITreeRenderer';
 import { 
   Send, 
   Sparkles, 
@@ -62,7 +63,8 @@ interface Message {
   id: string;
   type: 'system' | 'user' | 'assistant';
   content: string;
-  renderType?: 'text' | 'context_cards' | 'starter_pills' | 'dataset_cards' | 'option_chips' | 'reports_list' | 'datasets_list' | 'chart_preview' | 'actions' | 'post_reports_actions' | 'report_context_prompts' | 'inline_chart' | 'create_report_step' | 'create_report_preview' | 'migration_dataset_list' | 'migration_intent_selection' | 'migration_platform_selection' | 'migration_plan' | 'migration_validation' | 'migration_pills' | 'marketplace_dataset_grid' | 'dimensions_with_filters' | 'usage_selection' | 'layout_builder' | 'report_generation_preview' | 'duplicate_detection' | 'execution_routing' | 'report_ready_cta' | 'Report';
+  renderType?: 'text' | 'context_cards' | 'starter_pills' | 'dataset_cards' | 'option_chips' | 'reports_list' | 'datasets_list' | 'chart_preview' | 'actions' | 'post_reports_actions' | 'report_context_prompts' | 'inline_chart' | 'create_report_step' | 'create_report_preview' | 'migration_dataset_list' | 'migration_intent_selection' | 'migration_platform_selection' | 'migration_plan' | 'migration_validation' | 'migration_pills' | 'marketplace_dataset_grid' | 'dimensions_with_filters' | 'usage_selection' | 'layout_builder' | 'report_generation_preview' | 'duplicate_detection' | 'execution_routing' | 'report_ready_cta' | 'Report' | 'generative_ui';
+  isStreaming?: boolean;
   data?: any;
   timestamp: Date;
 }
@@ -2502,31 +2504,72 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
     setInputValue('');
     setIsGenerating(true);
 
+    // Create a streaming message slot
+    const streamMsgId = crypto.randomUUID();
+    setMessages(prev => [...prev, {
+      id: streamMsgId,
+      type: 'assistant',
+      content: '',
+      renderType: 'generative_ui',
+      isStreaming: true,
+      data: { meta: null, components: [] },
+      timestamp: new Date(),
+    }]);
+
     try {
-      const response = await fetch("http://localhost:3001/api/conversational", {
+      const res = await fetch("http://localhost:3001/api/conversational/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: userQuestion })
+        body: JSON.stringify({ query: userQuestion }),
       });
-      
-      const data = await response.json();
-      
-      setIsGenerating(false);
-      
-      if (data.success && data.uiTree) {
-        // Add assistant message with the uiTree
-        addAssistantMessage(
-          data.uiTree.props?.description || "",
-          data.uiTree.renderType,
-          data.uiTree
-        );
-      } else {
-        addAssistantMessage("I'm sorry, I couldn't process that request. The backend returned an error or an invalid format.", "text");
+
+      if (!res.ok || !res.body) throw new Error(`Backend error: ${res.status}`);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      const patchMsg = (updater: (prev: any) => any) => {
+        setMessages(msgs => msgs.map(m => m.id === streamMsgId ? updater(m) : m));
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+
+        let event = '';
+        for (const line of lines) {
+          if (line.startsWith('event: ')) { event = line.slice(7).trim(); continue; }
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const payload = JSON.parse(line.slice(6));
+            if (event === 'meta') {
+              patchMsg(m => ({ ...m, content: payload.description || payload.message || '', data: { ...m.data, meta: payload } }));
+            } else if (event === 'component') {
+              patchMsg(m => ({ ...m, data: { ...m.data, components: [...(m.data?.components || []), payload] } }));
+            } else if (event === 'followUp') {
+              patchMsg(m => ({ ...m, data: { ...m.data, followUp: payload } }));
+            } else if (event === 'error') {
+              patchMsg(m => ({ ...m, isStreaming: false, renderType: 'text', content: payload.message || 'Error' }));
+            }
+          } catch { /* malformed chunk — skip */ }
+        }
       }
+
+      patchMsg(m => ({ ...m, isStreaming: false }));
     } catch (error) {
-      console.error("Error calling backend:", error);
+      console.error("SSE error:", error);
+      setMessages(msgs => msgs.map(m =>
+        m.id === streamMsgId
+          ? { ...m, isStreaming: false, renderType: 'text', content: 'Error connecting to the analytical engine. Ensure the backend is running on port 3001.' }
+          : m
+      ));
+    } finally {
       setIsGenerating(false);
-      addAssistantMessage("Error connecting to the analytical engine. Please ensure the backend server is running on port 3001.", "text");
     }
   };
 
@@ -5205,6 +5248,48 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                     Open in Editor
                   </button>
                 </div>
+              </div>
+            )}
+
+            {/* Generative UI — streaming components from backend pipeline */}
+            {message.renderType === 'generative_ui' && (
+              <div className="mt-4 space-y-4">
+                {message.data?.meta && (
+                  <div className="mb-1">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-rose-500" />
+                      <h3 className="text-[15px] font-bold text-[#111827]">{message.data.meta.title}</h3>
+                      {message.isStreaming && (
+                        <span className="text-xs text-muted-foreground animate-pulse">Generating...</span>
+                      )}
+                    </div>
+                    {message.data.meta.description && (
+                      <p className="text-[13px] text-[#6B7280] mt-1 ml-6">{message.data.meta.description}</p>
+                    )}
+                    {message.data.meta.rowCount && (
+                      <p className="text-[11px] text-[#9CA3AF] mt-0.5 ml-6">{message.data.meta.rowCount} rows from BigQuery</p>
+                    )}
+                  </div>
+                )}
+                {message.isStreaming && (!message.data?.components || message.data.components.length === 0) && (
+                  <ReportSkeleton />
+                )}
+                {(message.data?.components || []).map((node: UITreeNode, i: number) => (
+                  <UITreeRenderer key={i} node={node} />
+                ))}
+                {!message.isStreaming && message.data?.followUp?.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {message.data.followUp.map((fu: { label: string; intent: string }, i: number) => (
+                      <button
+                        key={i}
+                        onClick={() => { setInputValue(fu.intent); }}
+                        className="px-3 py-1.5 text-[12px] font-medium bg-white border border-[#E5E7EB] rounded-full text-[#374151] hover:bg-gray-50 hover:border-gray-300 transition-all"
+                      >
+                        {fu.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 

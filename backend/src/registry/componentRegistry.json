@@ -2,23 +2,75 @@
   "components": [
     {
       "type": "BarChart",
+      "description": "Categorical comparisons — use when comparing values across discrete groups (regions, products, channels)",
       "allowedProps": ["xKey", "yKey", "data", "title", "color"],
       "requiredProps": ["xKey", "yKey", "data"]
     },
     {
       "type": "LineChart",
+      "description": "Time series trends — use when data has a time/date dimension and shows change over time",
       "allowedProps": ["xKey", "yKey", "data", "title", "smooth"],
       "requiredProps": ["xKey", "yKey", "data"]
     },
     {
       "type": "Table",
+      "description": "Tabular data — use for large multi-column datasets, drill-down views, or when exact values matter",
       "allowedProps": ["columns", "rows", "title", "pageSize"],
       "requiredProps": ["columns", "rows"]
     },
     {
       "type": "KPI",
-      "allowedProps": ["value", "title", "trend", "label"],
+      "description": "Single metric highlight — use for headline numbers, totals, or key performance indicators",
+      "allowedProps": ["value", "title", "trend", "label", "delta", "deltaLabel"],
       "requiredProps": ["value", "title"]
+    },
+    {
+      "type": "KPIGrid",
+      "description": "Multiple KPI cards in a grid — use when showing 2-6 headline metrics together",
+      "allowedProps": ["metrics", "columns"],
+      "requiredProps": ["metrics"]
+    },
+    {
+      "type": "GenerativeTable",
+      "description": "AI-enhanced table with smart formatting, sorting, and column inference — prefer over Table for richer display",
+      "allowedProps": ["columns", "data", "title", "pageSize", "highlightKey"],
+      "requiredProps": ["columns", "data"]
+    },
+    {
+      "type": "InlineChart",
+      "description": "Compact embedded chart — use inside cards or panels where space is limited",
+      "allowedProps": ["data", "chartType", "xKey", "yKey", "height", "color"],
+      "requiredProps": ["data", "chartType"]
+    },
+    {
+      "type": "ReportVisualization",
+      "description": "Full report visualization layout — use when rendering a multi-section analytical report with charts and tables",
+      "allowedProps": ["sections", "title", "description"],
+      "requiredProps": ["sections"]
+    },
+    {
+      "type": "ReportLayoutPreview",
+      "description": "Preview of a report layout with drag-and-drop support — use when showing report structure to the user",
+      "allowedProps": ["layout", "onLayoutChange", "editable"],
+      "requiredProps": ["layout"]
+    },
+    {
+      "type": "ReportSkeleton",
+      "description": "Loading placeholder — use while data or LLM response is streaming in",
+      "allowedProps": ["rows", "showChart"],
+      "requiredProps": []
+    },
+    {
+      "type": "BigQueryDashboard",
+      "description": "Full BigQuery data dashboard — use when user asks for live data, real metrics, or dashboard views connected to BigQuery",
+      "allowedProps": ["datasetId", "tableId", "filters", "title"],
+      "requiredProps": []
+    },
+    {
+      "type": "Report",
+      "description": "Top-level report shell wrapping summary, analysis, and details sections — automatically composed by pipeline",
+      "allowedProps": ["title", "description", "warnings"],
+      "requiredProps": ["title"]
     }
   ]
 }

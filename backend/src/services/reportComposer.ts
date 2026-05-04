@@ -10,29 +10,37 @@ export const composeReport = (intent: IntentResult, shape: ShapeSignature, query
   const componentList: string[] = [];
   const lowercaseQuery = query.toLowerCase();
 
-  // 1. KPI: Include only if measureColumns exist and rowCount > 0
+  // 1. KPI or KPIGrid: headline metrics
   if (shape.measureColumns.length > 0 && shape.rowCount > 0) {
-    componentList.push('KPI');
+    componentList.push(shape.measureColumns.length >= 2 ? 'KPIGrid' : 'KPI');
   }
 
-  // 2. BarChart: Include only if dimensionColumns exist and cardinality > 1
+  // 2. BarChart: categorical comparisons
   const hasMultipleCategories = shape.dimensionColumns.some(col => shape.cardinality[col] > 1);
   if (shape.dimensionColumns.length > 0 && hasMultipleCategories) {
     componentList.push('BarChart');
   }
 
-  // 3. LineChart: Include only if timeColumn exists
+  // 3. LineChart: time series
   if (shape.timeColumn) {
     componentList.push('LineChart');
   }
 
-  // 4. Table: Include if columnCount > 3 OR query explicitly asks for details
-  const asksForDetails = lowercaseQuery.includes('detail') || 
-                         lowercaseQuery.includes('record') || 
-                         lowercaseQuery.includes('data');
-                         
+  // 4. GenerativeTable: prefer over Table for richer display
+  const asksForDetails = lowercaseQuery.includes('detail') ||
+                         lowercaseQuery.includes('record') ||
+                         lowercaseQuery.includes('data') ||
+                         lowercaseQuery.includes('list') ||
+                         lowercaseQuery.includes('show');
+
   if (shape.columnCount > 3 || asksForDetails) {
-    componentList.push('Table');
+    componentList.push('GenerativeTable');
+  }
+
+  // 5. ReportVisualization: wrap everything if multi-section response
+  const isComplexQuery = lowercaseQuery.includes('report') || lowercaseQuery.includes('analysis') || lowercaseQuery.includes('summary');
+  if (isComplexQuery && componentList.length >= 2) {
+    componentList.unshift('ReportVisualization');
   }
 
   return Array.from(new Set(componentList));
