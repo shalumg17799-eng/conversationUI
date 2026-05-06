@@ -2,11 +2,18 @@ import { IntentResult } from '../types';
 
 const METRIC_MAP: Record<string, string> = {
   revenue: 'revenue', sales: 'sales', units: 'sales', transactions: 'sales',
+  'sales performance': 'revenue', 'sales by region': 'revenue',
+  'total revenue': 'revenue', 'conversion rate': 'revenue', 'average order value': 'revenue',
   'take rate': 'take_rate', takerate: 'take_rate', 'take_rate': 'take_rate',
   churn: 'churn', retention: 'churn', attrition: 'churn',
   performance: 'performance', score: 'performance', kpi: 'performance',
   device: 'device', product: 'device', handset: 'device',
   agent: 'employee', employee: 'employee', rep: 'employee', contact: 'employee',
+  'customer support': 'contact', 'contact center': 'contact',
+  'network metrics': 'device', network: 'device',
+  'inventory management': 'revenue', inventory: 'revenue',
+  'marketing analytics': 'revenue', marketing: 'revenue',
+  'employee productivity': 'employee', productivity: 'employee',
   rank: 'rank', ranking: 'rank',
   report: 'report', dataset: 'dataset',
   growth: 'growth', profit: 'profit', traffic: 'traffic',

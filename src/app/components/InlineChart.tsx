@@ -208,17 +208,17 @@ export function InlineChart({ chartType, title, reportName, datasetName, data, h
   }, [chartType, title, data]);
 
   return (
-    <div className={`mt-3 bg-white ${!hideHeader ? 'border border-[#E5E7EB] rounded-lg overflow-hidden' : ''}`}>
+    <div className={`mt-3 bg-white ${!hideHeader ? 'border border-border rounded-lg overflow-hidden' : ''}`}>
       {!hideHeader && (
-        <div className="p-4 border-b border-[#E5E7EB]">
-          <h4 className="text-[14px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <div className="p-4 border-b border-border">
+          <h4 className="text-[14px] font-semibold text-foreground mb-1" style={{ fontFamily: 'var(--font-body)' }}>
             {title}
           </h4>
-          <p className="text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
-            Rendered from <span className="font-medium text-[#111827]">{reportName}</span>
+          <p className="text-[11px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
+            Rendered from <span className="font-medium text-foreground">{reportName}</span>
             {datasetName && (
               <>
-                {' '}using <span className="font-medium text-[#111827]">{datasetName}</span>
+                {' '}using <span className="font-medium text-foreground">{datasetName}</span>
               </>
             )}
           </p>

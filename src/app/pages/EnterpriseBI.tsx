@@ -62,52 +62,52 @@ export function EnterpriseBIPage() {
       {/* Page Header */}
       <div className="flex items-start justify-between mb-6">
         <div className="space-y-1">
-          <h1 className="text-[28px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <h1 className="text-[28px] font-semibold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
             Enterprise Platforms
           </h1>
-          <p className="text-[13px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <p className="text-[13px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
             View and access connected enterprise BI platforms and their datasets.
           </p>
         </div>
-        <div className="text-[11px] text-[#6B7280] bg-blue-50 px-3 py-1.5 rounded-md" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <div className="text-[11px] text-muted-foreground bg-blue-50 px-3 py-1.5 rounded-md" style={{ fontFamily: 'var(--font-body)' }}>
           {platforms.length} Platforms Connected
         </div>
       </div>
 
       {/* Summary Stats */}
       <div className="grid grid-cols-3 gap-6 mb-6">
-        <div className="bg-white rounded-[12px] border border-[#E5E7EB] p-6 shadow-sm">
-          <div className="text-[32px] font-bold text-[#111827] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <div className="bg-card rounded-[12px] border border-border p-6 shadow-sm">
+          <div className="text-[32px] font-bold text-foreground mb-2" style={{ fontFamily: 'var(--font-body)' }}>
             {platforms.length}
           </div>
-          <div className="text-[14px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <div className="text-[14px] font-semibold text-foreground mb-1" style={{ fontFamily: 'var(--font-body)' }}>
             Connected Platforms
           </div>
-          <div className="text-[12px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <div className="text-[12px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
             Enterprise BI systems
           </div>
         </div>
 
-        <div className="bg-white rounded-[12px] border border-[#E5E7EB] p-6 shadow-sm">
-          <div className="text-[32px] font-bold text-[#111827] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <div className="bg-card rounded-[12px] border border-border p-6 shadow-sm">
+          <div className="text-[32px] font-bold text-foreground mb-2" style={{ fontFamily: 'var(--font-body)' }}>
             {totalDatasets}
           </div>
-          <div className="text-[14px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <div className="text-[14px] font-semibold text-foreground mb-1" style={{ fontFamily: 'var(--font-body)' }}>
             Total Datasets
           </div>
-          <div className="text-[12px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <div className="text-[12px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
             Across all platforms
           </div>
         </div>
 
-        <div className="bg-white rounded-[12px] border border-[#E5E7EB] p-6 shadow-sm">
-          <div className="text-[32px] font-bold text-[#111827] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <div className="bg-card rounded-[12px] border border-border p-6 shadow-sm">
+          <div className="text-[32px] font-bold text-foreground mb-2" style={{ fontFamily: 'var(--font-body)' }}>
             {totalReports}
           </div>
-          <div className="text-[14px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <div className="text-[14px] font-semibold text-foreground mb-1" style={{ fontFamily: 'var(--font-body)' }}>
             Total Reports
           </div>
-          <div className="text-[12px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <div className="text-[12px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
             Across reporting platforms
           </div>
         </div>
@@ -118,13 +118,13 @@ export function EnterpriseBIPage() {
         {platforms.map((platform) => (
           <div
             key={platform.name}
-            className="bg-white rounded-[12px] border border-[#E5E7EB] p-6 shadow-sm hover:shadow-md transition-all hover:border-[#6B7280]"
+            className="bg-card rounded-[12px] border border-border p-6 shadow-sm hover:shadow-md transition-all hover:border-[#6B7280]"
           >
             {/* Tableau Decommission Banner */}
             {platform.name === 'Tableau' && (
               <div className="mb-4 bg-[#FFFBEB] border border-[#FDE68A] rounded-lg p-3 flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 text-[#D97706] flex-shrink-0 mt-0.5" />
-                <p className="text-[11px] text-[#92400E] leading-relaxed" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <p className="text-[11px] text-[#92400E] leading-relaxed" style={{ fontFamily: 'var(--font-body)' }}>
                   Tableau is set to be decommissioned by Q4 2026. No new reports can be created on legacy platforms past 12/31/2026.
                 </p>
               </div>
@@ -135,15 +135,15 @@ export function EnterpriseBIPage() {
               <div className="flex items-center gap-3">
                 <div className="text-[32px]">{platform.icon}</div>
                 <div>
-                  <h3 className="text-[16px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <h3 className="text-[16px] font-semibold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                     {platform.name}
                   </h3>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[10px] text-[#6B7280] bg-gray-100 px-2 py-0.5 rounded" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded" style={{ fontFamily: 'var(--font-body)' }}>
                       {platform.status}
                     </span>
                     {platform.certified && (
-                      <span className="inline-flex items-center gap-1 bg-[#ECFDF3] text-[#065F46] text-[10px] font-medium px-2 py-0.5 rounded" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <span className="inline-flex items-center gap-1 bg-[#ECFDF3] text-[#065F46] text-[10px] font-medium px-2 py-0.5 rounded" style={{ fontFamily: 'var(--font-body)' }}>
                         <div className="w-2.5 h-2.5">
                           <MedallionIcon />
                         </div>
@@ -158,22 +158,22 @@ export function EnterpriseBIPage() {
             {/* Metrics */}
             <div className="space-y-3 mb-5">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-[12px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <div className="flex items-center gap-2 text-[12px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                   <Database className="w-4 h-4" />
                   Datasets
                 </div>
-                <span className="text-[18px] font-bold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <span className="text-[18px] font-bold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                   {platform.datasets}
                 </span>
               </div>
 
               {platform.reports > 0 && (
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-[12px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <div className="flex items-center gap-2 text-[12px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                     <FileText className="w-4 h-4" />
                     Reports
                   </div>
-                  <span className="text-[18px] font-bold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <span className="text-[18px] font-bold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                     {platform.reports}
                   </span>
                 </div>
@@ -181,19 +181,19 @@ export function EnterpriseBIPage() {
             </div>
 
             {/* Metadata */}
-            <div className="mb-4 pb-4 border-b border-[#E5E7EB]">
-              <p className="text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <div className="mb-4 pb-4 border-b border-border">
+              <p className="text-[11px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                 Connected via Report Hub
               </p>
-              <p className="text-[10px] text-green-600 font-medium mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <p className="text-[10px] text-green-600 font-medium mt-1" style={{ fontFamily: 'var(--font-body)' }}>
                 ✓ Up to date
               </p>
             </div>
 
             {/* Primary Action */}
             <button
-              className="w-full px-4 py-2.5 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg text-[13px] font-medium transition-colors flex items-center justify-center gap-2"
-              style={{ fontFamily: 'Inter, sans-serif' }}
+              className="w-full px-4 py-2.5 bg-foreground hover:bg-foreground text-white rounded-lg text-[13px] font-medium transition-colors flex items-center justify-center gap-2"
+              style={{ fontFamily: 'var(--font-body)' }}
             >
               Open {platform.name}
               <ExternalLink className="w-4 h-4" />
@@ -206,25 +206,25 @@ export function EnterpriseBIPage() {
       <div className="bg-[#EFF6FF] rounded-[12px] border border-[#BFDBFE] p-6 shadow-sm mt-6">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-[14px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <h3 className="text-[14px] font-semibold text-foreground mb-1" style={{ fontFamily: 'var(--font-body)' }}>
               Platform launchpad
             </h3>
-            <p className="text-[12px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <p className="text-[12px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
               Use this page to quickly access your connected enterprise BI platforms. All analytics and insights are available through Report Hub conversational flows.
             </p>
           </div>
           <div className="flex gap-3">
             <button
               onClick={() => navigate('/datasets')}
-              className="px-5 py-2.5 bg-white hover:bg-gray-50 text-[#111827] border border-[#E5E7EB] rounded-lg text-[13px] font-medium transition-colors"
-              style={{ fontFamily: 'Inter, sans-serif' }}
+              className="px-5 py-2.5 bg-white hover:bg-muted text-foreground border border-border rounded-lg text-[13px] font-medium transition-colors"
+              style={{ fontFamily: 'var(--font-body)' }}
             >
               View All Datasets
             </button>
             <button
               onClick={() => navigate('/conversational')}
-              className="px-5 py-2.5 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg text-[13px] font-medium transition-colors"
-              style={{ fontFamily: 'Inter, sans-serif' }}
+              className="px-5 py-2.5 bg-foreground hover:bg-foreground text-white rounded-lg text-[13px] font-medium transition-colors"
+              style={{ fontFamily: 'var(--font-body)' }}
             >
               Ask Questions
             </button>

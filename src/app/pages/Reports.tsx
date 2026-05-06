@@ -91,7 +91,7 @@ function ReportsIndexView() {
     <Layout>
       {/* Success Banner - Migrated Report */}
       {showSuccessBanner && migratedReportName && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 flex items-start justify-between" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 flex items-start justify-between" style={{ fontFamily: 'var(--font-body)' }}>
           <div className="flex items-start gap-3 flex-1">
             <div className="flex-shrink-0 mt-0.5">
               <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
@@ -115,7 +115,7 @@ function ReportsIndexView() {
 
       {/* Success Banner - Created Report */}
       {showCreateSuccessBanner && createdReportInfo && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 flex items-start justify-between" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 flex items-start justify-between" style={{ fontFamily: 'var(--font-body)' }}>
           <div className="flex items-start gap-3 flex-1">
             <div className="flex-shrink-0 mt-0.5">
               <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
@@ -145,23 +145,23 @@ function ReportsIndexView() {
       {/* PAGE HEADER */}
       <div className="flex items-start justify-between">
         <div className="space-y-1">
-          <h1 className="text-[28px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <h1 className="text-[28px] font-semibold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
             My Reports
           </h1>
-          <p className="text-[13px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <p className="text-[13px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
             Unified reporting experience across all platforms
           </p>
         </div>
         <div className="flex flex-col items-end gap-3">
           <button
             onClick={() => navigate('/report-flow')}
-            className="px-5 py-2.5 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg text-[13px] font-medium transition-colors shadow-sm flex items-center gap-2"
-            style={{ fontFamily: 'Inter, sans-serif' }}
+            className="px-5 py-2.5 bg-foreground hover:bg-foreground text-white rounded-lg text-[13px] font-medium transition-colors shadow-sm flex items-center gap-2"
+            style={{ fontFamily: 'var(--font-body)' }}
           >
             <Plus className="w-4 h-4" />
             Create New Report
           </button>
-          <div className="text-[11px] text-[#6B7280] bg-blue-50 px-3 py-1.5 rounded-md" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <div className="text-[11px] text-muted-foreground bg-blue-50 px-3 py-1.5 rounded-md" style={{ fontFamily: 'var(--font-body)' }}>
             Tool-Agnostic · Unified View
           </div>
         </div>
@@ -171,57 +171,57 @@ function ReportsIndexView() {
       <div className="grid grid-cols-3 gap-6">
         <button
           onClick={() => navigate('/reports')}
-          className="bg-white rounded-[12px] border border-[#E5E7EB] p-6 shadow-sm text-left hover:border-[#6B7280] transition-colors"
+          className="bg-card rounded-[12px] border border-border p-6 shadow-sm text-left hover:border-[#6B7280] transition-colors"
         >
-          <div className="text-[32px] font-bold text-[#111827] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <div className="text-[32px] font-bold text-foreground mb-2" style={{ fontFamily: 'var(--font-body)' }}>
             {reportCounts.total}
           </div>
-          <div className="text-[14px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <div className="text-[14px] font-semibold text-foreground mb-1" style={{ fontFamily: 'var(--font-body)' }}>
             Total Reports
           </div>
-          <div className="text-[12px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <div className="text-[12px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
             Across all platforms
           </div>
         </button>
 
         <button
           onClick={() => navigate('/reports')}
-          className="bg-white rounded-[12px] border border-[#E5E7EB] p-6 shadow-sm text-left hover:border-[#6B7280] transition-colors"
+          className="bg-card rounded-[12px] border border-border p-6 shadow-sm text-left hover:border-[#6B7280] transition-colors"
         >
-          <div className="text-[32px] font-bold text-[#111827] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <div className="text-[32px] font-bold text-foreground mb-2" style={{ fontFamily: 'var(--font-body)' }}>
             {reportCounts.standard}
           </div>
-          <div className="text-[14px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <div className="text-[14px] font-semibold text-foreground mb-1" style={{ fontFamily: 'var(--font-body)' }}>
             Standard Reports
           </div>
-          <div className="text-[12px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <div className="text-[12px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
             Lightweight access
           </div>
         </button>
 
         <button
           onClick={() => navigate('/reports')}
-          className="bg-[#FFFBEB] rounded-[12px] border border-[#E5E7EB] p-6 shadow-sm text-left hover:border-[#6B7280] transition-colors"
+          className="bg-[#FFFBEB] rounded-[12px] border border-border p-6 shadow-sm text-left hover:border-[#6B7280] transition-colors"
         >
-          <div className="text-[32px] font-bold text-[#111827] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <div className="text-[32px] font-bold text-foreground mb-2" style={{ fontFamily: 'var(--font-body)' }}>
             {reportCounts.enterprise}
           </div>
-          <div className="text-[14px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <div className="text-[14px] font-semibold text-foreground mb-1" style={{ fontFamily: 'var(--font-body)' }}>
             Enterprise Reports
           </div>
-          <div className="text-[12px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <div className="text-[12px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
             Advanced analysis
           </div>
         </button>
       </div>
 
       {/* SECTION 2: REPORTS GRID */}
-      <div className="bg-white rounded-[12px] border border-[#E5E7EB] p-6 shadow-sm">
+      <div className="bg-card rounded-[12px] border border-border p-6 shadow-sm">
         <div className="mb-5">
-          <h2 className="text-[18px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <h2 className="text-[18px] font-semibold text-foreground mb-1" style={{ fontFamily: 'var(--font-body)' }}>
             All Reports
           </h2>
-          <p className="text-[13px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <p className="text-[13px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
             Unified view of all reports, regardless of source platform
           </p>
         </div>
@@ -250,7 +250,7 @@ function ReportsIndexView() {
                 {/* Highlight Badge */}
                 {isHighlighted && (
                   <div className="absolute top-3 right-3">
-                    <span className="bg-blue-500 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <span className="bg-blue-500 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1" style={{ fontFamily: 'var(--font-body)' }}>
                       <Check className="w-3 h-3" />
                       New
                     </span>
@@ -260,7 +260,7 @@ function ReportsIndexView() {
                 {/* Migrated Badge */}
                 {!isHighlighted && isMigrated && (
                   <div className="absolute top-3 right-3">
-                    <span className="bg-green-500 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <span className="bg-green-500 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1" style={{ fontFamily: 'var(--font-body)' }}>
                       <Check className="w-3 h-3" />
                       Migrated
                     </span>
@@ -269,7 +269,7 @@ function ReportsIndexView() {
 
                 {/* Report Title */}
                 <div className="mb-3">
-                  <h3 className="text-[15px] font-semibold text-[#111827] mb-1 line-clamp-2 pr-16" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <h3 className="text-[15px] font-semibold text-foreground mb-1 line-clamp-2 pr-16" style={{ fontFamily: 'var(--font-body)' }}>
                     {report.report_name}
                   </h3>
                 </div>
@@ -277,16 +277,16 @@ function ReportsIndexView() {
                 {/* Domain & Category */}
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>Domain:</span>
-                    <span className="text-[11px] text-[#111827] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <span className="text-[11px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>Domain:</span>
+                    <span className="text-[11px] text-foreground font-medium" style={{ fontFamily: 'var(--font-body)' }}>
                       {report.domain}
                     </span>
                   </div>
                   
                   {report.business_owner && (
                     <div className="flex items-center gap-2">
-                      <span className="text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>Owner:</span>
-                      <span className="text-[11px] text-[#111827] font-medium truncate" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <span className="text-[11px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>Owner:</span>
+                      <span className="text-[11px] text-foreground font-medium truncate" style={{ fontFamily: 'var(--font-body)' }}>
                         {report.business_owner}
                       </span>
                     </div>
@@ -294,7 +294,7 @@ function ReportsIndexView() {
                 </div>
 
                 {/* Last Updated */}
-                <div className="text-[11px] text-[#6B7280] mb-4" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <div className="text-[11px] text-muted-foreground mb-4" style={{ fontFamily: 'var(--font-body)' }}>
                   Updated {formatRelativeTime(report.last_updated_ts)}
                 </div>
 
@@ -302,11 +302,11 @@ function ReportsIndexView() {
                 <div className="flex items-center justify-between pt-3 border-t border-gray-100">
                   <div className="flex items-center gap-2">
                     {report.enterprise_flag ? (
-                      <span className="bg-[#FFFBEB] text-[#92400E] text-[10px] font-medium px-2 py-1 rounded" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <span className="bg-[#FFFBEB] text-[#92400E] text-[10px] font-medium px-2 py-1 rounded" style={{ fontFamily: 'var(--font-body)' }}>
                         Enterprise
                       </span>
                     ) : (
-                      <span className="bg-blue-50 text-blue-700 text-[10px] font-medium px-2 py-1 rounded" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <span className="bg-blue-50 text-blue-700 text-[10px] font-medium px-2 py-1 rounded" style={{ fontFamily: 'var(--font-body)' }}>
                         Standard
                       </span>
                     )}
@@ -319,30 +319,30 @@ function ReportsIndexView() {
                         e.stopPropagation();
                         console.log('Favorite report');
                       }}
-                      className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                      className="p-1.5 hover:bg-muted rounded transition-colors"
                       title="Favorite"
                     >
-                      <Star className="w-3.5 h-3.5 text-gray-400" />
+                      <Star className="w-3.5 h-3.5 text-muted-foreground" />
                     </button>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         console.log('Share report');
                       }}
-                      className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                      className="p-1.5 hover:bg-muted rounded transition-colors"
                       title="Share"
                     >
-                      <Share2 className="w-3.5 h-3.5 text-gray-400" />
+                      <Share2 className="w-3.5 h-3.5 text-muted-foreground" />
                     </button>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         console.log('More options');
                       }}
-                      className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                      className="p-1.5 hover:bg-muted rounded transition-colors"
                       title="More options"
                     >
-                      <MoreVertical className="w-3.5 h-3.5 text-gray-400" />
+                      <MoreVertical className="w-3.5 h-3.5 text-muted-foreground" />
                     </button>
                   </div>
                 </div>
@@ -351,8 +351,8 @@ function ReportsIndexView() {
           })}
         </div>
 
-        <div className="bg-[#F8F9FB] rounded-lg p-3 border border-[#E5E7EB]">
-          <p className="text-[12px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <div className="bg-muted rounded-lg p-3 border border-border">
+          <p className="text-[12px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
             Unified reporting experience across all BI platforms.
           </p>
         </div>
@@ -362,25 +362,25 @@ function ReportsIndexView() {
       <div className="bg-[#EFF6FF] rounded-[12px] border border-[#BFDBFE] p-6 shadow-sm">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-[14px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <h3 className="text-[14px] font-semibold text-foreground mb-1" style={{ fontFamily: 'var(--font-body)' }}>
               Need quick insights?
             </h3>
-            <p className="text-[12px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <p className="text-[12px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
               Use conversational analytics for fast insights. Escalate only when needed.
             </p>
           </div>
           <div className="flex gap-3">
             <button
               onClick={() => navigate('/conversational')}
-              className="px-5 py-2.5 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg text-[13px] font-medium transition-colors"
-              style={{ fontFamily: 'Inter, sans-serif' }}
+              className="px-5 py-2.5 bg-foreground hover:bg-foreground text-white rounded-lg text-[13px] font-medium transition-colors"
+              style={{ fontFamily: 'var(--font-body)' }}
             >
               Open Conversational Analytics
             </button>
             <button
               onClick={() => navigate('/enterprise-bi')}
-              className="px-5 py-2.5 bg-white hover:bg-gray-50 text-[#111827] border border-[#E5E7EB] rounded-lg text-[13px] font-medium transition-colors"
-              style={{ fontFamily: 'Inter, sans-serif' }}
+              className="px-5 py-2.5 bg-white hover:bg-muted text-foreground border border-border rounded-lg text-[13px] font-medium transition-colors"
+              style={{ fontFamily: 'var(--font-body)' }}
             >
               View Enterprise BI
             </button>
@@ -401,9 +401,9 @@ const ChurnTooltip = ({ active, payload, metricLabel }: any) => {
     const label = metricLabel || 'Value';
 
     return (
-      <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3" style={{ fontFamily: 'Inter, sans-serif' }}>
-        <p className="text-[12px] font-semibold text-[#111827] mb-2">{data.month}</p>
-        <p className="text-[13px] text-[#111827] mb-1">
+      <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3" style={{ fontFamily: 'var(--font-body)' }}>
+        <p className="text-[12px] font-semibold text-foreground mb-2">{data.month}</p>
+        <p className="text-[13px] text-foreground mb-1">
           {label}: <span className="font-bold">{data.churn_rate}%</span>
         </p>
         {change !== undefined && change !== 0 && (
@@ -443,14 +443,14 @@ const ChurnRateChart = React.memo(({ data, reportId }: { data: any[]; reportId: 
             dataKey="month"
             axisLine={false}
             tickLine={false}
-            tick={{ fill: '#6B7280', fontSize: 11, fontFamily: 'Inter, sans-serif' }}
+            tick={{ fill: '#6B7280', fontSize: 11, fontFamily: 'var(--font-body)' }}
           />
           <YAxis
             key={`yaxis-${reportId}`}
-            label={{ value: yAxisLabel, angle: -90, position: 'insideLeft', style: { fill: '#6B7280', fontSize: 11, fontFamily: 'Inter, sans-serif' } }}
+            label={{ value: yAxisLabel, angle: -90, position: 'insideLeft', style: { fill: '#6B7280', fontSize: 11, fontFamily: 'var(--font-body)' } }}
             axisLine={false}
             tickLine={false}
-            tick={{ fill: '#6B7280', fontSize: 11, fontFamily: 'Inter, sans-serif' }}
+            tick={{ fill: '#6B7280', fontSize: 11, fontFamily: 'var(--font-body)' }}
             domain={yDomain}
             tickFormatter={(value) => `${value}%`}
           />
@@ -978,17 +978,17 @@ function ReportDetailView({ reportId }: { reportId: string }) {
   if (!report) {
     return (
       <Layout>
-        <div className="bg-white rounded-[12px] border border-[#E5E7EB] p-8 shadow-sm text-center">
-          <h2 className="text-[18px] font-semibold text-[#111827] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <div className="bg-card rounded-[12px] border border-border p-8 shadow-sm text-center">
+          <h2 className="text-[18px] font-semibold text-foreground mb-2" style={{ fontFamily: 'var(--font-body)' }}>
             Report not found
           </h2>
-          <p className="text-[13px] text-[#6B7280] mb-4" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <p className="text-[13px] text-muted-foreground mb-4" style={{ fontFamily: 'var(--font-body)' }}>
             The report you're looking for doesn't exist or has been removed.
           </p>
           <button
             onClick={() => navigate('/reports')}
-            className="px-4 py-2 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg text-[13px] font-medium"
-            style={{ fontFamily: 'Inter, sans-serif' }}
+            className="px-4 py-2 bg-foreground hover:bg-foreground text-white rounded-lg text-[13px] font-medium"
+            style={{ fontFamily: 'var(--font-body)' }}
           >
             Back to Reports
           </button>
@@ -1002,7 +1002,7 @@ function ReportDetailView({ reportId }: { reportId: string }) {
   const trendIcon = (trend: string) => {
     if (trend === 'up') return <TrendingUp className="w-3.5 h-3.5 text-green-600" />;
     if (trend === 'down') return <TrendingDown className="w-3.5 h-3.5 text-red-600" />;
-    return <Minus className="w-3.5 h-3.5 text-gray-400" />;
+    return <Minus className="w-3.5 h-3.5 text-muted-foreground" />;
   };
 
   // Get enterprise platform button details
@@ -1032,39 +1032,39 @@ function ReportDetailView({ reportId }: { reportId: string }) {
       <div ref={reportContentRef} data-pdf-root className="space-y-8">
       {/* PAGE HEADER */}
       <div className="space-y-3">
-        <div className="flex items-center gap-2 text-[12px]" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <div className="flex items-center gap-2 text-[12px]" style={{ fontFamily: 'var(--font-body)' }}>
           <button 
             onClick={() => navigate('/reports')}
             className="text-[#60A5FA] hover:text-[#3B82F6] hover:underline"
           >
             Reports
           </button>
-          <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
-          <span className="text-[#6B7280]">{report.report_name}</span>
+          <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+          <span className="text-muted-foreground">{report.report_name}</span>
         </div>
         
         <div className="flex items-start justify-between">
           <div className="space-y-1 flex-1">
             <div className="flex items-center gap-3">
-              <h1 className="text-[28px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <h1 className="text-[28px] font-semibold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                 {report.report_name}
               </h1>
               <div 
                 className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-[12px] font-medium"
-                style={{ fontFamily: 'Inter, sans-serif' }}
+                style={{ fontFamily: 'var(--font-body)' }}
               >
                 Report Hub
               </div>
             </div>
-            <p className="text-[13px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <p className="text-[13px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
               Report overview and access details.
             </p>
           </div>
           <button
             onClick={handleDownloadPdf}
             disabled={isDownloadingPdf}
-            className="flex items-center gap-2 px-4 py-2.5 bg-[#111827] hover:bg-[#0F172A] disabled:bg-[#374151] disabled:cursor-not-allowed text-white rounded-lg text-[13px] font-medium transition-colors shadow-sm"
-            style={{ fontFamily: 'Inter, sans-serif' }}
+            className="flex items-center gap-2 px-4 py-2.5 bg-foreground hover:bg-foreground disabled:bg-[#374151] disabled:cursor-not-allowed text-white rounded-lg text-[13px] font-medium transition-colors shadow-sm"
+            style={{ fontFamily: 'var(--font-body)' }}
           >
             <Download className="w-4 h-4" />
             {isDownloadingPdf ? 'Generating PDF...' : 'Download PDF'}
@@ -1075,60 +1075,60 @@ function ReportDetailView({ reportId }: { reportId: string }) {
       {/* Enterprise Warning Banner */}
       {report.enterprise_flag && (
         <div className="bg-[#FFFBEB] rounded-[12px] border border-[#FCD34D] p-4">
-          <p className="text-[13px] text-[#92400E] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <p className="text-[13px] text-[#92400E] font-medium" style={{ fontFamily: 'var(--font-body)' }}>
             ⚠️ This report requires advanced analysis capabilities.
           </p>
         </div>
       )}
 
       {/* SECTION 1: REPORT METADATA */}
-      <div className="bg-white rounded-[12px] border border-[#E5E7EB] p-6 shadow-sm">
-        <h2 className="text-[16px] font-semibold text-[#111827] mb-4" style={{ fontFamily: 'Inter, sans-serif' }}>
+      <div className="bg-card rounded-[12px] border border-border p-6 shadow-sm">
+        <h2 className="text-[16px] font-semibold text-foreground mb-4" style={{ fontFamily: 'var(--font-body)' }}>
           Report Metadata
         </h2>
         
         <div className="grid grid-cols-2 gap-6">
           <div>
-            <label className="block text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1" style={{ fontFamily: 'var(--font-body)' }}>
               Domain
             </label>
-            <p className="text-[14px] text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <p className="text-[14px] text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
               {report.domain}
             </p>
           </div>
 
           <div>
-            <label className="block text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1" style={{ fontFamily: 'var(--font-body)' }}>
               Source Dataset
             </label>
             <button
               onClick={() => navigate(`/datasets/${report.source_dataset_id}`)}
               className="text-[14px] text-[#60A5FA] hover:text-[#3B82F6] hover:underline font-medium"
-              style={{ fontFamily: 'Inter, sans-serif' }}
+              style={{ fontFamily: 'var(--font-body)' }}
             >
               {sourceDataset?.dataset_name || 'Unknown'}
             </button>
           </div>
 
           <div>
-            <label className="block text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1" style={{ fontFamily: 'var(--font-body)' }}>
               Last Updated
             </label>
-            <p className="text-[14px] text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <p className="text-[14px] text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
               {formatRelativeTime(report.last_updated_ts)}
             </p>
           </div>
 
           <div>
-            <label className="block text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1" style={{ fontFamily: 'var(--font-body)' }}>
               Report Type
             </label>
             {report.enterprise_flag ? (
-              <span className="inline-block bg-[#FFFBEB] text-[#92400E] text-[11px] font-medium px-3 py-1 rounded" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <span className="inline-block bg-[#FFFBEB] text-[#92400E] text-[11px] font-medium px-3 py-1 rounded" style={{ fontFamily: 'var(--font-body)' }}>
                 Enterprise
               </span>
             ) : (
-              <span className="inline-block bg-blue-50 text-blue-700 text-[11px] font-medium px-3 py-1 rounded" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <span className="inline-block bg-blue-50 text-blue-700 text-[11px] font-medium px-3 py-1 rounded" style={{ fontFamily: 'var(--font-body)' }}>
                 Standard
               </span>
             )}
@@ -1137,15 +1137,15 @@ function ReportDetailView({ reportId }: { reportId: string }) {
       </div>
 
       {/* SECTION 2: REPORT PREVIEW */}
-      <div className="bg-white rounded-[12px] border border-[#E5E7EB] p-6 shadow-sm">
+      <div className="bg-card rounded-[12px] border border-border p-6 shadow-sm">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-[16px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <h2 className="text-[16px] font-semibold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
             Report Preview
           </h2>
           <button
             onClick={() => navigate(`/reports/${reportId}/full`)}
-            className="px-4 py-2 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg text-[13px] font-medium transition-colors"
-            style={{ fontFamily: 'Inter, sans-serif' }}
+            className="px-4 py-2 bg-foreground hover:bg-foreground text-white rounded-lg text-[13px] font-medium transition-colors"
+            style={{ fontFamily: 'var(--font-body)' }}
           >
             View Full Report
           </button>
@@ -1155,50 +1155,50 @@ function ReportDetailView({ reportId }: { reportId: string }) {
           <>
             <ChurnRateChart data={previewData} reportId={reportId} />
             
-            <div className="bg-[#F8F9FB] rounded-lg p-3 border border-[#E5E7EB]">
-              <p className="text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <div className="bg-muted rounded-lg p-3 border border-border">
+              <p className="text-[11px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                 Preview rendered via Report Hub (lightweight)
               </p>
             </div>
           </>
         ) : (
-          <div className="bg-[#F8F9FB] rounded-lg p-8 border border-[#E5E7EB] text-center">
-            <p className="text-[14px] text-[#111827] font-medium mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <div className="bg-muted rounded-lg p-8 border border-border text-center">
+            <p className="text-[14px] text-foreground font-medium mb-3" style={{ fontFamily: 'var(--font-body)' }}>
               Full report available in Enterprise BI
             </p>
             <button
               onClick={() => navigate('/enterprise-bi')}
-              className="px-5 py-2.5 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg text-[13px] font-medium"
-              style={{ fontFamily: 'Inter, sans-serif' }}
+              className="px-5 py-2.5 bg-foreground hover:bg-foreground text-white rounded-lg text-[13px] font-medium"
+              style={{ fontFamily: 'var(--font-body)' }}
             >
               Open in Enterprise BI
             </button>
           </div>
         )}
 
-        <div className="mt-4 pt-4 border-t border-[#E5E7EB]">
-          <p className="text-[10px] text-[#6B7280] text-center" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <div className="mt-4 pt-4 border-t border-border">
+          <p className="text-[10px] text-muted-foreground text-center" style={{ fontFamily: 'var(--font-body)' }}>
             Powered by Report Hub dummy data (connected model)
           </p>
         </div>
       </div>
 
       {/* SECTION 3: RELATED INSIGHTS */}
-      <div className="bg-white rounded-[12px] border border-[#E5E7EB] p-6 shadow-sm">
-        <h2 className="text-[16px] font-semibold text-[#111827] mb-4" style={{ fontFamily: 'Inter, sans-serif' }}>
+      <div className="bg-card rounded-[12px] border border-border p-6 shadow-sm">
+        <h2 className="text-[16px] font-semibold text-foreground mb-4" style={{ fontFamily: 'var(--font-body)' }}>
           Related Insights
         </h2>
 
         <div className="grid grid-cols-3 gap-4 mb-5">
           {relatedInsights.map((insight, idx) => (
-            <div key={idx} className="bg-[#F8F9FB] rounded-lg p-4 border border-[#E5E7EB]">
+            <div key={idx} className="bg-muted rounded-lg p-4 border border-border">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-medium text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <span className="text-[11px] font-medium text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                   {insight.label}
                 </span>
                 {trendIcon(insight.trend)}
               </div>
-              <p className="text-[20px] font-bold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <p className="text-[20px] font-bold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                 {insight.value}
               </p>
             </div>
@@ -1208,15 +1208,15 @@ function ReportDetailView({ reportId }: { reportId: string }) {
         <div className="flex gap-3">
           <button
             onClick={() => navigate('/conversational')}
-            className="px-4 py-2 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg text-[12px] font-medium"
-            style={{ fontFamily: 'Inter, sans-serif' }}
+            className="px-4 py-2 bg-foreground hover:bg-foreground text-white rounded-lg text-[12px] font-medium"
+            style={{ fontFamily: 'var(--font-body)' }}
           >
             Ask a question about this report
           </button>
           <button
             onClick={() => navigate(`/datasets/${report.source_dataset_id}`)}
-            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-[#111827] rounded-lg text-[12px] font-medium"
-            style={{ fontFamily: 'Inter, sans-serif' }}
+            className="px-4 py-2 bg-muted hover:bg-border text-foreground rounded-lg text-[12px] font-medium"
+            style={{ fontFamily: 'var(--font-body)' }}
           >
             View underlying dataset
           </button>
@@ -1225,34 +1225,34 @@ function ReportDetailView({ reportId }: { reportId: string }) {
 
       {/* NEW SECTION: REPORT OVERVIEW */}
       {report.primary_use_case && (
-        <div className="bg-white rounded-[12px] border border-[#E5E7EB] p-6 shadow-sm">
-          <h2 className="text-[16px] font-semibold text-[#111827] mb-4" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <div className="bg-card rounded-[12px] border border-border p-6 shadow-sm">
+          <h2 className="text-[16px] font-semibold text-foreground mb-4" style={{ fontFamily: 'var(--font-body)' }}>
             Report Overview
           </h2>
-          <p className="text-[14px] text-[#374151] mb-4" style={{ fontFamily: 'Inter, sans-serif', lineHeight: '1.6' }}>
+          <p className="text-[14px] text-foreground mb-4" style={{ fontFamily: 'var(--font-body)', lineHeight: '1.6' }}>
             This report is used by{' '}
-            <span className="font-medium text-[#111827]">
+            <span className="font-medium text-foreground">
               {report.used_by_roles?.join(', ') || 'key stakeholders'}
             </span>{' '}
             to support decisions related to{' '}
-            <span className="font-medium text-[#111827]">{report.primary_use_case}</span>
+            <span className="font-medium text-foreground">{report.primary_use_case}</span>
             {' '}within the {report.domain} domain.
           </p>
           
-          <div className="grid grid-cols-2 gap-4 pt-4 border-t border-[#E5E7EB]">
+          <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
             <div>
-              <label className="block text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1" style={{ fontFamily: 'var(--font-body)' }}>
                 Business Owner
               </label>
-              <p className="text-[13px] text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <p className="text-[13px] text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                 {report.business_owner || 'Not specified'}
               </p>
             </div>
             <div>
-              <label className="block text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1" style={{ fontFamily: 'var(--font-body)' }}>
                 Refresh Frequency
               </label>
-              <p className="text-[13px] text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <p className="text-[13px] text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                 {report.refresh_frequency || 'Not specified'}
               </p>
             </div>
@@ -1262,27 +1262,27 @@ function ReportDetailView({ reportId }: { reportId: string }) {
 
       {/* NEW SECTION: KEY KPIs & TRENDS */}
       {report.key_kpis && report.key_kpis.length > 0 && (
-        <div className="bg-white rounded-[12px] border border-[#E5E7EB] p-6 shadow-sm">
-          <h2 className="text-[16px] font-semibold text-[#111827] mb-4" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <div className="bg-card rounded-[12px] border border-border p-6 shadow-sm">
+          <h2 className="text-[16px] font-semibold text-foreground mb-4" style={{ fontFamily: 'var(--font-body)' }}>
             Key KPIs & Trends
           </h2>
           <div className="grid grid-cols-3 gap-4">
             {report.key_kpis.map((kpi, idx) => (
-              <div key={idx} className="bg-[#F8F9FB] rounded-lg p-4 border border-[#E5E7EB]">
+              <div key={idx} className="bg-muted rounded-lg p-4 border border-border">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[11px] font-medium text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <span className="text-[11px] font-medium text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                     {kpi.kpi_name}
                   </span>
                   {trendIcon(kpi.trend)}
                 </div>
-                <p className="text-[20px] font-bold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <p className="text-[20px] font-bold text-foreground mb-1" style={{ fontFamily: 'var(--font-body)' }}>
                   {kpi.current_value}
                 </p>
-                <div className="flex items-center gap-1.5 text-[11px]" style={{ fontFamily: 'Inter, sans-serif' }}>
-                  <span className={kpi.trend === 'up' ? 'text-green-600' : kpi.trend === 'down' ? 'text-red-600' : 'text-gray-500'}>
+                <div className="flex items-center gap-1.5 text-[11px]" style={{ fontFamily: 'var(--font-body)' }}>
+                  <span className={kpi.trend === 'up' ? 'text-green-600' : kpi.trend === 'down' ? 'text-red-600' : 'text-muted-foreground'}>
                     {kpi.delta}
                   </span>
-                  <span className="text-[#6B7280]">from {kpi.previous_value}</span>
+                  <span className="text-muted-foreground">from {kpi.previous_value}</span>
                 </div>
               </div>
             ))}
@@ -1292,14 +1292,14 @@ function ReportDetailView({ reportId }: { reportId: string }) {
 
       {/* NEW SECTION: DIMENSIONS & COVERAGE */}
       {(report.primary_dimensions || report.time_range_supported) && (
-        <div className="bg-white rounded-[12px] border border-[#E5E7EB] p-6 shadow-sm">
-          <h2 className="text-[16px] font-semibold text-[#111827] mb-4" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <div className="bg-card rounded-[12px] border border-border p-6 shadow-sm">
+          <h2 className="text-[16px] font-semibold text-foreground mb-4" style={{ fontFamily: 'var(--font-body)' }}>
             Dimensions & Coverage
           </h2>
           <div className="space-y-4">
             {report.primary_dimensions && report.primary_dimensions.length > 0 && (
               <div>
-                <label className="block text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2" style={{ fontFamily: 'var(--font-body)' }}>
                   Primary Dimensions
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -1307,7 +1307,7 @@ function ReportDetailView({ reportId }: { reportId: string }) {
                     <span 
                       key={idx}
                       className="inline-block bg-blue-50 text-blue-700 text-[12px] font-medium px-3 py-1.5 rounded" 
-                      style={{ fontFamily: 'Inter, sans-serif' }}
+                      style={{ fontFamily: 'var(--font-body)' }}
                     >
                       {dim}
                     </span>
@@ -1317,10 +1317,10 @@ function ReportDetailView({ reportId }: { reportId: string }) {
             )}
             {report.time_range_supported && (
               <div>
-                <label className="block text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <label className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1" style={{ fontFamily: 'var(--font-body)' }}>
                   Time Range Supported
                 </label>
-                <p className="text-[13px] text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <p className="text-[13px] text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                   {report.time_range_supported}
                 </p>
               </div>
@@ -1331,15 +1331,15 @@ function ReportDetailView({ reportId }: { reportId: string }) {
 
       {/* NEW SECTION: KEY INSIGHTS */}
       {report.top_insights && report.top_insights.length > 0 && (
-        <div className="bg-white rounded-[12px] border border-[#E5E7EB] p-6 shadow-sm">
-          <h2 className="text-[16px] font-semibold text-[#111827] mb-4" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <div className="bg-card rounded-[12px] border border-border p-6 shadow-sm">
+          <h2 className="text-[16px] font-semibold text-foreground mb-4" style={{ fontFamily: 'var(--font-body)' }}>
             Key Insights
           </h2>
           <ul className="space-y-3">
             {report.top_insights.map((insight, idx) => (
               <li key={idx} className="flex items-start gap-3">
                 <div className="w-1.5 h-1.5 rounded-full bg-[#E11D48] mt-2 flex-shrink-0" />
-                <p className="text-[13px] text-[#374151]" style={{ fontFamily: 'Inter, sans-serif', lineHeight: '1.6' }}>
+                <p className="text-[13px] text-foreground" style={{ fontFamily: 'var(--font-body)', lineHeight: '1.6' }}>
                   {insight}
                 </p>
               </li>
@@ -1347,15 +1347,15 @@ function ReportDetailView({ reportId }: { reportId: string }) {
           </ul>
           
           {report.known_limitations && report.known_limitations.length > 0 && (
-            <div className="mt-5 pt-5 border-t border-[#E5E7EB]">
-              <h3 className="text-[13px] font-semibold text-[#111827] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <div className="mt-5 pt-5 border-t border-border">
+              <h3 className="text-[13px] font-semibold text-foreground mb-3" style={{ fontFamily: 'var(--font-body)' }}>
                 Known Limitations
               </h3>
               <ul className="space-y-2">
                 {report.known_limitations.map((limitation, idx) => (
                   <li key={idx} className="flex items-start gap-3">
                     <div className="w-1.5 h-1.5 rounded-full bg-[#6B7280] mt-2 flex-shrink-0" />
-                    <p className="text-[12px] text-[#6B7280] italic" style={{ fontFamily: 'Inter, sans-serif', lineHeight: '1.6' }}>
+                    <p className="text-[12px] text-muted-foreground italic" style={{ fontFamily: 'var(--font-body)', lineHeight: '1.6' }}>
                       {limitation}
                     </p>
                   </li>
@@ -1368,8 +1368,8 @@ function ReportDetailView({ reportId }: { reportId: string }) {
 
       {/* NEW SECTION: USAGE & RELATIONSHIPS */}
       {(report.related_reports || report.recommended_actions || report.used_by_roles) && (
-        <div className="bg-white rounded-[12px] border border-[#E5E7EB] p-6 shadow-sm">
-          <h2 className="text-[16px] font-semibold text-[#111827] mb-4" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <div className="bg-card rounded-[12px] border border-border p-6 shadow-sm">
+          <h2 className="text-[16px] font-semibold text-foreground mb-4" style={{ fontFamily: 'var(--font-body)' }}>
             Usage & Relationships
           </h2>
           
@@ -1377,7 +1377,7 @@ function ReportDetailView({ reportId }: { reportId: string }) {
             {/* Related Reports */}
             {report.related_reports && report.related_reports.length > 0 && (
               <div>
-                <h3 className="text-[13px] font-semibold text-[#111827] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <h3 className="text-[13px] font-semibold text-foreground mb-3" style={{ fontFamily: 'var(--font-body)' }}>
                   Related Reports
                 </h3>
                 <div className="space-y-2">
@@ -1385,13 +1385,13 @@ function ReportDetailView({ reportId }: { reportId: string }) {
                     <button
                       key={idx}
                       onClick={() => navigate(`/reports/${relatedReport.report_id}`)}
-                      className="w-full text-left px-4 py-3 bg-[#F8F9FB] hover:bg-blue-50 border border-[#E5E7EB] hover:border-blue-200 rounded-lg transition-colors group"
+                      className="w-full text-left px-4 py-3 bg-muted hover:bg-blue-50 border border-border hover:border-blue-200 rounded-lg transition-colors group"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-[13px] text-[#111827] font-medium group-hover:text-[#60A5FA]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        <span className="text-[13px] text-foreground font-medium group-hover:text-[#60A5FA]" style={{ fontFamily: 'var(--font-body)' }}>
                           {relatedReport.report_name}
                         </span>
-                        <ArrowRight className="w-4 h-4 text-[#6B7280] group-hover:text-[#60A5FA]" />
+                        <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-[#60A5FA]" />
                       </div>
                     </button>
                   ))}
@@ -1401,16 +1401,16 @@ function ReportDetailView({ reportId }: { reportId: string }) {
 
             {/* Commonly Used By Roles */}
             {report.used_by_roles && report.used_by_roles.length > 0 && (
-              <div className="pt-5 border-t border-[#E5E7EB]">
-                <h3 className="text-[13px] font-semibold text-[#111827] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <div className="pt-5 border-t border-border">
+                <h3 className="text-[13px] font-semibold text-foreground mb-3" style={{ fontFamily: 'var(--font-body)' }}>
                   Commonly Used By
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {report.used_by_roles.map((role, idx) => (
                     <span 
                       key={idx}
-                      className="inline-block bg-gray-100 text-gray-700 text-[12px] font-medium px-3 py-1.5 rounded" 
-                      style={{ fontFamily: 'Inter, sans-serif' }}
+                      className="inline-block bg-muted text-foreground text-[12px] font-medium px-3 py-1.5 rounded" 
+                      style={{ fontFamily: 'var(--font-body)' }}
                     >
                       {role}
                     </span>
@@ -1421,15 +1421,15 @@ function ReportDetailView({ reportId }: { reportId: string }) {
 
             {/* Recommended Actions */}
             {report.recommended_actions && report.recommended_actions.length > 0 && (
-              <div className="pt-5 border-t border-[#E5E7EB]">
-                <h3 className="text-[13px] font-semibold text-[#111827] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <div className="pt-5 border-t border-border">
+                <h3 className="text-[13px] font-semibold text-foreground mb-3" style={{ fontFamily: 'var(--font-body)' }}>
                   Recommended Actions
                 </h3>
                 <ul className="space-y-2">
                   {report.recommended_actions.map((action, idx) => (
                     <li key={idx} className="flex items-start gap-3">
                       <div className="w-1.5 h-1.5 rounded-full bg-[#E11D48] mt-2 flex-shrink-0" />
-                      <p className="text-[13px] text-[#374151]" style={{ fontFamily: 'Inter, sans-serif', lineHeight: '1.6' }}>
+                      <p className="text-[13px] text-foreground" style={{ fontFamily: 'var(--font-body)', lineHeight: '1.6' }}>
                         {action}
                       </p>
                     </li>
@@ -1443,8 +1443,8 @@ function ReportDetailView({ reportId }: { reportId: string }) {
 
       {/* SECTION 4: DATASET DEPENDENCY */}
       {sourceDataset && (
-        <div className="bg-white rounded-[12px] border border-[#E5E7EB] p-6 shadow-sm">
-          <h2 className="text-[16px] font-semibold text-[#111827] mb-4" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <div className="bg-card rounded-[12px] border border-border p-6 shadow-sm">
+          <h2 className="text-[16px] font-semibold text-foreground mb-4" style={{ fontFamily: 'var(--font-body)' }}>
             Powered By Dataset
           </h2>
 
@@ -1452,29 +1452,29 @@ function ReportDetailView({ reportId }: { reportId: string }) {
             <div className="space-y-3">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-[15px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <h3 className="text-[15px] font-semibold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                     {sourceDataset.dataset_name}
                   </h3>
                   {sourceDataset.certified_flag && (
-                    <span className="bg-[#ECFDF3] text-[#065F46] text-[10px] font-medium px-2 py-1 rounded" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <span className="bg-[#ECFDF3] text-[#065F46] text-[10px] font-medium px-2 py-1 rounded" style={{ fontFamily: 'var(--font-body)' }}>
                       Certified
                     </span>
                   )}
                 </div>
-                <p className="text-[12px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <p className="text-[12px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                   Domain: {sourceDataset.domain}
                 </p>
               </div>
               
-              <p className="text-[12px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <p className="text-[12px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                 Last refreshed: {formatRelativeTime(sourceDataset.last_refresh_ts)}
               </p>
             </div>
 
             <button
               onClick={() => navigate(`/datasets/${report.source_dataset_id}`)}
-              className="px-5 py-2.5 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg text-[13px] font-medium"
-              style={{ fontFamily: 'Inter, sans-serif' }}
+              className="px-5 py-2.5 bg-foreground hover:bg-foreground text-white rounded-lg text-[13px] font-medium"
+              style={{ fontFamily: 'var(--font-body)' }}
             >
               Open Dataset
             </button>
@@ -1488,7 +1488,7 @@ function ReportDetailView({ reportId }: { reportId: string }) {
           <button
             onClick={() => navigate('/reports')}
             className="text-[13px] text-[#60A5FA] hover:text-[#3B82F6] hover:underline font-medium"
-            style={{ fontFamily: 'Inter, sans-serif' }}
+            style={{ fontFamily: 'var(--font-body)' }}
           >
             ← Back to Reports
           </button>
@@ -1497,16 +1497,16 @@ function ReportDetailView({ reportId }: { reportId: string }) {
             {!report.enterprise_flag ? (
               <button
                 onClick={() => navigate('/conversational')}
-                className="px-5 py-2.5 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg text-[13px] font-medium"
-                style={{ fontFamily: 'Inter, sans-serif' }}
+                className="px-5 py-2.5 bg-foreground hover:bg-foreground text-white rounded-lg text-[13px] font-medium"
+                style={{ fontFamily: 'var(--font-body)' }}
               >
                 Continue in Conversational Analytics
               </button>
             ) : (
               <button
                 onClick={() => navigate('/enterprise-bi')}
-                className="px-5 py-2.5 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg text-[13px] font-medium"
-                style={{ fontFamily: 'Inter, sans-serif' }}
+                className="px-5 py-2.5 bg-foreground hover:bg-foreground text-white rounded-lg text-[13px] font-medium"
+                style={{ fontFamily: 'var(--font-body)' }}
               >
                 Open Enterprise BI
               </button>

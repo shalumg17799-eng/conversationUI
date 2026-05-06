@@ -2,34 +2,50 @@ import React from 'react';
 
 export function ReportSkeleton() {
   return (
-    <div className="mt-4 space-y-6 animate-pulse">
-      {/* Header Skeleton */}
-      <div className="bg-white border border-[#E5E7EB] rounded-xl p-5 shadow-sm border-l-4 border-l-gray-200">
-        <div className="h-6 bg-gray-200 rounded w-1/3 mb-2"></div>
-        <div className="h-4 bg-gray-100 rounded w-3/4"></div>
+    <div className="mt-4 space-y-5 animate-pulse">
+      {/* Title block */}
+      <div className="bg-white border border-[#E5E3DF] rounded-[12px] p-5"
+        style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
+        <div className="h-5 bg-[#F4F2EF] rounded-[6px] w-2/5 mb-2.5" />
+        <div className="h-3.5 bg-[#F4F2EF] rounded-[6px] w-3/4 mb-1.5" />
+        <div className="h-3.5 bg-[#F4F2EF] rounded-[6px] w-1/2" />
       </div>
 
-      {/* Sections Skeleton */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 px-1">
-          <div className="h-px flex-1 bg-gray-100"></div>
-          <div className="h-3 bg-gray-200 rounded w-16"></div>
-          <div className="h-px flex-1 bg-gray-100"></div>
-        </div>
-        
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white border border-[#E5E7EB] rounded-xl p-4 h-24"></div>
-          <div className="bg-white border border-[#E5E7EB] rounded-xl p-4 h-24"></div>
-        </div>
+      {/* KPI row */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        {[0, 1, 2].map(i => (
+          <div key={i} className="bg-white border border-[#E5E3DF] rounded-[12px] p-5"
+            style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
+            <div className="h-3 bg-[#F4F2EF] rounded-[6px] w-16 mb-4" />
+            <div className="h-7 bg-[#F4F2EF] rounded-[6px] w-24 mb-2.5" />
+            <div className="h-3 bg-[#F4F2EF] rounded-[6px] w-12" />
+          </div>
+        ))}
       </div>
 
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 px-1">
-          <div className="h-px flex-1 bg-gray-100"></div>
-          <div className="h-3 bg-gray-200 rounded w-24"></div>
-          <div className="h-px flex-1 bg-gray-100"></div>
+      {/* Chart placeholder */}
+      <div className="bg-white border border-[#E5E3DF] rounded-[12px] p-5"
+        style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
+        <div className="h-4 bg-[#F4F2EF] rounded-[6px] w-40 mb-1.5" />
+        <div className="h-3 bg-[#F4F2EF] rounded-[6px] w-56 mb-5" />
+        <div className="h-[200px] bg-[#F4F2EF] rounded-[8px] w-full" />
+      </div>
+
+      {/* Ranked list placeholder */}
+      <div className="bg-white border border-[#E5E3DF] rounded-[12px] p-5"
+        style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
+        <div className="h-4 bg-[#F4F2EF] rounded-[6px] w-32 mb-5" />
+        <div className="space-y-4">
+          {[80, 65, 50, 35].map((w, i) => (
+            <div key={i} className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <div className="h-3.5 bg-[#F4F2EF] rounded-[6px]" style={{ width: `${w}%` }} />
+                <div className="h-3.5 bg-[#F4F2EF] rounded-[6px] w-12" />
+              </div>
+              <div className="h-1 bg-[#F4F2EF] rounded-full w-full" />
+            </div>
+          ))}
         </div>
-        <div className="bg-white border border-[#E5E7EB] rounded-xl h-64 w-full"></div>
       </div>
     </div>
   );

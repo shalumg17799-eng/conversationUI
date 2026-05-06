@@ -57,11 +57,11 @@ function IntentSelectionUI({ msgId, msgContent, onIntentSelect, onViewOverview }
   return (
     <div className="mb-6">
       {/* Assistant Message */}
-      <div className="bg-gray-50 px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'Inter, sans-serif' }}>
-        <div className="text-[13px] text-[#111827] font-semibold mb-2">
+      <div className="bg-muted px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'var(--font-body)' }}>
+        <div className="text-[13px] text-foreground font-semibold mb-2">
           I can help you migrate an existing report.
         </div>
-        <div className="text-[13px] text-[#111827]">
+        <div className="text-[13px] text-foreground">
           Let's start by selecting where the report currently lives, then choose the report you want to migrate.
         </div>
       </div>
@@ -69,7 +69,7 @@ function IntentSelectionUI({ msgId, msgContent, onIntentSelect, onViewOverview }
       {/* Intent Selection UI */}
       <div className="space-y-4 max-w-[80%]">
         {/* Section Header */}
-        <h3 className="text-[14px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <h3 className="text-[14px] font-semibold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
           Choose one option to continue
         </h3>
 
@@ -84,10 +84,10 @@ function IntentSelectionUI({ msgId, msgContent, onIntentSelect, onViewOverview }
                 <div className="w-3 h-3 rounded-full bg-white" />
               </div>
               <div className="flex-1">
-                <h4 className="text-[14px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <h4 className="text-[14px] font-semibold text-foreground mb-1" style={{ fontFamily: 'var(--font-body)' }}>
                   Migrate an existing report
                 </h4>
-                <p className="text-[12px] text-[#6B7280] leading-relaxed" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <p className="text-[12px] text-muted-foreground leading-relaxed" style={{ fontFamily: 'var(--font-body)' }}>
                   Select the source platform, choose the report, then migrate it into Report Hub.
                 </p>
               </div>
@@ -100,7 +100,7 @@ function IntentSelectionUI({ msgId, msgContent, onIntentSelect, onViewOverview }
           <button
             onClick={onIntentSelect}
             className="px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all shadow-sm bg-[#111827] hover:bg-[#0F172A] text-white cursor-pointer"
-            style={{ fontFamily: 'Inter, sans-serif' }}
+            style={{ fontFamily: 'var(--font-body)' }}
           >
             Continue
           </button>
@@ -108,8 +108,8 @@ function IntentSelectionUI({ msgId, msgContent, onIntentSelect, onViewOverview }
           {/* Secondary Link */}
           <button
             onClick={onViewOverview}
-            className="text-[#6B7280] hover:text-[#111827] text-[13px] font-medium transition-colors underline self-start"
-            style={{ fontFamily: 'Inter, sans-serif' }}
+            className="text-muted-foreground hover:text-foreground text-[13px] font-medium transition-colors underline self-start"
+            style={{ fontFamily: 'var(--font-body)' }}
           >
             View migration overview
           </button>
@@ -148,7 +148,7 @@ function SourcePlatformSelectionUI({ msgId, onContinue }: SourcePlatformSelectio
               className={`bg-white border-2 rounded-xl p-4 cursor-pointer transition-all ${
                 selectedPlatform === platform.id
                   ? 'border-blue-500 ring-2 ring-blue-100 shadow-md bg-blue-50/30'
-                  : 'border-[#E5E7EB] hover:border-blue-300 hover:shadow-sm'
+                  : 'border-border hover:border-blue-300 hover:shadow-sm'
               }`}
             >
               <div className="flex items-start gap-3">
@@ -164,10 +164,10 @@ function SourcePlatformSelectionUI({ msgId, onContinue }: SourcePlatformSelectio
                 </div>
                 
                 <div className="flex-1">
-                  <h4 className="text-[14px] font-semibold text-[#111827] mb-0.5" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <h4 className="text-[14px] font-semibold text-foreground mb-0.5" style={{ fontFamily: 'var(--font-body)' }}>
                     {platform.name}
                   </h4>
-                  <p className="text-[12px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <p className="text-[12px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                     {platform.subtitle}
                   </p>
                 </div>
@@ -188,9 +188,9 @@ function SourcePlatformSelectionUI({ msgId, onContinue }: SourcePlatformSelectio
             className={`px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all shadow-sm ${
               selectedPlatform 
                 ? 'bg-[#111827] hover:bg-[#0F172A] text-white cursor-pointer' 
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                : 'bg-border text-muted-foreground cursor-not-allowed'
             }`}
-            style={{ fontFamily: 'Inter, sans-serif' }}
+            style={{ fontFamily: 'var(--font-body)' }}
           >
             Continue
           </button>
@@ -266,11 +266,11 @@ function ReportSelectionUI({ msgId, sourcePlatform, onContinue, onReportSelect }
   return (
     <div className="mb-6">
       {/* Assistant Message */}
-      <div className="bg-gray-50 px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'Inter, sans-serif' }}>
-        <div className="text-[13px] text-[#111827] font-semibold mb-2">
+      <div className="bg-muted px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'var(--font-body)' }}>
+        <div className="text-[13px] text-foreground font-semibold mb-2">
           Select the report you want to migrate.
         </div>
-        <div className="text-[13px] text-[#111827]">
+        <div className="text-[13px] text-foreground">
           Choose a report from the selected source platform to continue.
         </div>
       </div>
@@ -279,44 +279,44 @@ function ReportSelectionUI({ msgId, sourcePlatform, onContinue, onReportSelect }
       <div className="space-y-4 max-w-[90%]">
         {/* Section Header */}
         <div>
-          <h3 className="text-[14px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <h3 className="text-[14px] font-semibold text-foreground mb-1" style={{ fontFamily: 'var(--font-body)' }}>
             AVAILABLE REPORTS
           </h3>
-          <p className="text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <p className="text-[11px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
             Showing reports from: {platformNames[sourcePlatform]}
           </p>
         </div>
 
         {/* Search and Filter Controls */}
-        <div className="bg-white border border-[#E5E7EB] rounded-xl p-4 space-y-3">
+        <div className="bg-white border border-border rounded-xl p-4 space-y-3">
           {/* Search Input */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search reports by name or owner"
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              style={{ fontFamily: 'Inter, sans-serif' }}
+              style={{ fontFamily: 'var(--font-body)' }}
             />
           </div>
 
           {/* Filter Chips */}
           <div className="flex flex-wrap gap-2">
-            <button className="px-3 py-1 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-md text-[11px] text-gray-700 font-medium transition-colors" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <button className="px-3 py-1 bg-muted hover:bg-border border border-gray-300 rounded-md text-[11px] text-foreground font-medium transition-colors" style={{ fontFamily: 'var(--font-body)' }}>
               <Filter className="inline w-3 h-3 mr-1" />
               Owner
             </button>
-            <button className="px-3 py-1 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-md text-[11px] text-gray-700 font-medium transition-colors" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <button className="px-3 py-1 bg-muted hover:bg-border border border-gray-300 rounded-md text-[11px] text-foreground font-medium transition-colors" style={{ fontFamily: 'var(--font-body)' }}>
               <Filter className="inline w-3 h-3 mr-1" />
               Domain
             </button>
-            <button className="px-3 py-1 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-md text-[11px] text-gray-700 font-medium transition-colors" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <button className="px-3 py-1 bg-muted hover:bg-border border border-gray-300 rounded-md text-[11px] text-foreground font-medium transition-colors" style={{ fontFamily: 'var(--font-body)' }}>
               <Filter className="inline w-3 h-3 mr-1" />
               Last updated
             </button>
-            <button className="px-3 py-1 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-md text-[11px] text-gray-700 font-medium transition-colors" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <button className="px-3 py-1 bg-muted hover:bg-border border border-gray-300 rounded-md text-[11px] text-foreground font-medium transition-colors" style={{ fontFamily: 'var(--font-body)' }}>
               <Filter className="inline w-3 h-3 mr-1" />
               Usage
             </button>
@@ -332,7 +332,7 @@ function ReportSelectionUI({ msgId, sourcePlatform, onContinue, onReportSelect }
               className={`bg-white border-2 rounded-xl p-4 cursor-pointer transition-all ${
                 selectedReportId === report.id
                   ? 'border-blue-500 ring-2 ring-blue-100 shadow-md bg-blue-50/30'
-                  : 'border-[#E5E7EB] hover:border-blue-300 hover:shadow-sm'
+                  : 'border-border hover:border-blue-300 hover:shadow-sm'
               }`}
             >
               <div className="flex items-start gap-3">
@@ -351,7 +351,7 @@ function ReportSelectionUI({ msgId, sourcePlatform, onContinue, onReportSelect }
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <h4 className="text-[14px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        <h4 className="text-[14px] font-semibold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                           {report.name}
                         </h4>
                         {report.usageLevel === 'high' && (
@@ -360,18 +360,18 @@ function ReportSelectionUI({ msgId, sourcePlatform, onContinue, onReportSelect }
                           </span>
                         )}
                         {report.usageLevel === 'low' && (
-                          <span className="inline-flex items-center bg-gray-100 text-gray-600 text-[10px] font-semibold px-2 py-0.5 rounded">
+                          <span className="inline-flex items-center bg-muted text-muted-foreground text-[10px] font-semibold px-2 py-0.5 rounded">
                             Low usage
                           </span>
                         )}
                       </div>
-                      <p className="text-[12px] text-[#6B7280] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <p className="text-[12px] text-muted-foreground mb-1" style={{ fontFamily: 'var(--font-body)' }}>
                         Owner: {report.owner}
                       </p>
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-3 text-[11px] text-[#9CA3AF]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <div className="flex items-center gap-3 text-[11px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                     <span className="flex items-center gap-1">
                       <Clock className="w-3 h-3" />
                       {report.lastUpdated}
@@ -392,8 +392,8 @@ function ReportSelectionUI({ msgId, sourcePlatform, onContinue, onReportSelect }
         </div>
 
         {filteredReports.length === 0 && (
-          <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 text-center">
-            <p className="text-[13px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <div className="bg-muted border border-gray-200 rounded-xl p-6 text-center">
+            <p className="text-[13px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
               No reports found matching your search.
             </p>
           </div>
@@ -411,9 +411,9 @@ function ReportSelectionUI({ msgId, sourcePlatform, onContinue, onReportSelect }
             className={`px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all shadow-sm ${
               selectedReportId 
                 ? 'bg-[#111827] hover:bg-[#0F172A] text-white cursor-pointer' 
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                : 'bg-border text-muted-foreground cursor-not-allowed'
             }`}
-            style={{ fontFamily: 'Inter, sans-serif' }}
+            style={{ fontFamily: 'var(--font-body)' }}
           >
             Continue
           </button>
@@ -480,11 +480,11 @@ function DestinationPlatformSelectionUI({
   return (
     <div className="mb-6">
       {/* Assistant Message */}
-      <div className="bg-gray-50 px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'Inter, sans-serif' }}>
-        <div className="text-[13px] text-[#111827] font-semibold mb-2">
+      <div className="bg-muted px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'var(--font-body)' }}>
+        <div className="text-[13px] text-foreground font-semibold mb-2">
           Choose where this report should live after migration.
         </div>
-        <div className="text-[13px] text-[#111827]">
+        <div className="text-[13px] text-foreground">
           Report Hub is the recommended destination. Other platforms are supported if needed.
         </div>
       </div>
@@ -492,24 +492,24 @@ function DestinationPlatformSelectionUI({
       {/* Destination Selection */}
       <div className="space-y-4 max-w-[90%]">
         {/* Source vs Destination Context */}
-        <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-[12px]" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-[12px]" style={{ fontFamily: 'var(--font-body)' }}>
           <div className="flex items-center gap-2">
-            <span className="text-[#6B7280] font-medium">SOURCE:</span>
-            <span className="text-[#111827] font-semibold">{platformNames[sourcePlatform]}</span>
+            <span className="text-muted-foreground font-medium">SOURCE:</span>
+            <span className="text-foreground font-semibold">{platformNames[sourcePlatform]}</span>
           </div>
           <ArrowRight className="w-4 h-4 text-blue-500" />
           <div className="flex items-center gap-2">
-            <span className="text-[#6B7280] font-medium">DESTINATION:</span>
+            <span className="text-muted-foreground font-medium">DESTINATION:</span>
             <span className="text-blue-600 font-semibold">Select below</span>
           </div>
         </div>
 
         {/* Section Header */}
         <div>
-          <h3 className="text-[14px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <h3 className="text-[14px] font-semibold text-foreground mb-1" style={{ fontFamily: 'var(--font-body)' }}>
             DESTINATION PLATFORM
           </h3>
-          <p className="text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <p className="text-[11px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
             Destination platforms only. Source platforms were selected earlier.
           </p>
         </div>
@@ -523,7 +523,7 @@ function DestinationPlatformSelectionUI({
               className={`bg-white border-2 rounded-xl p-4 cursor-pointer transition-all ${
                 selectedDestination === option.id
                   ? 'border-blue-500 ring-2 ring-blue-100 shadow-md bg-blue-50/30'
-                  : 'border-[#E5E7EB] hover:border-blue-300 hover:shadow-sm'
+                  : 'border-border hover:border-blue-300 hover:shadow-sm'
               }`}
             >
               <div className="flex items-start gap-3">
@@ -540,7 +540,7 @@ function DestinationPlatformSelectionUI({
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <h4 className="text-[14px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <h4 className="text-[14px] font-semibold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                       {option.name}
                     </h4>
                     {option.recommended && (
@@ -549,11 +549,11 @@ function DestinationPlatformSelectionUI({
                       </span>
                     )}
                   </div>
-                  <p className="text-[12px] text-[#6B7280] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <p className="text-[12px] text-muted-foreground mb-1" style={{ fontFamily: 'var(--font-body)' }}>
                     {option.subtitle}
                   </p>
                   {option.helperText && (
-                    <p className="text-[11px] text-[#9CA3AF]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <p className="text-[11px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                       {option.helperText}
                     </p>
                   )}
@@ -568,7 +568,7 @@ function DestinationPlatformSelectionUI({
           <button
             onClick={() => onContinue(selectedDestination)}
             className="px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all shadow-sm bg-[#111827] hover:bg-[#0F172A] text-white cursor-pointer"
-            style={{ fontFamily: 'Inter, sans-serif' }}
+            style={{ fontFamily: 'var(--font-body)' }}
           >
             Continue
           </button>
@@ -622,11 +622,11 @@ function VisualConfigurationUI({ msgId, reportName, sourcePlatform = 'tableau', 
   return (
     <div className="mb-6">
       {/* Assistant Message */}
-      <div className="bg-gray-50 px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'Inter, sans-serif' }}>
-        <div className="text-[13px] text-[#111827] font-semibold mb-2">
+      <div className="bg-muted px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'var(--font-body)' }}>
+        <div className="text-[13px] text-foreground font-semibold mb-2">
           Configure how the report should look.
         </div>
-        <div className="text-[13px] text-[#111827]">
+        <div className="text-[13px] text-foreground">
           You can keep the existing layout or reference another report for visual guidance.
         </div>
       </div>
@@ -635,10 +635,10 @@ function VisualConfigurationUI({ msgId, reportName, sourcePlatform = 'tableau', 
       <div className="space-y-4 max-w-[90%]">
         {/* Section Header */}
         <div>
-          <h3 className="text-[14px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <h3 className="text-[14px] font-semibold text-foreground mb-1" style={{ fontFamily: 'var(--font-body)' }}>
             VISUAL CONFIGURATION
           </h3>
-          <p className="text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <p className="text-[11px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
             Choose a starting point. You can customize the layout next.
           </p>
         </div>
@@ -655,7 +655,7 @@ function VisualConfigurationUI({ msgId, reportName, sourcePlatform = 'tableau', 
               className={`bg-white border-2 rounded-xl p-4 cursor-pointer transition-all ${
                 layoutOption === 'keep_current'
                   ? 'border-blue-500 ring-2 ring-blue-100 shadow-md bg-blue-50/30'
-                  : 'border-[#E5E7EB] hover:border-blue-300 hover:shadow-sm'
+                  : 'border-border hover:border-blue-300 hover:shadow-sm'
               }`}
             >
               <div className="flex items-start gap-3">
@@ -672,14 +672,14 @@ function VisualConfigurationUI({ msgId, reportName, sourcePlatform = 'tableau', 
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <h4 className="text-[14px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <h4 className="text-[14px] font-semibold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                       Keep the current report layout
                     </h4>
                     <span className="inline-flex items-center bg-blue-100 text-blue-700 text-[10px] font-semibold px-2 py-0.5 rounded">
                       Default
                     </span>
                   </div>
-                  <p className="text-[12px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <p className="text-[12px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                     Reuse the existing layout and visual structure from the source report.
                   </p>
                 </div>
@@ -696,7 +696,7 @@ function VisualConfigurationUI({ msgId, reportName, sourcePlatform = 'tableau', 
               className={`bg-white border-2 rounded-xl p-4 cursor-pointer transition-all ${
                 layoutOption === 'template'
                   ? 'border-blue-500 ring-2 ring-blue-100 shadow-md bg-blue-50/30'
-                  : 'border-[#E5E7EB] hover:border-blue-300 hover:shadow-sm'
+                  : 'border-border hover:border-blue-300 hover:shadow-sm'
               }`}
             >
               <div className="flex items-start gap-3">
@@ -712,10 +712,10 @@ function VisualConfigurationUI({ msgId, reportName, sourcePlatform = 'tableau', 
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-[14px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <h4 className="text-[14px] font-semibold text-foreground mb-1" style={{ fontFamily: 'var(--font-body)' }}>
                     Template-based
                   </h4>
-                  <p className="text-[12px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <p className="text-[12px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                     Start with a recommended layout
                   </p>
                 </div>
@@ -731,7 +731,7 @@ function VisualConfigurationUI({ msgId, reportName, sourcePlatform = 'tableau', 
               className={`bg-white border-2 rounded-xl p-4 cursor-pointer transition-all ${
                 layoutOption === 'custom'
                   ? 'border-blue-500 ring-2 ring-blue-100 shadow-md bg-blue-50/30'
-                  : 'border-[#E5E7EB] hover:border-blue-300 hover:shadow-sm'
+                  : 'border-border hover:border-blue-300 hover:shadow-sm'
               }`}
             >
               <div className="flex items-start gap-3">
@@ -747,10 +747,10 @@ function VisualConfigurationUI({ msgId, reportName, sourcePlatform = 'tableau', 
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-[14px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <h4 className="text-[14px] font-semibold text-foreground mb-1" style={{ fontFamily: 'var(--font-body)' }}>
                     Custom (Drag & drop)
                   </h4>
-                  <p className="text-[12px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <p className="text-[12px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                     Build your own layout
                   </p>
                 </div>
@@ -766,7 +766,7 @@ function VisualConfigurationUI({ msgId, reportName, sourcePlatform = 'tableau', 
               className={`bg-white border-2 rounded-xl p-4 cursor-pointer transition-all ${
                 layoutOption === 'reference_existing'
                   ? 'border-blue-500 ring-2 ring-blue-100 shadow-md bg-blue-50/30'
-                  : 'border-[#E5E7EB] hover:border-blue-300 hover:shadow-sm'
+                  : 'border-border hover:border-blue-300 hover:shadow-sm'
               }`}
             >
               <div className="flex items-start gap-3">
@@ -782,10 +782,10 @@ function VisualConfigurationUI({ msgId, reportName, sourcePlatform = 'tableau', 
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-[14px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <h4 className="text-[14px] font-semibold text-foreground mb-1" style={{ fontFamily: 'var(--font-body)' }}>
                     Reference an existing report
                   </h4>
-                  <p className="text-[12px] text-[#6B7280] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <p className="text-[12px] text-muted-foreground mb-3" style={{ fontFamily: 'var(--font-body)' }}>
                     Use another report as a visual or layout reference
                   </p>
 
@@ -799,16 +799,16 @@ function VisualConfigurationUI({ msgId, reportName, sourcePlatform = 'tableau', 
                           onChange={(e) => setReferenceReportUrl(e.target.value)}
                           placeholder="Paste link to existing report"
                           className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          style={{ fontFamily: 'Inter, sans-serif' }}
+                          style={{ fontFamily: 'var(--font-body)' }}
                         />
                         <button
-                          className="px-4 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg text-[12px] font-medium text-gray-700 transition-colors whitespace-nowrap"
-                          style={{ fontFamily: 'Inter, sans-serif' }}
+                          className="px-4 py-2 bg-muted hover:bg-border border border-gray-300 rounded-lg text-[12px] font-medium text-foreground transition-colors whitespace-nowrap"
+                          style={{ fontFamily: 'var(--font-body)' }}
                         >
                           Use as layout reference
                         </button>
                       </div>
-                      <p className="text-[11px] text-[#9CA3AF]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <p className="text-[11px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                         The report will be used as a visual reference only. Data and metrics are not reused.
                       </p>
                     </div>
@@ -821,9 +821,9 @@ function VisualConfigurationUI({ msgId, reportName, sourcePlatform = 'tableau', 
 
         {/* Template Selection Sub-View */}
         {showSubView && layoutOption === 'template' && (
-          <div className="bg-white border border-[#E5E7EB] rounded-lg p-5">
+          <div className="bg-white border border-border rounded-lg p-5">
             <div className="mb-4 flex items-center justify-between">
-              <h4 className="text-[13px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <h4 className="text-[13px] font-semibold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                 Choose a template
               </h4>
               <button
@@ -832,8 +832,8 @@ function VisualConfigurationUI({ msgId, reportName, sourcePlatform = 'tableau', 
                   setLayoutOption('keep_current');
                   setSelectedTemplate(null);
                 }}
-                className="text-[11px] text-[#6B7280] hover:text-[#111827] underline"
-                style={{ fontFamily: 'Inter, sans-serif' }}
+                className="text-[11px] text-muted-foreground hover:text-foreground underline"
+                style={{ fontFamily: 'var(--font-body)' }}
               >
                 Back
               </button>
@@ -852,17 +852,17 @@ function VisualConfigurationUI({ msgId, reportName, sourcePlatform = 'tableau', 
                   className={`group p-4 bg-white border-2 rounded-lg hover:shadow-sm transition-all text-left ${
                     selectedTemplate === template.id
                       ? 'border-blue-500 ring-2 ring-blue-100'
-                      : 'border-[#E5E7EB] hover:border-[#111827]'
+                      : 'border-border hover:border-[#111827]'
                   }`}
                 >
                   {/* Template wireframe preview */}
                   <div className="mb-3">
                     <TemplatePreview templateId={template.id} />
                   </div>
-                  <h5 className="text-[12px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <h5 className="text-[12px] font-semibold text-foreground mb-1" style={{ fontFamily: 'var(--font-body)' }}>
                     {template.label}
                   </h5>
-                  <p className="text-[10px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <p className="text-[10px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                     {template.desc}
                   </p>
                 </button>
@@ -873,9 +873,9 @@ function VisualConfigurationUI({ msgId, reportName, sourcePlatform = 'tableau', 
 
         {/* Custom Layout Builder Sub-View */}
         {showSubView && layoutOption === 'custom' && (
-          <div className="bg-white border border-[#E5E7EB] rounded-lg p-5">
+          <div className="bg-white border border-border rounded-lg p-5">
             <div className="mb-4 flex items-center justify-between">
-              <h4 className="text-[13px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <h4 className="text-[13px] font-semibold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                 Build your layout
               </h4>
               <button
@@ -884,8 +884,8 @@ function VisualConfigurationUI({ msgId, reportName, sourcePlatform = 'tableau', 
                   setLayoutOption('keep_current');
                   setCustomLayoutComponents([]);
                 }}
-                className="text-[11px] text-[#6B7280] hover:text-[#111827] underline"
-                style={{ fontFamily: 'Inter, sans-serif' }}
+                className="text-[11px] text-muted-foreground hover:text-foreground underline"
+                style={{ fontFamily: 'var(--font-body)' }}
               >
                 Back
               </button>
@@ -899,8 +899,8 @@ function VisualConfigurationUI({ msgId, reportName, sourcePlatform = 'tableau', 
         )}
 
         {/* Optional Visual Preferences */}
-        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
-          <h4 className="text-[12px] font-semibold text-[#111827] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <div className="bg-muted border border-gray-200 rounded-xl p-4 space-y-3">
+          <h4 className="text-[12px] font-semibold text-foreground mb-2" style={{ fontFamily: 'var(--font-body)' }}>
             Visual Preferences (Optional)
           </h4>
           
@@ -913,7 +913,7 @@ function VisualConfigurationUI({ msgId, reportName, sourcePlatform = 'tableau', 
               onChange={(e) => setIncludeSummary(e.target.checked)}
               className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-2 focus:ring-blue-500 cursor-pointer"
             />
-            <label htmlFor={`${msgId}-summary`} className="text-[13px] text-[#111827] cursor-pointer" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <label htmlFor={`${msgId}-summary`} className="text-[13px] text-foreground cursor-pointer" style={{ fontFamily: 'var(--font-body)' }}>
               Include summary view
             </label>
           </div>
@@ -927,7 +927,7 @@ function VisualConfigurationUI({ msgId, reportName, sourcePlatform = 'tableau', 
               onChange={(e) => setPreserveFilters(e.target.checked)}
               className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-2 focus:ring-blue-500 cursor-pointer"
             />
-            <label htmlFor={`${msgId}-filters`} className="text-[13px] text-[#111827] cursor-pointer" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <label htmlFor={`${msgId}-filters`} className="text-[13px] text-foreground cursor-pointer" style={{ fontFamily: 'var(--font-body)' }}>
               Preserve filters from source report
             </label>
           </div>
@@ -941,7 +941,7 @@ function VisualConfigurationUI({ msgId, reportName, sourcePlatform = 'tableau', 
               onChange={(e) => setUseStandardTheme(e.target.checked)}
               className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-2 focus:ring-blue-500 cursor-pointer"
             />
-            <label htmlFor={`${msgId}-theme`} className="text-[13px] text-[#111827] cursor-pointer" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <label htmlFor={`${msgId}-theme`} className="text-[13px] text-foreground cursor-pointer" style={{ fontFamily: 'var(--font-body)' }}>
               Use standard Report Hub color theme
             </label>
           </div>
@@ -952,7 +952,7 @@ function VisualConfigurationUI({ msgId, reportName, sourcePlatform = 'tableau', 
           <button
             onClick={handleContinue}
             className="px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all shadow-sm bg-[#111827] hover:bg-[#0F172A] text-white cursor-pointer"
-            style={{ fontFamily: 'Inter, sans-serif' }}
+            style={{ fontFamily: 'var(--font-body)' }}
           >
             Continue
           </button>
@@ -1036,55 +1036,55 @@ function MigrationExecutionUI({ msgId, sourcePlatform, destinationPlatform, repo
     return (
       <div className="mb-6">
         {/* Assistant Message */}
-        <div className="bg-gray-50 px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'Inter, sans-serif' }}>
-          <div className="text-[13px] text-[#111827] font-semibold mb-2">
+        <div className="bg-muted px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'var(--font-body)' }}>
+          <div className="text-[13px] text-foreground font-semibold mb-2">
             Ready to run the migration.
           </div>
-          <div className="text-[13px] text-[#111827]">
+          <div className="text-[13px] text-foreground">
             This will migrate the selected report into Report Hub. The process runs in the background and does not disrupt existing users.
           </div>
         </div>
 
         {/* Migration Summary */}
         <div className="space-y-4 max-w-[90%]">
-          <h3 className="text-[14px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <h3 className="text-[14px] font-semibold text-foreground mb-1" style={{ fontFamily: 'var(--font-body)' }}>
             MIGRATION SUMMARY
           </h3>
 
           {/* Summary Card */}
           <div className="bg-white border-2 border-gray-200 rounded-xl p-4 space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-[13px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <span className="text-[13px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                 Source platform:
               </span>
-              <span className="text-[13px] text-[#111827] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <span className="text-[13px] text-foreground font-medium" style={{ fontFamily: 'var(--font-body)' }}>
                 {platformNames[sourcePlatform] || sourcePlatform}
               </span>
             </div>
 
             <div className="flex justify-between items-center">
-              <span className="text-[13px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <span className="text-[13px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                 Report:
               </span>
-              <span className="text-[13px] text-[#111827] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <span className="text-[13px] text-foreground font-medium" style={{ fontFamily: 'var(--font-body)' }}>
                 {reportName}
               </span>
             </div>
 
             <div className="flex justify-between items-center">
-              <span className="text-[13px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <span className="text-[13px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                 Destination:
               </span>
-              <span className="text-[13px] text-[#111827] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <span className="text-[13px] text-foreground font-medium" style={{ fontFamily: 'var(--font-body)' }}>
                 {platformNames[destinationPlatform] || destinationPlatform}
               </span>
             </div>
 
             <div className="flex justify-between items-center">
-              <span className="text-[13px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <span className="text-[13px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                 Visual handling:
               </span>
-              <span className="text-[13px] text-[#111827] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <span className="text-[13px] text-foreground font-medium" style={{ fontFamily: 'var(--font-body)' }}>
                 {visualHandling}
               </span>
             </div>
@@ -1095,7 +1095,7 @@ function MigrationExecutionUI({ msgId, sourcePlatform, destinationPlatform, repo
             <button
               onClick={handleRunMigration}
               className="px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all shadow-sm bg-[#111827] hover:bg-[#0F172A] text-white cursor-pointer"
-              style={{ fontFamily: 'Inter, sans-serif' }}
+              style={{ fontFamily: 'var(--font-body)' }}
             >
               Run migration
             </button>
@@ -1109,11 +1109,11 @@ function MigrationExecutionUI({ msgId, sourcePlatform, destinationPlatform, repo
   return (
     <div className="mb-6">
       {/* Status Message */}
-      <div className="bg-gray-50 px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'Inter, sans-serif' }}>
-        <div className="text-[13px] text-[#111827] font-semibold mb-2">
+      <div className="bg-muted px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'var(--font-body)' }}>
+        <div className="text-[13px] text-foreground font-semibold mb-2">
           Migration in progress…
         </div>
-        <div className="text-[13px] text-[#111827]">
+        <div className="text-[13px] text-foreground">
           The report is being migrated. You can track progress below.
         </div>
       </div>
@@ -1124,14 +1124,14 @@ function MigrationExecutionUI({ msgId, sourcePlatform, destinationPlatform, repo
         <div className="bg-white border-2 border-gray-200 rounded-xl p-5">
           <div className="mb-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[12px] font-medium text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <span className="text-[12px] font-medium text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                 Progress
               </span>
-              <span className="text-[12px] font-medium text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <span className="text-[12px] font-medium text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                 {Math.round(progressPercentage)}%
               </span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="w-full bg-border rounded-full h-2">
               <div
                 className="bg-blue-500 h-2 rounded-full transition-all duration-500"
                 style={{ width: `${progressPercentage}%` }}
@@ -1167,24 +1167,24 @@ function MigrationExecutionUI({ msgId, sourcePlatform, destinationPlatform, repo
                   {/* Step Label */}
                   <div className="flex-1 min-w-0">
                     <div className={`text-[13px] font-medium ${
-                      status === 'completed' ? 'text-[#111827]' : 
+                      status === 'completed' ? 'text-foreground' : 
                       status === 'in-progress' ? 'text-blue-600' : 
-                      'text-[#9CA3AF]'
-                    }`} style={{ fontFamily: 'Inter, sans-serif' }}>
+                      'text-muted-foreground'
+                    }`} style={{ fontFamily: 'var(--font-body)' }}>
                       {step.label}
                     </div>
                     {status === 'completed' && (
-                      <div className="text-[11px] text-[#6B7280] mt-0.5" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <div className="text-[11px] text-muted-foreground mt-0.5" style={{ fontFamily: 'var(--font-body)' }}>
                         Completed
                       </div>
                     )}
                     {status === 'in-progress' && (
-                      <div className="text-[11px] text-blue-600 mt-0.5" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <div className="text-[11px] text-blue-600 mt-0.5" style={{ fontFamily: 'var(--font-body)' }}>
                         In progress
                       </div>
                     )}
                     {status === 'pending' && (
-                      <div className="text-[11px] text-[#9CA3AF] mt-0.5" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <div className="text-[11px] text-muted-foreground mt-0.5" style={{ fontFamily: 'var(--font-body)' }}>
                         Pending
                       </div>
                     )}
@@ -1200,14 +1200,14 @@ function MigrationExecutionUI({ msgId, sourcePlatform, destinationPlatform, repo
           <svg className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <p className="text-[12px] text-blue-900" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <p className="text-[12px] text-blue-900" style={{ fontFamily: 'var(--font-body)' }}>
             Existing reports remain available during migration.
           </p>
         </div>
 
         {/* Optional View Details Link */}
         <div className="flex justify-center pt-2">
-          <button className="text-[12px] text-[#6B7280] hover:text-[#111827] underline transition-colors" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <button className="text-[12px] text-muted-foreground hover:text-foreground underline transition-colors" style={{ fontFamily: 'var(--font-body)' }}>
             View details
           </button>
         </div>
@@ -1237,7 +1237,7 @@ function MigrationCompletionUI({ msgId, sourcePlatform, reportName }: MigrationC
   return (
     <div className="mb-6">
       {/* Success Message */}
-      <div className="bg-green-50 px-4 py-3 rounded-xl mb-4 max-w-[80%] border border-green-200" style={{ fontFamily: 'Inter, sans-serif' }}>
+      <div className="bg-green-50 px-4 py-3 rounded-xl mb-4 max-w-[80%] border border-green-200" style={{ fontFamily: 'var(--font-body)' }}>
         <div className="flex items-start gap-3">
           {/* Success Icon */}
           <div className="flex-shrink-0 mt-0.5">
@@ -1261,54 +1261,54 @@ function MigrationCompletionUI({ msgId, sourcePlatform, reportName }: MigrationC
 
       {/* Migration Completion Summary */}
       <div className="space-y-4 max-w-[90%]">
-        <h3 className="text-[14px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <h3 className="text-[14px] font-semibold text-foreground mb-1" style={{ fontFamily: 'var(--font-body)' }}>
           MIGRATION COMPLETE
         </h3>
 
         {/* Summary Card */}
         <div className="bg-white border-2 border-gray-200 rounded-xl p-4 space-y-3">
           <div className="flex justify-between items-center">
-            <span className="text-[13px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <span className="text-[13px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
               Report:
             </span>
-            <span className="text-[13px] text-[#111827] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <span className="text-[13px] text-foreground font-medium" style={{ fontFamily: 'var(--font-body)' }}>
               {reportName}
             </span>
           </div>
 
           <div className="flex justify-between items-center">
-            <span className="text-[13px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <span className="text-[13px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
               Source:
             </span>
-            <span className="text-[13px] text-[#111827] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <span className="text-[13px] text-foreground font-medium" style={{ fontFamily: 'var(--font-body)' }}>
               {platformNames[sourcePlatform] || sourcePlatform}
             </span>
           </div>
 
           <div className="flex justify-between items-center">
-            <span className="text-[13px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <span className="text-[13px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
               Destination:
             </span>
-            <span className="text-[13px] text-[#111827] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <span className="text-[13px] text-foreground font-medium" style={{ fontFamily: 'var(--font-body)' }}>
               Report Hub
             </span>
           </div>
 
           <div className="flex justify-between items-center">
-            <span className="text-[13px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <span className="text-[13px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
               Status:
             </span>
-            <span className="text-[13px] text-green-700 font-medium flex items-center gap-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <span className="text-[13px] text-green-700 font-medium flex items-center gap-1" style={{ fontFamily: 'var(--font-body)' }}>
               <div className="w-2 h-2 rounded-full bg-green-500"></div>
               Completed
             </span>
           </div>
 
           <div className="flex justify-between items-center">
-            <span className="text-[13px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <span className="text-[13px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
               User impact:
             </span>
-            <span className="text-[13px] text-[#111827] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <span className="text-[13px] text-foreground font-medium" style={{ fontFamily: 'var(--font-body)' }}>
               None
             </span>
           </div>
@@ -1322,7 +1322,7 @@ function MigrationCompletionUI({ msgId, sourcePlatform, reportName }: MigrationC
               navigate('/reports/RPT-CHURN-001');
             }}
             className="px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all shadow-sm bg-[#111827] hover:bg-[#0F172A] text-white cursor-pointer"
-            style={{ fontFamily: 'Inter, sans-serif' }}
+            style={{ fontFamily: 'var(--font-body)' }}
           >
             Open report
           </button>
@@ -1331,8 +1331,8 @@ function MigrationCompletionUI({ msgId, sourcePlatform, reportName }: MigrationC
             onClick={() => {
               navigate(`/reports?migrated=${encodeURIComponent(reportName)}`);
             }}
-            className="px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all border-2 border-gray-300 bg-white hover:bg-gray-50 text-[#111827] cursor-pointer"
-            style={{ fontFamily: 'Inter, sans-serif' }}
+            className="px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all border-2 border-gray-300 bg-white hover:bg-muted text-foreground cursor-pointer"
+            style={{ fontFamily: 'var(--font-body)' }}
           >
             View all reports
           </button>
@@ -1343,8 +1343,8 @@ function MigrationCompletionUI({ msgId, sourcePlatform, reportName }: MigrationC
                 // Reset and start another migration
                 window.location.reload();
               }}
-              className="text-[12px] text-[#6B7280] hover:text-[#111827] underline transition-colors"
-              style={{ fontFamily: 'Inter, sans-serif' }}
+              className="text-[12px] text-muted-foreground hover:text-foreground underline transition-colors"
+              style={{ fontFamily: 'var(--font-body)' }}
             >
               Start another migration
             </button>
@@ -1352,11 +1352,11 @@ function MigrationCompletionUI({ msgId, sourcePlatform, reportName }: MigrationC
         </div>
 
         {/* Governance Nudge */}
-        <div className="flex items-start gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg mt-4">
-          <svg className="w-4 h-4 text-gray-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="flex items-start gap-2 px-3 py-2 bg-muted border border-gray-200 rounded-lg mt-4">
+          <svg className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <p className="text-[12px] text-gray-700" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <p className="text-[12px] text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
             The original source report is still available. Once usage is confirmed, it can be archived to reduce BI platform sprawl.
           </p>
         </div>
@@ -1378,11 +1378,11 @@ function DataSourceSelectionUI({ msgId, onContinue, onLearnMore }: DataSourceSel
   return (
     <div className="mb-6">
       {/* Assistant Message */}
-      <div className="bg-gray-50 px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'Inter, sans-serif' }}>
-        <div className="text-[13px] text-[#111827] font-semibold mb-2">
+      <div className="bg-muted px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'var(--font-body)' }}>
+        <div className="text-[13px] text-foreground font-semibold mb-2">
           Next, choose the data source for rebuilding this report.
         </div>
-        <div className="text-[13px] text-[#111827]">
+        <div className="text-[13px] text-foreground">
           Using governed data helps ensure consistency, reuse, and trusted definitions across Report Hub.
         </div>
       </div>
@@ -1390,7 +1390,7 @@ function DataSourceSelectionUI({ msgId, onContinue, onLearnMore }: DataSourceSel
       {/* Data Source Selection */}
       <div className="space-y-4 max-w-[80%]">
         {/* Section Header */}
-        <h3 className="text-[14px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <h3 className="text-[14px] font-semibold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
           Select data source
         </h3>
 
@@ -1402,7 +1402,7 @@ function DataSourceSelectionUI({ msgId, onContinue, onLearnMore }: DataSourceSel
             className={`bg-white border-2 rounded-xl p-4 cursor-pointer transition-all ${
               selectedSource === 'vdm'
                 ? 'border-blue-500 ring-2 ring-blue-100 shadow-md bg-blue-50/30'
-                : 'border-[#E5E7EB] hover:border-blue-300 hover:shadow-sm'
+                : 'border-border hover:border-blue-300 hover:shadow-sm'
             }`}
           >
             <div className="flex items-start gap-3">
@@ -1419,7 +1419,7 @@ function DataSourceSelectionUI({ msgId, onContinue, onLearnMore }: DataSourceSel
               
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <h4 className="text-[14px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <h4 className="text-[14px] font-semibold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                     Virtual Data Marketplace (Recommended)
                   </h4>
                   {/* Badges */}
@@ -1432,10 +1432,10 @@ function DataSourceSelectionUI({ msgId, onContinue, onLearnMore }: DataSourceSel
                     </span>
                   </div>
                 </div>
-                <p className="text-[12px] text-[#6B7280] leading-relaxed mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <p className="text-[12px] text-muted-foreground leading-relaxed mb-2" style={{ fontFamily: 'var(--font-body)' }}>
                   Use certified, governed data products with approved metrics and dimensions.
                 </p>
-                <p className="text-[11px] text-[#9CA3AF] italic" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <p className="text-[11px] text-muted-foreground italic" style={{ fontFamily: 'var(--font-body)' }}>
                   Best choice for most migrations.
                 </p>
               </div>
@@ -1448,7 +1448,7 @@ function DataSourceSelectionUI({ msgId, onContinue, onLearnMore }: DataSourceSel
             className={`bg-white border-2 rounded-xl p-4 cursor-pointer transition-all ${
               selectedSource === 'other'
                 ? 'border-blue-500 ring-2 ring-blue-100 shadow-md bg-blue-50/30'
-                : 'border-[#E5E7EB] hover:border-blue-300 hover:shadow-sm'
+                : 'border-border hover:border-blue-300 hover:shadow-sm'
             }`}
           >
             <div className="flex items-start gap-3">
@@ -1464,14 +1464,14 @@ function DataSourceSelectionUI({ msgId, onContinue, onLearnMore }: DataSourceSel
               </div>
               
               <div className="flex-1">
-                <h4 className="text-[14px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <h4 className="text-[14px] font-semibold text-foreground mb-1" style={{ fontFamily: 'var(--font-body)' }}>
                   Other governed sources
                 </h4>
-                <p className="text-[12px] text-[#6B7280] leading-relaxed mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <p className="text-[12px] text-muted-foreground leading-relaxed mb-2" style={{ fontFamily: 'var(--font-body)' }}>
                   Connect directly to approved enterprise data sources if needed.
                 </p>
                 {/* Expandable subtext (non-interactive for this step) */}
-                <div className="text-[11px] text-[#9CA3AF] bg-gray-50 px-2 py-1.5 rounded">
+                <div className="text-[11px] text-muted-foreground bg-muted px-2 py-1.5 rounded">
                   Examples: BigQuery, Teradata, Hadoop
                 </div>
               </div>
@@ -1480,10 +1480,10 @@ function DataSourceSelectionUI({ msgId, onContinue, onLearnMore }: DataSourceSel
         </div>
 
         {/* System Guidance Callout */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3" style={{ fontFamily: 'var(--font-body)' }}>
           <div className="flex items-start gap-2">
             <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-            <p className="text-[12px] text-[#111827] leading-relaxed">
+            <p className="text-[12px] text-foreground leading-relaxed">
               Virtual Data Marketplace provides a semantic layer with certified metrics, shared definitions, and built-in governance.
             </p>
           </div>
@@ -1494,7 +1494,7 @@ function DataSourceSelectionUI({ msgId, onContinue, onLearnMore }: DataSourceSel
           <button
             onClick={() => onContinue(selectedSource)}
             className="px-6 py-2.5 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg text-[13px] font-medium transition-colors shadow-sm self-start"
-            style={{ fontFamily: 'Inter, sans-serif' }}
+            style={{ fontFamily: 'var(--font-body)' }}
           >
             Continue
           </button>
@@ -1502,8 +1502,8 @@ function DataSourceSelectionUI({ msgId, onContinue, onLearnMore }: DataSourceSel
           {/* Secondary Link */}
           <button
             onClick={onLearnMore}
-            className="text-[#6B7280] hover:text-[#111827] text-[13px] font-medium transition-colors underline self-start"
-            style={{ fontFamily: 'Inter, sans-serif' }}
+            className="text-muted-foreground hover:text-foreground text-[13px] font-medium transition-colors underline self-start"
+            style={{ fontFamily: 'var(--font-body)' }}
           >
             Why Virtual Data Marketplace is recommended
           </button>
@@ -1582,17 +1582,17 @@ function CatalogSelectionUI({ msgId, onContinue, onViewLineage }: CatalogSelecti
   return (
     <div className="mb-6">
       {/* Assistant Message */}
-      <div className="bg-gray-50 px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'Inter, sans-serif' }}>
-        <div className="text-[13px] text-[#111827] font-semibold mb-2">
+      <div className="bg-muted px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'var(--font-body)' }}>
+        <div className="text-[13px] text-foreground font-semibold mb-2">
           Browse the catalog to select governed data.
         </div>
-        <div className="text-[13px] text-[#111827]">
+        <div className="text-[13px] text-foreground">
           Choose certified metrics and dimensions so this report uses approved definitions.
         </div>
       </div>
 
       {/* Catalog Browser Panel */}
-      <div className="bg-white border-2 border-[#E5E7EB] rounded-xl p-6 mb-4 max-w-[90%]" style={{ fontFamily: 'Inter, sans-serif' }}>
+      <div className="bg-white border-2 border-border rounded-xl p-6 mb-4 max-w-[90%]" style={{ fontFamily: 'var(--font-body)' }}>
         {/* Search Input */}
         <div className="mb-4">
           <input
@@ -1600,14 +1600,14 @@ function CatalogSelectionUI({ msgId, onContinue, onViewLineage }: CatalogSelecti
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search metrics, dimensions, or data products"
-            className="w-full px-4 py-2.5 border border-[#E5E7EB] rounded-lg text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            style={{ fontFamily: 'Inter, sans-serif' }}
+            className="w-full px-4 py-2.5 border border-border rounded-lg text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            style={{ fontFamily: 'var(--font-body)' }}
           />
         </div>
 
         {/* Filter Chips */}
         <div className="flex items-center gap-2 mb-4">
-          <span className="text-[12px] text-[#6B7280] font-medium">Filters:</span>
+          <span className="text-[12px] text-muted-foreground font-medium">Filters:</span>
           <div className="flex gap-2">
             {availableFilters.map((filter) => (
               <button
@@ -1616,7 +1616,7 @@ function CatalogSelectionUI({ msgId, onContinue, onViewLineage }: CatalogSelecti
                 className={`px-3 py-1 rounded-full text-[11px] font-medium transition-all ${
                   selectedFilters.includes(filter)
                     ? 'bg-blue-100 text-blue-700 border border-blue-300'
-                    : 'bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200'
+                    : 'bg-muted text-muted-foreground border border-gray-300 hover:bg-border'
                 }`}
               >
                 {filter}
@@ -1634,13 +1634,13 @@ function CatalogSelectionUI({ msgId, onContinue, onViewLineage }: CatalogSelecti
               className={`bg-white border-2 rounded-xl p-4 cursor-pointer transition-all ${
                 selectedCatalogItem === item.id
                   ? 'border-blue-200 bg-blue-50/20 hover:border-blue-300 hover:shadow-sm'
-                  : 'border-[#E5E7EB] hover:border-blue-300 hover:shadow-sm'
+                  : 'border-border hover:border-blue-300 hover:shadow-sm'
               }`}
             >
               <div className="flex items-start justify-between mb-2">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <h4 className="text-[14px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <h4 className="text-[14px] font-semibold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                       {item.title}
                     </h4>
                     <span className={`inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded ${
@@ -1651,10 +1651,10 @@ function CatalogSelectionUI({ msgId, onContinue, onViewLineage }: CatalogSelecti
                       {item.badge}
                     </span>
                   </div>
-                  <p className="text-[12px] text-[#6B7280] leading-relaxed mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <p className="text-[12px] text-muted-foreground leading-relaxed mb-1" style={{ fontFamily: 'var(--font-body)' }}>
                     {item.description}
                   </p>
-                  <p className="text-[11px] text-[#9CA3AF]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <p className="text-[11px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                     Owner: {item.owner}
                   </p>
                 </div>
@@ -1679,9 +1679,9 @@ function CatalogSelectionUI({ msgId, onContinue, onViewLineage }: CatalogSelecti
             className={`px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all shadow-sm ${
               selectedCatalogItem 
                 ? 'bg-[#111827] hover:bg-[#0F172A] text-white cursor-pointer' 
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                : 'bg-border text-muted-foreground cursor-not-allowed'
             }`}
-            style={{ fontFamily: 'Inter, sans-serif' }}
+            style={{ fontFamily: 'var(--font-body)' }}
           >
             Continue
           </button>
@@ -1689,8 +1689,8 @@ function CatalogSelectionUI({ msgId, onContinue, onViewLineage }: CatalogSelecti
           {/* Secondary Link */}
           <button
             onClick={onViewLineage}
-            className="text-[#6B7280] hover:text-[#111827] text-[13px] font-medium transition-colors underline self-start"
-            style={{ fontFamily: 'Inter, sans-serif' }}>
+            className="text-muted-foreground hover:text-foreground text-[13px] font-medium transition-colors underline self-start"
+            style={{ fontFamily: 'var(--font-body)' }}>
             View metric lineage
           </button>
         </div>
@@ -1712,18 +1712,18 @@ interface ExecutionRoutingProps {
 function ExecutionRoutingUI({ msgId, decision, metrics, dimensions, onContinue, onLearnRouting }: ExecutionRoutingProps) {
   return (
     <div className="mb-6">
-      <div className="bg-gray-50 px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'Inter, sans-serif' }}>
-        <div className="text-[13px] text-[#111827] font-semibold mb-2">
+      <div className="bg-muted px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'var(--font-body)' }}>
+        <div className="text-[13px] text-foreground font-semibold mb-2">
           Here's how this report will be generated.
         </div>
-        <div className="text-[13px] text-[#111827]">
+        <div className="text-[13px] text-foreground">
           Report Hub automatically routes reports to the most cost-effective execution engine.
         </div>
       </div>
       <button
         onClick={onContinue}
         className="px-6 py-2.5 rounded-lg text-[13px] font-medium bg-[#111827] text-white"
-        style={{ fontFamily: 'Inter, sans-serif' }}
+        style={{ fontFamily: 'var(--font-body)' }}
       >
         Continue
       </button>
@@ -1769,18 +1769,18 @@ function ReportReuseDetectionUI({ msgId, onContinue, onViewComparison }: ReportR
   return (
     <div className="mb-6">
       {/* Assistant Message */}
-      <div className="bg-gray-50 px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'Inter, sans-serif' }}>
-        <div className="text-[13px] text-[#111827] font-semibold mb-2">
+      <div className="bg-muted px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'var(--font-body)' }}>
+        <div className="text-[13px] text-foreground font-semibold mb-2">
           I'm checking for similar reports.
         </div>
-        <div className="text-[13px] text-[#111827]">
+        <div className="text-[13px] text-foreground">
           To reduce duplication and licensing cost, Report Hub looks for existing reports that use the same governed metrics and dimensions.
         </div>
       </div>
 
       {/* Similar Reports Results Panel */}
-      <div className="bg-white border-2 border-[#E5E7EB] rounded-xl p-5 mb-4 max-w-[90%]" style={{ fontFamily: 'Inter, sans-serif' }}>
-        <h3 className="text-[14px] font-semibold text-[#111827] mb-4">
+      <div className="bg-white border-2 border-border rounded-xl p-5 mb-4 max-w-[90%]" style={{ fontFamily: 'var(--font-body)' }}>
+        <h3 className="text-[14px] font-semibold text-foreground mb-4">
           Similar reports detected
         </h3>
 
@@ -1794,13 +1794,13 @@ function ReportReuseDetectionUI({ msgId, onContinue, onViewComparison }: ReportR
                   ? 'border-blue-200 bg-blue-50/20'
                   : report.statusColor === 'yellow'
                   ? 'border-yellow-200 bg-yellow-50/20'
-                  : 'border-[#E5E7EB]'
+                  : 'border-border'
               }`}
             >
               <div className="flex items-start justify-between mb-2">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <h4 className="text-[14px] font-semibold text-[#111827]">
+                    <h4 className="text-[14px] font-semibold text-foreground">
                       {report.title}
                     </h4>
                     <span className={`inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded ${
@@ -1814,20 +1814,20 @@ function ReportReuseDetectionUI({ msgId, onContinue, onViewComparison }: ReportR
                   
                   <div className="space-y-1 text-[12px]">
                     <div className="flex items-center gap-2">
-                      <span className="text-[#6B7280] font-medium min-w-[110px]">Backend execution:</span>
-                      <span className="text-[#111827]">{report.backend}</span>
+                      <span className="text-muted-foreground font-medium min-w-[110px]">Backend execution:</span>
+                      <span className="text-foreground">{report.backend}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[#6B7280] font-medium min-w-[110px]">Usage:</span>
-                      <span className="text-[#111827]">{report.usage}</span>
+                      <span className="text-muted-foreground font-medium min-w-[110px]">Usage:</span>
+                      <span className="text-foreground">{report.usage}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[#6B7280] font-medium min-w-[110px]">Owner:</span>
-                      <span className="text-[#111827]">{report.owner}</span>
+                      <span className="text-muted-foreground font-medium min-w-[110px]">Owner:</span>
+                      <span className="text-foreground">{report.owner}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[#6B7280] font-medium min-w-[110px]">Last updated:</span>
-                      <span className="text-[#111827]">{report.lastUpdated}</span>
+                      <span className="text-muted-foreground font-medium min-w-[110px]">Last updated:</span>
+                      <span className="text-foreground">{report.lastUpdated}</span>
                     </div>
                   </div>
                 </div>
@@ -1837,8 +1837,8 @@ function ReportReuseDetectionUI({ msgId, onContinue, onViewComparison }: ReportR
         </div>
 
         {/* Decision Section */}
-        <div className="border-t-2 border-[#E5E7EB] pt-4">
-          <h4 className="text-[13px] font-semibold text-[#111827] mb-3">
+        <div className="border-t-2 border-border pt-4">
+          <h4 className="text-[13px] font-semibold text-foreground mb-3">
             What would you like to do?
           </h4>
 
@@ -1849,7 +1849,7 @@ function ReportReuseDetectionUI({ msgId, onContinue, onViewComparison }: ReportR
               className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
                 selectedDecision === 'reuse'
                   ? 'border-blue-500 bg-blue-50/30 ring-2 ring-blue-100'
-                  : 'border-[#E5E7EB] hover:border-blue-300 hover:bg-gray-50'
+                  : 'border-border hover:border-blue-300 hover:bg-muted'
               }`}
             >
               <input
@@ -1862,15 +1862,15 @@ function ReportReuseDetectionUI({ msgId, onContinue, onViewComparison }: ReportR
               />
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[13px] font-semibold text-[#111827]">Reuse an existing report</span>
+                  <span className="text-[13px] font-semibold text-foreground">Reuse an existing report</span>
                   <span className="text-[10px] font-semibold text-blue-600 bg-blue-100 px-2 py-0.5 rounded">
                     Recommended
                   </span>
                 </div>
-                <p className="text-[12px] text-[#6B7280] mb-1">
+                <p className="text-[12px] text-muted-foreground mb-1">
                   Use an existing report as-is to avoid duplication.
                 </p>
-                <p className="text-[11px] text-[#9CA3AF] italic">
+                <p className="text-[11px] text-muted-foreground italic">
                   Best for consistency and cost control.
                 </p>
               </div>
@@ -1881,7 +1881,7 @@ function ReportReuseDetectionUI({ msgId, onContinue, onViewComparison }: ReportR
               className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
                 selectedDecision === 'enhance'
                   ? 'border-blue-500 bg-blue-50/30 ring-2 ring-blue-100'
-                  : 'border-[#E5E7EB] hover:border-blue-300 hover:bg-gray-50'
+                  : 'border-border hover:border-blue-300 hover:bg-muted'
               }`}
             >
               <input
@@ -1893,13 +1893,13 @@ function ReportReuseDetectionUI({ msgId, onContinue, onViewComparison }: ReportR
                 className="w-5 h-5 mt-0.5 accent-blue-600 cursor-pointer"
               />
               <div className="flex-1">
-                <div className="text-[13px] font-semibold text-[#111827] mb-1">
+                <div className="text-[13px] font-semibold text-foreground mb-1">
                   Enhance an existing report
                 </div>
-                <p className="text-[12px] text-[#6B7280] mb-1">
+                <p className="text-[12px] text-muted-foreground mb-1">
                   Extend an existing report with additional metrics or filters.
                 </p>
-                <p className="text-[11px] text-[#9CA3AF] italic">
+                <p className="text-[11px] text-muted-foreground italic">
                   Recommended when only small changes are needed.
                 </p>
               </div>
@@ -1910,7 +1910,7 @@ function ReportReuseDetectionUI({ msgId, onContinue, onViewComparison }: ReportR
               className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
                 selectedDecision === 'new'
                   ? 'border-blue-500 bg-blue-50/30 ring-2 ring-blue-100'
-                  : 'border-[#E5E7EB] hover:border-blue-300 hover:bg-gray-50'
+                  : 'border-border hover:border-blue-300 hover:bg-muted'
               }`}
             >
               <input
@@ -1922,10 +1922,10 @@ function ReportReuseDetectionUI({ msgId, onContinue, onViewComparison }: ReportR
                 className="w-5 h-5 mt-0.5 accent-blue-600 cursor-pointer"
               />
               <div className="flex-1">
-                <div className="text-[13px] font-semibold text-[#111827] mb-1">
+                <div className="text-[13px] font-semibold text-foreground mb-1">
                   Proceed with a new version
                 </div>
-                <p className="text-[12px] text-[#6B7280] mb-1">
+                <p className="text-[12px] text-muted-foreground mb-1">
                   Create a new report despite similarities.
                 </p>
                 <p className="text-[11px] text-yellow-600 italic">
@@ -1945,9 +1945,9 @@ function ReportReuseDetectionUI({ msgId, onContinue, onViewComparison }: ReportR
           className={`px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all shadow-sm self-start ${
             selectedDecision
               ? 'bg-[#111827] hover:bg-[#0F172A] text-white cursor-pointer'
-              : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              : 'bg-border text-muted-foreground cursor-not-allowed'
           }`}
-          style={{ fontFamily: 'Inter, sans-serif' }}
+          style={{ fontFamily: 'var(--font-body)' }}
         >
           Continue
         </button>
@@ -1955,8 +1955,8 @@ function ReportReuseDetectionUI({ msgId, onContinue, onViewComparison }: ReportR
         {/* Secondary Link */}
         <button
           onClick={onViewComparison}
-          className="text-[#6B7280] hover:text-[#111827] text-[13px] font-medium transition-colors underline self-start"
-          style={{ fontFamily: 'Inter, sans-serif' }}
+          className="text-muted-foreground hover:text-foreground text-[13px] font-medium transition-colors underline self-start"
+          style={{ fontFamily: 'var(--font-body)' }}
         >
           View detailed comparison
         </button>
@@ -2024,52 +2024,52 @@ function MigrationPlanValidationUI({
   return (
     <div className="mb-6">
       {/* Assistant Message */}
-      <div className="bg-gray-50 px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'Inter, sans-serif' }}>
-        <div className="text-[13px] text-[#111827] font-semibold mb-2">
+      <div className="bg-muted px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'var(--font-body)' }}>
+        <div className="text-[13px] text-foreground font-semibold mb-2">
           Here&apos;s the migration plan and readiness check.
         </div>
-        <div className="text-[13px] text-[#111827]">
+        <div className="text-[13px] text-foreground">
           Before executing the migration, Report Hub validates compatibility, highlights risks, and confirms readiness.
         </div>
       </div>
 
       {/* Migration Plan Summary */}
-      <div className="bg-white border-2 border-gray-300 rounded-xl p-5 mb-4 max-w-[90%]" style={{ fontFamily: 'Inter, sans-serif' }}>
-        <h3 className="text-[14px] font-semibold text-[#111827] mb-4">
+      <div className="bg-white border-2 border-gray-300 rounded-xl p-5 mb-4 max-w-[90%]" style={{ fontFamily: 'var(--font-body)' }}>
+        <h3 className="text-[14px] font-semibold text-foreground mb-4">
           Migration plan
         </h3>
 
         <div className="space-y-2.5">
           <div className="flex items-start gap-2">
-            <span className="text-[12px] font-medium text-[#6B7280] min-w-[150px]">Source system:</span>
-            <span className="text-[12px] text-[#111827]">{sourceSystem}</span>
+            <span className="text-[12px] font-medium text-muted-foreground min-w-[150px]">Source system:</span>
+            <span className="text-[12px] text-foreground">{sourceSystem}</span>
           </div>
           <div className="flex items-start gap-2">
-            <span className="text-[12px] font-medium text-[#6B7280] min-w-[150px]">Destination:</span>
-            <span className="text-[12px] text-[#111827]">Report Hub (Open-source execution)</span>
+            <span className="text-[12px] font-medium text-muted-foreground min-w-[150px]">Destination:</span>
+            <span className="text-[12px] text-foreground">Report Hub (Open-source execution)</span>
           </div>
           <div className="flex items-start gap-2">
-            <span className="text-[12px] font-medium text-[#6B7280] min-w-[150px]">Action:</span>
-            <span className="text-[12px] text-[#111827]">{decisionLabels[decision]}</span>
+            <span className="text-[12px] font-medium text-muted-foreground min-w-[150px]">Action:</span>
+            <span className="text-[12px] text-foreground">{decisionLabels[decision]}</span>
           </div>
           <div className="flex items-start gap-2">
-            <span className="text-[12px] font-medium text-[#6B7280] min-w-[150px]">Governed data source:</span>
-            <span className="text-[12px] text-[#111827]">Virtual Data Marketplace</span>
+            <span className="text-[12px] font-medium text-muted-foreground min-w-[150px]">Governed data source:</span>
+            <span className="text-[12px] text-foreground">Virtual Data Marketplace</span>
           </div>
           <div className="flex items-start gap-2">
-            <span className="text-[12px] font-medium text-[#6B7280] min-w-[150px]">Metrics:</span>
-            <span className="text-[12px] text-[#111827]">{metrics.join(', ')}</span>
+            <span className="text-[12px] font-medium text-muted-foreground min-w-[150px]">Metrics:</span>
+            <span className="text-[12px] text-foreground">{metrics.join(', ')}</span>
           </div>
           <div className="flex items-start gap-2">
-            <span className="text-[12px] font-medium text-[#6B7280] min-w-[150px]">Dimensions:</span>
-            <span className="text-[12px] text-[#111827]">{dimensions.join(', ')}</span>
+            <span className="text-[12px] font-medium text-muted-foreground min-w-[150px]">Dimensions:</span>
+            <span className="text-[12px] text-foreground">{dimensions.join(', ')}</span>
           </div>
         </div>
       </div>
 
       {/* Validation Checks */}
-      <div className="bg-white border-2 border-gray-300 rounded-xl p-5 mb-4 max-w-[90%]" style={{ fontFamily: 'Inter, sans-serif' }}>
-        <h3 className="text-[14px] font-semibold text-[#111827] mb-4">
+      <div className="bg-white border-2 border-gray-300 rounded-xl p-5 mb-4 max-w-[90%]" style={{ fontFamily: 'var(--font-body)' }}>
+        <h3 className="text-[14px] font-semibold text-foreground mb-4">
           Validation checks
         </h3>
 
@@ -2084,10 +2084,10 @@ function MigrationPlanValidationUI({
                 )}
               </div>
               <div className="flex-1">
-                <div className="text-[13px] font-medium text-[#111827] mb-0.5">
+                <div className="text-[13px] font-medium text-foreground mb-0.5">
                   {check.name}
                 </div>
-                <div className="text-[11px] text-[#6B7280]">
+                <div className="text-[11px] text-muted-foreground">
                   {check.subtext}
                 </div>
               </div>
@@ -2097,23 +2097,23 @@ function MigrationPlanValidationUI({
       </div>
 
       {/* Risk & Impact Summary */}
-      <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-5 mb-4 max-w-[90%]" style={{ fontFamily: 'Inter, sans-serif' }}>
-        <h3 className="text-[14px] font-semibold text-[#111827] mb-4">
+      <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-5 mb-4 max-w-[90%]" style={{ fontFamily: 'var(--font-body)' }}>
+        <h3 className="text-[14px] font-semibold text-foreground mb-4">
           Impact summary
         </h3>
 
         <div className="space-y-2">
           <div className="flex items-start gap-2">
-            <span className="text-[12px] font-medium text-[#6B7280] min-w-[150px]">Estimated downtime:</span>
-            <span className="text-[12px] text-[#111827]">None</span>
+            <span className="text-[12px] font-medium text-muted-foreground min-w-[150px]">Estimated downtime:</span>
+            <span className="text-[12px] text-foreground">None</span>
           </div>
           <div className="flex items-start gap-2">
-            <span className="text-[12px] font-medium text-[#6B7280] min-w-[150px]">Expected user impact:</span>
-            <span className="text-[12px] text-[#111827]">Minimal</span>
+            <span className="text-[12px] font-medium text-muted-foreground min-w-[150px]">Expected user impact:</span>
+            <span className="text-[12px] text-foreground">Minimal</span>
           </div>
           <div className="flex items-start gap-2">
-            <span className="text-[12px] font-medium text-[#6B7280] min-w-[150px]">Reports affected:</span>
-            <span className="text-[12px] text-[#111827]">1 (this report only)</span>
+            <span className="text-[12px] font-medium text-muted-foreground min-w-[150px]">Reports affected:</span>
+            <span className="text-[12px] text-foreground">1 (this report only)</span>
           </div>
         </div>
       </div>
@@ -2126,9 +2126,9 @@ function MigrationPlanValidationUI({
           className={`px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all shadow-sm self-start ${
             allChecksPassed
               ? 'bg-[#111827] hover:bg-[#0F172A] text-white cursor-pointer'
-              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              : 'bg-gray-300 text-muted-foreground cursor-not-allowed'
           }`}
-          style={{ fontFamily: 'Inter, sans-serif' }}
+          style={{ fontFamily: 'var(--font-body)' }}
         >
           Start migration
         </button>
@@ -2136,8 +2136,8 @@ function MigrationPlanValidationUI({
         {/* Secondary Link */}
         <button
           onClick={onReviewDetails}
-          className="text-[#6B7280] hover:text-[#111827] text-[13px] font-medium transition-colors underline self-start"
-          style={{ fontFamily: 'Inter, sans-serif' }}
+          className="text-muted-foreground hover:text-foreground text-[13px] font-medium transition-colors underline self-start"
+          style={{ fontFamily: 'var(--font-body)' }}
         >
           Review details
         </button>
@@ -2171,18 +2171,18 @@ function FinalValidationReadinessUI({
   return (
     <div className="mb-6">
       {/* Assistant Message */}
-      <div className="bg-gray-50 px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'Inter, sans-serif' }}>
-        <div className="text-[13px] text-[#111827] font-semibold mb-2">
+      <div className="bg-muted px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'var(--font-body)' }}>
+        <div className="text-[13px] text-foreground font-semibold mb-2">
           Final validation complete. This migration is ready to run.
         </div>
-        <div className="text-[13px] text-[#111827]">
+        <div className="text-[13px] text-foreground">
           All required checks have passed. You can proceed knowing this migration will not disrupt existing users or reports.
         </div>
       </div>
 
       {/* Readiness Status Panel */}
-      <div className="bg-white border-2 border-gray-300 rounded-xl p-5 mb-4 max-w-[90%]" style={{ fontFamily: 'Inter, sans-serif' }}>
-        <h3 className="text-[14px] font-semibold text-[#111827] mb-4">
+      <div className="bg-white border-2 border-gray-300 rounded-xl p-5 mb-4 max-w-[90%]" style={{ fontFamily: 'var(--font-body)' }}>
+        <h3 className="text-[14px] font-semibold text-foreground mb-4">
           Readiness status
         </h3>
 
@@ -2203,7 +2203,7 @@ function FinalValidationReadinessUI({
               <div className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
                 <span className="text-green-600 text-[12px] font-bold">✓</span>
               </div>
-              <div className="text-[13px] text-[#111827]">
+              <div className="text-[13px] text-foreground">
                 {check.name}
               </div>
             </div>
@@ -2212,12 +2212,12 @@ function FinalValidationReadinessUI({
       </div>
 
       {/* What Happens Next */}
-      <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-5 mb-4 max-w-[90%]" style={{ fontFamily: 'Inter, sans-serif' }}>
-        <h3 className="text-[14px] font-semibold text-[#111827] mb-3">
+      <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-5 mb-4 max-w-[90%]" style={{ fontFamily: 'var(--font-body)' }}>
+        <h3 className="text-[14px] font-semibold text-foreground mb-3">
           What happens next
         </h3>
 
-        <ul className="space-y-2 text-[13px] text-[#111827]">
+        <ul className="space-y-2 text-[13px] text-foreground">
           <li className="flex items-start gap-2">
             <span className="text-blue-600 mt-0.5">•</span>
             <span>Migration will run in the background</span>
@@ -2245,9 +2245,9 @@ function FinalValidationReadinessUI({
           className={`px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all shadow-sm self-start ${
             allChecksPassed
               ? 'bg-[#111827] hover:bg-[#0F172A] text-white cursor-pointer'
-              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              : 'bg-gray-300 text-muted-foreground cursor-not-allowed'
           }`}
-          style={{ fontFamily: 'Inter, sans-serif' }}
+          style={{ fontFamily: 'var(--font-body)' }}
         >
           Run migration now
         </button>
@@ -2255,8 +2255,8 @@ function FinalValidationReadinessUI({
         {/* Secondary Link */}
         <button
           onClick={onScheduleLater}
-          className="text-[#6B7280] hover:text-[#111827] text-[13px] font-medium transition-colors underline self-start"
-          style={{ fontFamily: 'Inter, sans-serif' }}
+          className="text-muted-foreground hover:text-foreground text-[13px] font-medium transition-colors underline self-start"
+          style={{ fontFamily: 'var(--font-body)' }}
         >
           Schedule for later
         </button>
@@ -2324,28 +2324,28 @@ function MigrationExecutionProgressUI({
   return (
     <div className="mb-6">
       {/* Assistant Message */}
-      <div className="bg-gray-50 px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'Inter, sans-serif' }}>
-        <div className="text-[13px] text-[#111827] font-semibold mb-2">
+      <div className="bg-muted px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'var(--font-body)' }}>
+        <div className="text-[13px] text-foreground font-semibold mb-2">
           Migration in progress.
         </div>
-        <div className="text-[13px] text-[#111827]">
+        <div className="text-[13px] text-foreground">
           The report is being migrated in the background. You can monitor progress here. No user disruption is expected.
         </div>
       </div>
 
       {/* Migration Progress Panel */}
-      <div className="bg-white border-2 border-gray-300 rounded-xl p-5 mb-4 max-w-[90%]" style={{ fontFamily: 'Inter, sans-serif' }}>
-        <h3 className="text-[14px] font-semibold text-[#111827] mb-4">
+      <div className="bg-white border-2 border-gray-300 rounded-xl p-5 mb-4 max-w-[90%]" style={{ fontFamily: 'var(--font-body)' }}>
+        <h3 className="text-[14px] font-semibold text-foreground mb-4">
           Migration progress
         </h3>
 
         {/* Overall Progress Bar */}
         <div className="mb-5">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[13px] font-medium text-[#111827]">Overall progress</span>
-            <span className="text-[13px] font-medium text-[#111827]">{progressPercentage}%</span>
+            <span className="text-[13px] font-medium text-foreground">Overall progress</span>
+            <span className="text-[13px] font-medium text-foreground">{progressPercentage}%</span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2.5">
+          <div className="w-full bg-border rounded-full h-2.5">
             <div 
               className="bg-blue-600 h-2.5 rounded-full transition-all duration-500"
               style={{ width: `${progressPercentage}%` }}
@@ -2370,7 +2370,7 @@ function MigrationExecutionProgressUI({
                   </div>
                 )}
                 {step.status === 'pending' && (
-                  <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
+                  <div className="w-6 h-6 bg-muted rounded-full flex items-center justify-center">
                     <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
                   </div>
                 )}
@@ -2378,9 +2378,9 @@ function MigrationExecutionProgressUI({
 
               {/* Step Name */}
               <div className={`flex-1 text-[13px] ${
-                step.status === 'completed' ? 'text-[#111827]' :
-                step.status === 'in_progress' ? 'text-[#111827] font-medium' :
-                'text-[#6B7280]'
+                step.status === 'completed' ? 'text-foreground' :
+                step.status === 'in_progress' ? 'text-foreground font-medium' :
+                'text-muted-foreground'
               }`}>
                 {step.name}
               </div>
@@ -2390,8 +2390,8 @@ function MigrationExecutionProgressUI({
       </div>
 
       {/* Safety Reassurance Callout */}
-      <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-4 max-w-[90%]" style={{ fontFamily: 'Inter, sans-serif' }}>
-        <p className="text-[13px] text-[#111827]">
+      <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-4 max-w-[90%]" style={{ fontFamily: 'var(--font-body)' }}>
+        <p className="text-[13px] text-foreground">
           Existing Tableau reports remain available during migration. If an issue is detected, Report Hub can roll back safely.
         </p>
       </div>
@@ -2401,8 +2401,8 @@ function MigrationExecutionProgressUI({
         {/* Disabled Primary Button (no action during execution) */}
         <button
           disabled
-          className="px-6 py-2.5 rounded-lg text-[13px] font-medium bg-gray-300 text-gray-500 cursor-not-allowed shadow-sm self-start"
-          style={{ fontFamily: 'Inter, sans-serif' }}
+          className="px-6 py-2.5 rounded-lg text-[13px] font-medium bg-gray-300 text-muted-foreground cursor-not-allowed shadow-sm self-start"
+          style={{ fontFamily: 'var(--font-body)' }}
         >
           Migration in progress...
         </button>
@@ -2411,8 +2411,8 @@ function MigrationExecutionProgressUI({
         <div className="flex gap-4">
           <button
             onClick={onViewLogs}
-            className="text-[#111827] hover:text-[#0F172A] text-[13px] font-medium transition-colors underline"
-            style={{ fontFamily: 'Inter, sans-serif' }}
+            className="text-foreground hover:text-[#0F172A] text-[13px] font-medium transition-colors underline"
+            style={{ fontFamily: 'var(--font-body)' }}
           >
             View detailed logs
           </button>
@@ -2420,7 +2420,7 @@ function MigrationExecutionProgressUI({
           <button
             onClick={onCancelMigration}
             className="text-red-600 hover:text-red-700 text-[13px] font-medium transition-colors underline"
-            style={{ fontFamily: 'Inter, sans-serif' }}
+            style={{ fontFamily: 'var(--font-body)' }}
           >
             Cancel migration
           </button>
@@ -2449,7 +2449,7 @@ function MigrationCompletionSuccessUI({
   return (
     <div className="mb-6">
       {/* Success Message with Icon */}
-      <div className="bg-green-50 border-2 border-green-200 px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'Inter, sans-serif' }}>
+      <div className="bg-green-50 border-2 border-green-200 px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'var(--font-body)' }}>
         <div className="flex items-start gap-3">
           {/* Success Checkmark Icon */}
           <div className="flex-shrink-0 mt-0.5">
@@ -2459,10 +2459,10 @@ function MigrationCompletionSuccessUI({
           </div>
           
           <div className="flex-1">
-            <div className="text-[13px] text-[#111827] font-semibold mb-2">
+            <div className="text-[13px] text-foreground font-semibold mb-2">
               Migration completed successfully.
             </div>
-            <div className="text-[13px] text-[#111827]">
+            <div className="text-[13px] text-foreground">
               <strong>Customer Churn Overview</strong> is now available through Report Hub. Users will access it through a single, consistent experience, regardless of the underlying execution engine.
             </div>
           </div>
@@ -2470,53 +2470,53 @@ function MigrationCompletionSuccessUI({
       </div>
 
       {/* Migration Summary Card */}
-      <div className="bg-white border-2 border-gray-300 rounded-xl p-5 mb-4 max-w-[90%]" style={{ fontFamily: 'Inter, sans-serif' }}>
-        <h3 className="text-[14px] font-semibold text-[#111827] mb-4">
+      <div className="bg-white border-2 border-gray-300 rounded-xl p-5 mb-4 max-w-[90%]" style={{ fontFamily: 'var(--font-body)' }}>
+        <h3 className="text-[14px] font-semibold text-foreground mb-4">
           Migration summary
         </h3>
 
         <div className="space-y-3">
           {/* Summary Rows */}
           <div className="flex items-start">
-            <span className="text-[13px] text-[#6B7280] w-[180px] flex-shrink-0">Source:</span>
-            <span className="text-[13px] text-[#111827] font-medium">Tableau</span>
+            <span className="text-[13px] text-muted-foreground w-[180px] flex-shrink-0">Source:</span>
+            <span className="text-[13px] text-foreground font-medium">Tableau</span>
           </div>
           
           <div className="flex items-start">
-            <span className="text-[13px] text-[#6B7280] w-[180px] flex-shrink-0">Execution path:</span>
-            <span className="text-[13px] text-[#111827] font-medium">Report Hub (Open-source)</span>
+            <span className="text-[13px] text-muted-foreground w-[180px] flex-shrink-0">Execution path:</span>
+            <span className="text-[13px] text-foreground font-medium">Report Hub (Open-source)</span>
           </div>
           
           <div className="flex items-start">
-            <span className="text-[13px] text-[#6B7280] w-[180px] flex-shrink-0">Governed data source:</span>
-            <span className="text-[13px] text-[#111827] font-medium">Virtual Data Marketplace</span>
+            <span className="text-[13px] text-muted-foreground w-[180px] flex-shrink-0">Governed data source:</span>
+            <span className="text-[13px] text-foreground font-medium">Virtual Data Marketplace</span>
           </div>
           
           <div className="flex items-start">
-            <span className="text-[13px] text-[#6B7280] w-[180px] flex-shrink-0">Metrics:</span>
-            <span className="text-[13px] text-[#111827] font-medium">Customer Churn Rate</span>
+            <span className="text-[13px] text-muted-foreground w-[180px] flex-shrink-0">Metrics:</span>
+            <span className="text-[13px] text-foreground font-medium">Customer Churn Rate</span>
           </div>
           
           <div className="flex items-start">
-            <span className="text-[13px] text-[#6B7280] w-[180px] flex-shrink-0">Dimensions:</span>
-            <span className="text-[13px] text-[#111827] font-medium">Customer Segment, Brand, Geography, Time Period</span>
+            <span className="text-[13px] text-muted-foreground w-[180px] flex-shrink-0">Dimensions:</span>
+            <span className="text-[13px] text-foreground font-medium">Customer Segment, Brand, Geography, Time Period</span>
           </div>
           
           <div className="flex items-start">
-            <span className="text-[13px] text-[#6B7280] w-[180px] flex-shrink-0">Migration status:</span>
+            <span className="text-[13px] text-muted-foreground w-[180px] flex-shrink-0">Migration status:</span>
             <span className="text-[13px] text-green-600 font-semibold">Completed</span>
           </div>
           
           <div className="flex items-start">
-            <span className="text-[13px] text-[#6B7280] w-[180px] flex-shrink-0">User impact:</span>
-            <span className="text-[13px] text-[#111827] font-medium">None</span>
+            <span className="text-[13px] text-muted-foreground w-[180px] flex-shrink-0">User impact:</span>
+            <span className="text-[13px] text-foreground font-medium">None</span>
           </div>
         </div>
       </div>
 
       {/* Primary Next Actions */}
       <div className="mb-4 max-w-[90%]">
-        <h3 className="text-[14px] font-semibold text-[#111827] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <h3 className="text-[14px] font-semibold text-foreground mb-3" style={{ fontFamily: 'var(--font-body)' }}>
           What would you like to do next?
         </h3>
 
@@ -2525,7 +2525,7 @@ function MigrationCompletionSuccessUI({
           <button
             onClick={onViewReport}
             className="px-6 py-2.5 bg-[#111827] text-white rounded-lg hover:bg-[#1F2937] active:bg-[#0F172A] transition-colors shadow-sm text-[13px] font-medium"
-            style={{ fontFamily: 'Inter, sans-serif' }}
+            style={{ fontFamily: 'var(--font-body)' }}
           >
             Open report
           </button>
@@ -2533,8 +2533,8 @@ function MigrationCompletionSuccessUI({
           {/* Secondary Button */}
           <button
             onClick={onMonitorUsage}
-            className="px-6 py-2.5 bg-white text-[#111827] border-2 border-gray-300 rounded-lg hover:bg-gray-50 active:bg-gray-100 transition-colors shadow-sm text-[13px] font-medium"
-            style={{ fontFamily: 'Inter, sans-serif' }}
+            className="px-6 py-2.5 bg-white text-foreground border-2 border-gray-300 rounded-lg hover:bg-muted active:bg-muted transition-colors shadow-sm text-[13px] font-medium"
+            style={{ fontFamily: 'var(--font-body)' }}
           >
             Monitor usage
           </button>
@@ -2542,8 +2542,8 @@ function MigrationCompletionSuccessUI({
           {/* Tertiary Button (text style) */}
           <button
             onClick={onExportSummary}
-            className="px-6 py-2.5 text-[#111827] hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors text-[13px] font-medium"
-            style={{ fontFamily: 'Inter, sans-serif' }}
+            className="px-6 py-2.5 text-foreground hover:bg-muted active:bg-border rounded-lg transition-colors text-[13px] font-medium"
+            style={{ fontFamily: 'var(--font-body)' }}
           >
             Export migration summary
           </button>
@@ -2551,11 +2551,11 @@ function MigrationCompletionSuccessUI({
       </div>
 
       {/* Legacy Report Notice */}
-      <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-4 max-w-[90%]" style={{ fontFamily: 'Inter, sans-serif' }}>
-        <div className="text-[13px] font-semibold text-[#111827] mb-1">
+      <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-4 max-w-[90%]" style={{ fontFamily: 'var(--font-body)' }}>
+        <div className="text-[13px] font-semibold text-foreground mb-1">
           About the legacy report
         </div>
-        <p className="text-[13px] text-[#111827]">
+        <p className="text-[13px] text-foreground">
           The original Tableau report is still available. Once usage is confirmed, it can be archived to reduce licensing cost.
         </p>
       </div>
@@ -2564,8 +2564,8 @@ function MigrationCompletionSuccessUI({
       <div className="max-w-[80%]">
         <button
           onClick={onStartAnother}
-          className="text-[#111827] hover:text-[#0F172A] text-[13px] font-medium transition-colors underline"
-          style={{ fontFamily: 'Inter, sans-serif' }}
+          className="text-foreground hover:text-[#0F172A] text-[13px] font-medium transition-colors underline"
+          style={{ fontFamily: 'var(--font-body)' }}
         >
           Start another migration
         </button>
@@ -2591,18 +2591,18 @@ function CreateNewDataSourceSelectionUI({
   return (
     <div className="mb-6">
       {/* Assistant Message */}
-      <div className="bg-gray-50 px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'Inter, sans-serif' }}>
-        <div className="text-[13px] text-[#111827] font-semibold mb-2">
+      <div className="bg-muted px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'var(--font-body)' }}>
+        <div className="text-[13px] text-foreground font-semibold mb-2">
           Let's create a new report using governed data.
         </div>
-        <div className="text-[13px] text-[#111827]">
+        <div className="text-[13px] text-foreground">
           New reports in Report Hub start with certified data products, so metrics are consistent and reusable from day one.
         </div>
       </div>
 
       {/* Data Source Selection Section */}
       <div className="mb-4 max-w-[90%]">
-        <h3 className="text-[14px] font-semibold text-[#111827] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <h3 className="text-[14px] font-semibold text-foreground mb-3" style={{ fontFamily: 'var(--font-body)' }}>
           Select data source
         </h3>
 
@@ -2613,7 +2613,7 @@ function CreateNewDataSourceSelectionUI({
             className={`bg-white border-2 rounded-xl p-4 cursor-pointer transition-all ${
               selectedSource === 'vdm'
                 ? 'border-blue-500 ring-2 ring-blue-100 shadow-md'
-                : 'border-[#E5E7EB] hover:border-blue-300 hover:shadow-sm'
+                : 'border-border hover:border-blue-300 hover:shadow-sm'
             }`}
           >
             <div className="flex items-start gap-3">
@@ -2630,7 +2630,7 @@ function CreateNewDataSourceSelectionUI({
 
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <h4 className="text-[14px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <h4 className="text-[14px] font-semibold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                     Virtual Data Marketplace (Recommended)
                   </h4>
                   <div className="flex items-center gap-1.5">
@@ -2642,7 +2642,7 @@ function CreateNewDataSourceSelectionUI({
                     </span>
                   </div>
                 </div>
-                <p className="text-[12px] text-[#6B7280] leading-relaxed" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <p className="text-[12px] text-muted-foreground leading-relaxed" style={{ fontFamily: 'var(--font-body)' }}>
                   Browse certified data products with approved metrics and dimensions.
                 </p>
               </div>
@@ -2655,7 +2655,7 @@ function CreateNewDataSourceSelectionUI({
             className={`bg-white border-2 rounded-xl p-4 cursor-pointer transition-all ${
               selectedSource === 'other'
                 ? 'border-blue-500 ring-2 ring-blue-100 shadow-md'
-                : 'border-[#E5E7EB] hover:border-blue-300 hover:shadow-sm'
+                : 'border-border hover:border-blue-300 hover:shadow-sm'
             }`}
           >
             <div className="flex items-start gap-3">
@@ -2671,13 +2671,13 @@ function CreateNewDataSourceSelectionUI({
               </div>
 
               <div className="flex-1">
-                <h4 className="text-[14px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <h4 className="text-[14px] font-semibold text-foreground mb-1" style={{ fontFamily: 'var(--font-body)' }}>
                   Other governed sources
                 </h4>
-                <p className="text-[12px] text-[#6B7280] leading-relaxed mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <p className="text-[12px] text-muted-foreground leading-relaxed mb-2" style={{ fontFamily: 'var(--font-body)' }}>
                   Use approved enterprise data sources if needed.
                 </p>
-                <p className="text-[11px] text-[#9CA3AF] italic" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <p className="text-[11px] text-muted-foreground italic" style={{ fontFamily: 'var(--font-body)' }}>
                   Examples: BigQuery, Teradata, Hadoop
                 </p>
               </div>
@@ -2691,7 +2691,7 @@ function CreateNewDataSourceSelectionUI({
         <button
           onClick={() => onContinue(selectedSource)}
           className="px-6 py-2.5 bg-[#111827] text-white rounded-lg hover:bg-[#1F2937] active:bg-[#0F172A] transition-colors shadow-sm text-[13px] font-medium w-fit"
-          style={{ fontFamily: 'Inter, sans-serif' }}
+          style={{ fontFamily: 'var(--font-body)' }}
         >
           Continue
         </button>
@@ -2699,8 +2699,8 @@ function CreateNewDataSourceSelectionUI({
         {/* Optional Secondary Link */}
         <button
           onClick={onLearnMore}
-          className="text-[#111827] hover:text-[#0F172A] text-[13px] font-medium transition-colors underline text-left w-fit"
-          style={{ fontFamily: 'Inter, sans-serif' }}
+          className="text-foreground hover:text-[#0F172A] text-[13px] font-medium transition-colors underline text-left w-fit"
+          style={{ fontFamily: 'var(--font-body)' }}
         >
           Why Virtual Data Marketplace is recommended
         </button>
@@ -2722,17 +2722,17 @@ function CreateNewVDMConfirmationUI({
   return (
     <div className="mb-6">
       {/* Assistant Message */}
-      <div className="bg-gray-50 px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'Inter, sans-serif' }}>
-        <div className="text-[13px] text-[#111827] font-semibold mb-2">
+      <div className="bg-muted px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'var(--font-body)' }}>
+        <div className="text-[13px] text-foreground font-semibold mb-2">
           We'll build this report using governed data.
         </div>
-        <div className="text-[13px] text-[#111827]">
+        <div className="text-[13px] text-foreground">
           New reports in Report Hub start with Virtual Data Marketplace, so metrics are certified and reusable from day one.
         </div>
       </div>
 
       {/* VDM Confirmation Card (Locked/Confirmed) */}
-      <div className="bg-white border-2 border-green-200 rounded-xl p-5 mb-4 max-w-[90%]" style={{ fontFamily: 'Inter, sans-serif' }}>
+      <div className="bg-white border-2 border-green-200 rounded-xl p-5 mb-4 max-w-[90%]" style={{ fontFamily: 'var(--font-body)' }}>
         <div className="flex items-start gap-3">
           {/* Checkmark Icon */}
           <div className="flex-shrink-0 mt-0.5">
@@ -2742,10 +2742,10 @@ function CreateNewVDMConfirmationUI({
           </div>
 
           <div className="flex-1">
-            <h4 className="text-[14px] font-semibold text-[#111827] mb-1">
+            <h4 className="text-[14px] font-semibold text-foreground mb-1">
               Virtual Data Marketplace
             </h4>
-            <p className="text-[12px] text-[#6B7280] mb-3">
+            <p className="text-[12px] text-muted-foreground mb-3">
               Confirmed data source for this report
             </p>
             
@@ -2766,7 +2766,7 @@ function CreateNewVDMConfirmationUI({
       <button
         onClick={onContinue}
         className="px-6 py-2.5 bg-[#111827] text-white rounded-lg hover:bg-[#1F2937] active:bg-[#0F172A] transition-colors shadow-sm text-[13px] font-medium w-fit"
-        style={{ fontFamily: 'Inter, sans-serif' }}
+        style={{ fontFamily: 'var(--font-body)' }}
       >
         Continue
       </button>
@@ -2791,25 +2791,25 @@ function CreateNewUsageExpectationsUI({
   return (
     <div className="mb-6">
       {/* Assistant Message */}
-      <div className="bg-gray-50 px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'Inter, sans-serif' }}>
-        <div className="text-[13px] text-[#111827] font-semibold mb-2">
+      <div className="bg-muted px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'var(--font-body)' }}>
+        <div className="text-[13px] text-foreground font-semibold mb-2">
           How will this report be used?
         </div>
-        <div className="text-[13px] text-[#111827]">
+        <div className="text-[13px] text-foreground">
           This helps Report Hub choose the most cost-effective execution path.
         </div>
       </div>
 
       {/* Usage Expectations Form */}
-      <div className="bg-white border-2 border-[#E5E7EB] rounded-xl p-5 mb-4 max-w-[90%]" style={{ fontFamily: 'Inter, sans-serif' }}>
-        <h3 className="text-[14px] font-semibold text-[#111827] mb-4">
+      <div className="bg-white border-2 border-border rounded-xl p-5 mb-4 max-w-[90%]" style={{ fontFamily: 'var(--font-body)' }}>
+        <h3 className="text-[14px] font-semibold text-foreground mb-4">
           Report usage details
         </h3>
 
         <div className="space-y-5">
           {/* Intended Audience */}
           <div>
-            <label className="block text-[13px] font-medium text-[#111827] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <label className="block text-[13px] font-medium text-foreground mb-2" style={{ fontFamily: 'var(--font-body)' }}>
               Intended audience
             </label>
             <div className="space-y-2">
@@ -2833,7 +2833,7 @@ function CreateNewUsageExpectationsUI({
                         <div className="w-2 h-2 rounded-full bg-white" />
                       )}
                     </div>
-                    <span className="text-[13px] font-medium text-[#111827]">{option}</span>
+                    <span className="text-[13px] font-medium text-foreground">{option}</span>
                   </div>
                 </div>
               ))}
@@ -2842,7 +2842,7 @@ function CreateNewUsageExpectationsUI({
 
           {/* Expected Users */}
           <div>
-            <label className="block text-[13px] font-medium text-[#111827] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <label className="block text-[13px] font-medium text-foreground mb-2" style={{ fontFamily: 'var(--font-body)' }}>
               Expected users
             </label>
             <div className="space-y-2">
@@ -2866,7 +2866,7 @@ function CreateNewUsageExpectationsUI({
                         <div className="w-2 h-2 rounded-full bg-white" />
                       )}
                     </div>
-                    <span className="text-[13px] font-medium text-[#111827]">{option}</span>
+                    <span className="text-[13px] font-medium text-foreground">{option}</span>
                   </div>
                 </div>
               ))}
@@ -2875,7 +2875,7 @@ function CreateNewUsageExpectationsUI({
 
           {/* Expected Views per Month */}
           <div>
-            <label className="block text-[13px] font-medium text-[#111827] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <label className="block text-[13px] font-medium text-foreground mb-2" style={{ fontFamily: 'var(--font-body)' }}>
               Expected views per month
             </label>
             <div className="space-y-2">
@@ -2899,7 +2899,7 @@ function CreateNewUsageExpectationsUI({
                         <div className="w-2 h-2 rounded-full bg-white" />
                       )}
                     </div>
-                    <span className="text-[13px] font-medium text-[#111827]">{option}</span>
+                    <span className="text-[13px] font-medium text-foreground">{option}</span>
                   </div>
                 </div>
               ))}
@@ -2909,7 +2909,7 @@ function CreateNewUsageExpectationsUI({
 
         {/* Helper Text */}
         <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-          <p className="text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <p className="text-[11px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
             This helps Report Hub choose the most cost-effective execution path.
           </p>
         </div>
@@ -2919,7 +2919,7 @@ function CreateNewUsageExpectationsUI({
       <button
         onClick={() => onContinue({ audience, users, views })}
         className="px-6 py-2.5 bg-[#111827] text-white rounded-lg hover:bg-[#1F2937] active:bg-[#0F172A] transition-colors shadow-sm text-[13px] font-medium w-fit"
-        style={{ fontFamily: 'Inter, sans-serif' }}
+        style={{ fontFamily: 'var(--font-body)' }}
       >
         Continue
       </button>
@@ -2946,17 +2946,17 @@ function CreateNewExecutionRoutingUI({
   return (
     <div className="mb-6">
       {/* Assistant Message */}
-      <div className="bg-gray-50 px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'Inter, sans-serif' }}>
-        <div className="text-[13px] text-[#111827] font-semibold mb-2">
+      <div className="bg-muted px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'var(--font-body)' }}>
+        <div className="text-[13px] text-foreground font-semibold mb-2">
           Report execution path
         </div>
-        <div className="text-[13px] text-[#111827]">
+        <div className="text-[13px] text-foreground">
           Based on your usage expectations, Report Hub will determine the best execution platform.
         </div>
       </div>
 
       {/* Default Execution Card */}
-      <div className="bg-green-50 border-2 border-green-200 rounded-xl p-5 mb-4 max-w-[90%]" style={{ fontFamily: 'Inter, sans-serif' }}>
+      <div className="bg-green-50 border-2 border-green-200 rounded-xl p-5 mb-4 max-w-[90%]" style={{ fontFamily: 'var(--font-body)' }}>
         <div className="flex items-start gap-3 mb-3">
           <div className="flex-shrink-0 mt-0.5">
             <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
@@ -2965,10 +2965,10 @@ function CreateNewExecutionRoutingUI({
           </div>
 
           <div className="flex-1">
-            <h4 className="text-[14px] font-semibold text-[#111827] mb-1">
+            <h4 className="text-[14px] font-semibold text-foreground mb-1">
               Report Hub Open-Source Engine
             </h4>
-            <p className="text-[12px] text-[#6B7280] mb-3">
+            <p className="text-[12px] text-muted-foreground mb-3">
               Default execution path for this report
             </p>
             
@@ -2983,10 +2983,10 @@ function CreateNewExecutionRoutingUI({
             </div>
 
             {/* Cost Note */}
-            <div className="bg-white rounded-lg p-3 border border-green-300">
+            <div className="bg-card rounded-lg p-3 border border-green-300">
               <div className="flex items-start gap-2">
                 <Info className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                <p className="text-[11px] text-[#111827]">
+                <p className="text-[11px] text-foreground">
                   This report will use Report Hub's open-source engine, avoiding enterprise BI licensing fees.
                 </p>
               </div>
@@ -2996,35 +2996,35 @@ function CreateNewExecutionRoutingUI({
       </div>
 
       {/* Enterprise BI Section (Collapsed/Informational) */}
-      <div className="bg-white border-2 border-gray-200 rounded-xl p-4 mb-4 max-w-[90%]" style={{ fontFamily: 'Inter, sans-serif' }}>
+      <div className="bg-white border-2 border-gray-200 rounded-xl p-4 mb-4 max-w-[90%]" style={{ fontFamily: 'var(--font-body)' }}>
         <button
           onClick={() => setShowEnterpriseDetails(!showEnterpriseDetails)}
           className="w-full flex items-center justify-between text-left"
         >
-          <h4 className="text-[13px] font-semibold text-[#111827]">
+          <h4 className="text-[13px] font-semibold text-foreground">
             When enterprise BI is required
           </h4>
-          <ArrowRight className={`w-4 h-4 text-gray-400 transition-transform ${showEnterpriseDetails ? 'rotate-90' : ''}`} />
+          <ArrowRight className={`w-4 h-4 text-muted-foreground transition-transform ${showEnterpriseDetails ? 'rotate-90' : ''}`} />
         </button>
 
         {showEnterpriseDetails && (
           <div className="mt-4 space-y-3">
             <div className="border-l-2 border-gray-300 pl-3">
-              <h5 className="text-[12px] font-semibold text-[#111827] mb-1">Qlik</h5>
-              <p className="text-[11px] text-[#6B7280]">
+              <h5 className="text-[12px] font-semibold text-foreground mb-1">Qlik</h5>
+              <p className="text-[11px] text-muted-foreground">
                 Used for advanced analytics and associative models
               </p>
             </div>
 
             <div className="border-l-2 border-gray-300 pl-3">
-              <h5 className="text-[12px] font-semibold text-[#111827] mb-1">Looker</h5>
-              <p className="text-[11px] text-[#6B7280]">
+              <h5 className="text-[12px] font-semibold text-foreground mb-1">Looker</h5>
+              <p className="text-[11px] text-muted-foreground">
                 Routed when specific Looker capabilities are required
               </p>
             </div>
 
             <div className="bg-blue-50 rounded-lg p-3">
-              <p className="text-[11px] text-[#6B7280]">
+              <p className="text-[11px] text-muted-foreground">
                 <strong>Example triggers:</strong> Advanced analytics, high concurrency, real-time dashboards
               </p>
             </div>
@@ -3033,10 +3033,10 @@ function CreateNewExecutionRoutingUI({
       </div>
 
       {/* Summary Note */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 max-w-[90%]" style={{ fontFamily: 'Inter, sans-serif' }}>
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 max-w-[90%]" style={{ fontFamily: 'var(--font-body)' }}>
         <div className="flex items-start gap-2">
           <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-          <p className="text-[12px] text-[#111827]">
+          <p className="text-[12px] text-foreground">
             <strong>New reports never start in Tableau.</strong> All new work uses governed data and Report Hub execution routing.
           </p>
         </div>
@@ -3047,15 +3047,15 @@ function CreateNewExecutionRoutingUI({
         <button
           onClick={onContinue}
           className="px-6 py-2.5 bg-[#111827] text-white rounded-lg hover:bg-[#1F2937] active:bg-[#0F172A] transition-colors shadow-sm text-[13px] font-medium w-fit"
-          style={{ fontFamily: 'Inter, sans-serif' }}
+          style={{ fontFamily: 'var(--font-body)' }}
         >
           Continue
         </button>
 
         <button
           onClick={onLearnMore}
-          className="text-[#111827] hover:text-[#0F172A] text-[13px] font-medium transition-colors underline text-left w-fit"
-          style={{ fontFamily: 'Inter, sans-serif' }}
+          className="text-foreground hover:text-[#0F172A] text-[13px] font-medium transition-colors underline text-left w-fit"
+          style={{ fontFamily: 'var(--font-body)' }}
         >
           Learn more about execution routing
         </button>
@@ -3443,7 +3443,7 @@ export function TalkMigrationPage() {
     if (msg.type === 'user') {
       return (
         <div key={msg.id} className="flex justify-end mb-4">
-          <div className="bg-[#111827] text-white px-4 py-3 rounded-xl max-w-[80%]" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <div className="bg-[#111827] text-white px-4 py-3 rounded-xl max-w-[80%]" style={{ fontFamily: 'var(--font-body)' }}>
             <p className="text-[13px]">{msg.content}</p>
           </div>
         </div>
@@ -3878,21 +3878,21 @@ export function TalkMigrationPage() {
       const assetName = msg.data?.assetName || 'Customer Churn Overview';
       return (
         <div key={msg.id} className="mb-6">
-          <div className="bg-gray-50 px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'Inter, sans-serif' }}>
-            <p className="text-[13px] text-[#111827] mb-3">
+          <div className="bg-muted px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'var(--font-body)' }}>
+            <p className="text-[13px] text-foreground mb-3">
               Got it — I'll help you migrate <strong>{assetName}</strong> into the Report Hub ecosystem.
             </p>
-            <p className="text-[13px] text-[#111827] mb-1">
+            <p className="text-[13px] text-foreground mb-1">
               Before we begin, I'll confirm your intent and preferred destination path.
             </p>
-            <p className="text-[13px] text-[#111827]">
+            <p className="text-[13px] text-foreground">
               You'll be guided to use governed data (Virtual Data Marketplace) by default, so your churn metrics stay consistent and certified.
             </p>
           </div>
 
           {/* What happens next checklist */}
-          <div className="bg-white border border-[#E5E7EB] rounded-xl p-4 mb-4 max-w-[80%]">
-            <h5 className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <div className="bg-white border border-border rounded-xl p-4 mb-4 max-w-[80%]">
+            <h5 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-3" style={{ fontFamily: 'var(--font-body)' }}>
               What happens next
             </h5>
             <div className="space-y-2">
@@ -3904,11 +3904,11 @@ export function TalkMigrationPage() {
               ].map((item, idx) => (
                 <div key={idx} className="flex items-start gap-2">
                   <div className="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center mt-0.5 flex-shrink-0">
-                    <span className="text-[10px] text-[#6B7280] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <span className="text-[10px] text-muted-foreground font-medium" style={{ fontFamily: 'var(--font-body)' }}>
                       {idx + 1}
                     </span>
                   </div>
-                  <span className="text-[12px] text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <span className="text-[12px] text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                     {item}
                   </span>
                 </div>
@@ -3936,7 +3936,7 @@ export function TalkMigrationPage() {
                 }, 800);
               }}
               className="px-6 py-2.5 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg text-[13px] font-medium transition-colors shadow-sm"
-              style={{ fontFamily: 'Inter, sans-serif' }}
+              style={{ fontFamily: 'var(--font-body)' }}
             >
               Continue
             </button>
@@ -3958,7 +3958,7 @@ export function TalkMigrationPage() {
                 }, 800);
               }}
               className="text-[13px] text-blue-600 hover:underline font-medium"
-              style={{ fontFamily: 'Inter, sans-serif' }}
+              style={{ fontFamily: 'var(--font-body)' }}
             >
               View migration overview
             </button>
@@ -3972,37 +3972,37 @@ export function TalkMigrationPage() {
       return (
         <div key={msg.id} className="mb-6">
           {/* Assistant Message */}
-          <div className="bg-gray-50 px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'Inter, sans-serif' }}>
-            <div className="text-[13px] text-[#111827] whitespace-pre-wrap font-semibold mb-2">
+          <div className="bg-muted px-4 py-3 rounded-xl mb-4 max-w-[80%]" style={{ fontFamily: 'var(--font-body)' }}>
+            <div className="text-[13px] text-foreground whitespace-pre-wrap font-semibold mb-2">
               Let's confirm where this report is coming from and where it's going.
             </div>
-            <div className="text-[13px] text-[#111827]">
+            <div className="text-[13px] text-foreground">
               This ensures there's no confusion about the target-state BI platform.
             </div>
           </div>
 
           {/* SOURCE → DESTINATION VISUAL BLOCK */}
-          <div className="bg-white border-2 border-[#E5E7EB] rounded-xl p-6 mb-4 max-w-[90%]" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <div className="bg-white border-2 border-border rounded-xl p-6 mb-4 max-w-[90%]" style={{ fontFamily: 'var(--font-body)' }}>
             <div className="flex items-start gap-8">
               {/* LEFT SIDE - SOURCE (Locked) */}
               <div className="flex-1">
-                <div className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide mb-3">
+                <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                   SOURCE
                 </div>
-                <div className="bg-gray-50 border-2 border-gray-300 rounded-xl p-4 opacity-75">
+                <div className="bg-muted border-2 border-gray-300 rounded-xl p-4 opacity-75">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1">
-                      <h4 className="text-[14px] font-semibold text-[#111827] mb-1">
+                      <h4 className="text-[14px] font-semibold text-foreground mb-1">
                         Tableau
                       </h4>
-                      <p className="text-[11px] text-[#6B7280]">
+                      <p className="text-[11px] text-muted-foreground">
                         Legacy BI platform
                       </p>
                     </div>
-                    <Lock className="w-4 h-4 text-gray-400" />
+                    <Lock className="w-4 h-4 text-muted-foreground" />
                   </div>
                   <div className="mt-2">
-                    <span className="inline-flex items-center gap-1 bg-gray-200 text-gray-600 text-[10px] font-medium px-2 py-0.5 rounded">
+                    <span className="inline-flex items-center gap-1 bg-border text-muted-foreground text-[10px] font-medium px-2 py-0.5 rounded">
                       Source only
                     </span>
                   </div>
@@ -4011,7 +4011,7 @@ export function TalkMigrationPage() {
 
               {/* CENTER - DIRECTION INDICATOR */}
               <div className="flex flex-col items-center justify-center pt-8">
-                <div className="text-[10px] font-semibold text-[#6B7280] uppercase tracking-wide mb-2">
+                <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
                   Migration path
                 </div>
                 <ArrowRight className="w-8 h-8 text-blue-600" strokeWidth={2.5} />
@@ -4019,7 +4019,7 @@ export function TalkMigrationPage() {
 
               {/* RIGHT SIDE - DESTINATION (Ranked) */}
               <div className="flex-1">
-                <div className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide mb-3">
+                <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                   DESTINATION (Preference order)
                 </div>
                 <div className="space-y-3">
@@ -4030,13 +4030,13 @@ export function TalkMigrationPage() {
                         1
                       </span>
                       <div className="flex-1">
-                        <h4 className="text-[14px] font-semibold text-[#111827] mb-0.5">
+                        <h4 className="text-[14px] font-semibold text-foreground mb-0.5">
                           Verizon Report Hub
                         </h4>
-                        <p className="text-[11px] text-[#6B7280] font-medium mb-2">
+                        <p className="text-[11px] text-muted-foreground font-medium mb-2">
                           Default destination
                         </p>
-                        <p className="text-[11px] text-[#6B7280] leading-relaxed">
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">
                           Most reports are generated using Report Hub's open-source engine.
                         </p>
                       </div>
@@ -4050,13 +4050,13 @@ export function TalkMigrationPage() {
                         2
                       </span>
                       <div className="flex-1">
-                        <h4 className="text-[14px] font-semibold text-[#111827] mb-0.5">
+                        <h4 className="text-[14px] font-semibold text-foreground mb-0.5">
                           Qlik
                         </h4>
-                        <p className="text-[11px] text-[#6B7280] font-medium mb-2">
+                        <p className="text-[11px] text-muted-foreground font-medium mb-2">
                           Secondary (advanced analytics if required)
                         </p>
-                        <p className="text-[11px] text-[#6B7280] leading-relaxed">
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">
                           Used only when advanced enterprise BI capabilities are needed.
                         </p>
                       </div>
@@ -4070,13 +4070,13 @@ export function TalkMigrationPage() {
                         3
                       </span>
                       <div className="flex-1">
-                        <h4 className="text-[14px] font-semibold text-[#111827] mb-0.5">
+                        <h4 className="text-[14px] font-semibold text-foreground mb-0.5">
                           Looker
                         </h4>
-                        <p className="text-[11px] text-[#6B7280] font-medium mb-2">
+                        <p className="text-[11px] text-muted-foreground font-medium mb-2">
                           Tertiary
                         </p>
-                        <p className="text-[11px] text-[#6B7280] leading-relaxed">
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">
                           Routed only when specific Looker capabilities are required.
                         </p>
                       </div>
@@ -4088,10 +4088,10 @@ export function TalkMigrationPage() {
           </div>
 
           {/* SYSTEM GUIDANCE CALLOUT */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 max-w-[90%]" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 max-w-[90%]" style={{ fontFamily: 'var(--font-body)' }}>
             <div className="flex items-start gap-2">
               <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-              <p className="text-[12px] text-[#111827] leading-relaxed">
+              <p className="text-[12px] text-foreground leading-relaxed">
                 Report Hub determines the final execution platform based on usage, complexity, and cost — not by default tool selection.
               </p>
             </div>
@@ -4120,7 +4120,7 @@ export function TalkMigrationPage() {
                 }, 800);
               }}
               className="px-6 py-2.5 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg text-[13px] font-medium transition-colors shadow-sm self-start"
-              style={{ fontFamily: 'Inter, sans-serif' }}
+              style={{ fontFamily: 'var(--font-body)' }}
             >
               Continue
             </button>
@@ -4144,8 +4144,8 @@ export function TalkMigrationPage() {
                   );
                 }, 800);
               }}
-              className="text-[#6B7280] hover:text-[#111827] text-[13px] font-medium transition-colors underline self-start"
-              style={{ fontFamily: 'Inter, sans-serif' }}
+              className="text-muted-foreground hover:text-foreground text-[13px] font-medium transition-colors underline self-start"
+              style={{ fontFamily: 'var(--font-body)' }}
             >
               Why Report Hub is the default destination
             </button>
@@ -4741,22 +4741,22 @@ export function TalkMigrationPage() {
     if (msg.renderType === 'dataset_list') {
       return (
         <div key={msg.id} className="mb-6">
-          <div className="bg-gray-50 px-4 py-3 rounded-xl mb-3 max-w-[80%]" style={{ fontFamily: 'Inter, sans-serif' }}>
-            <p className="text-[13px] text-[#111827]">{msg.content}</p>
+          <div className="bg-muted px-4 py-3 rounded-xl mb-3 max-w-[80%]" style={{ fontFamily: 'var(--font-body)' }}>
+            <p className="text-[13px] text-foreground">{msg.content}</p>
           </div>
           <div className="space-y-2">
             {msg.data.datasets.map((dataset: any) => (
               <div
                 key={dataset.dataset_id}
                 onClick={() => handleDatasetClick(dataset)}
-                className="bg-white border border-[#E5E7EB] rounded-xl p-4 hover:border-blue-400 hover:shadow-md transition-all cursor-pointer"
+                className="bg-white border border-border rounded-xl p-4 hover:border-blue-400 hover:shadow-md transition-all cursor-pointer"
               >
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1">
-                    <h4 className="text-[14px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <h4 className="text-[14px] font-semibold text-foreground mb-1" style={{ fontFamily: 'var(--font-body)' }}>
                       {dataset.dataset_name}
                     </h4>
-                    <p className="text-[12px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <p className="text-[12px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                       {dataset.domain} • {dataset.source_system}
                     </p>
                   </div>
@@ -4787,16 +4787,16 @@ export function TalkMigrationPage() {
     if (msg.renderType === 'suggested_pills') {
       return (
         <div key={msg.id} className="mb-6">
-          <div className="bg-gray-50 px-4 py-3 rounded-xl mb-3 max-w-[80%]" style={{ fontFamily: 'Inter, sans-serif' }}>
-            <p className="text-[13px] text-[#111827]">{msg.content}</p>
+          <div className="bg-muted px-4 py-3 rounded-xl mb-3 max-w-[80%]" style={{ fontFamily: 'var(--font-body)' }}>
+            <p className="text-[13px] text-foreground">{msg.content}</p>
           </div>
           <div className="flex flex-wrap gap-2">
             {msg.data.pills.map((pill: string, idx: number) => (
               <button
                 key={idx}
                 onClick={() => handlePillClick(pill)}
-                className="px-4 py-2 bg-white border border-[#E5E7EB] rounded-lg text-[13px] text-[#111827] hover:border-blue-400 hover:bg-blue-50 transition-all"
-                style={{ fontFamily: 'Inter, sans-serif' }}
+                className="px-4 py-2 bg-white border border-border rounded-lg text-[13px] text-foreground hover:border-blue-400 hover:bg-blue-50 transition-all"
+                style={{ fontFamily: 'var(--font-body)' }}
               >
                 {pill}
               </button>
@@ -4809,8 +4809,8 @@ export function TalkMigrationPage() {
     // Default text render
     return (
       <div key={msg.id} className="mb-4">
-        <div className="bg-gray-50 px-4 py-3 rounded-xl max-w-[80%]" style={{ fontFamily: 'Inter, sans-serif' }}>
-          <p className="text-[13px] text-[#111827] whitespace-pre-wrap">{msg.content}</p>
+        <div className="bg-muted px-4 py-3 rounded-xl max-w-[80%]" style={{ fontFamily: 'var(--font-body)' }}>
+          <p className="text-[13px] text-foreground whitespace-pre-wrap">{msg.content}</p>
         </div>
       </div>
     );
@@ -4821,9 +4821,9 @@ export function TalkMigrationPage() {
     <Layout>
       <div className="flex h-[calc(100vh-64px)]">
         {/* LEFT PANEL - Session History */}
-        <div className="w-[280px] bg-white border-r border-[#E5E7EB] flex flex-col" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <div className="w-[280px] bg-white border-r border-border flex flex-col" style={{ fontFamily: 'var(--font-body)' }}>
           {/* Header */}
-          <div className="p-4 border-b border-[#E5E7EB]">
+          <div className="p-4 border-b border-border">
             <button
               onClick={handleNewSession}
               className="w-full px-4 py-2.5 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg text-[13px] font-medium transition-colors flex items-center justify-center gap-2"
@@ -4843,7 +4843,7 @@ export function TalkMigrationPage() {
                   className={`p-3 rounded-lg cursor-pointer transition-all ${
                     activeSessionId === session.session_id
                       ? 'bg-blue-50 border-2 border-blue-200'
-                      : 'bg-white border border-[#E5E7EB] hover:border-blue-300 hover:shadow-sm'
+                      : 'bg-white border border-border hover:border-blue-300 hover:shadow-sm'
                   }`}
                 >
                   {editingSessionId === session.session_id ? (
@@ -4864,21 +4864,21 @@ export function TalkMigrationPage() {
                   ) : (
                     <>
                       <div className="flex items-start justify-between mb-2">
-                        <h4 className="text-[13px] font-medium text-[#111827] flex-1 line-clamp-2">
+                        <h4 className="text-[13px] font-medium text-foreground flex-1 line-clamp-2">
                           {session.title}
                         </h4>
                         <div className="flex items-center gap-1 ml-2">
                           <button
                             onClick={(e) => handleEditSessionTitle(session.session_id, e)}
-                            className="p-1 hover:bg-gray-100 rounded"
+                            className="p-1 hover:bg-muted rounded"
                           >
-                            <Edit2 className="w-3.5 h-3.5 text-gray-500" />
+                            <Edit2 className="w-3.5 h-3.5 text-muted-foreground" />
                           </button>
                           <button
                             onClick={(e) => handleDeleteSession(session.session_id, e)}
-                            className="p-1 hover:bg-gray-100 rounded"
+                            className="p-1 hover:bg-muted rounded"
                           >
-                            <Trash2 className="w-3.5 h-3.5 text-gray-500" />
+                            <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
                           </button>
                         </div>
                       </div>
@@ -4887,13 +4887,13 @@ export function TalkMigrationPage() {
                           session.status === 'completed' ? 'bg-green-100 text-green-700' :
                           session.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
                           session.status === 'planned' ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-gray-100 text-gray-600'
+                          'bg-muted text-muted-foreground'
                         }`}>
                           {session.status === 'completed' ? 'Completed' :
                            session.status === 'in_progress' ? 'In Progress' :
                            session.status === 'planned' ? 'Planned' : 'Draft'}
                         </span>
-                        <span className="text-[10px] text-[#6B7280]">
+                        <span className="text-[10px] text-muted-foreground">
                           {formatRelativeTime(session.last_updated)}
                         </span>
                       </div>
@@ -4925,7 +4925,7 @@ export function TalkMigrationPage() {
                 })
                 .map(msg => renderMessage(msg))}
               {isGenerating && (
-                <div className="flex items-center gap-2 text-[#6B7280] text-[13px]">
+                <div className="flex items-center gap-2 text-muted-foreground text-[13px]">
                   <RefreshCw className="w-4 h-4 animate-spin" />
                   Generating response...
                 </div>
@@ -4935,7 +4935,7 @@ export function TalkMigrationPage() {
           </div>
 
           {/* Input Area */}
-          <div className="border-t border-[#E5E7EB] p-4 bg-white">
+          <div className="border-t border-border p-4 bg-white">
             <div className="max-w-4xl mx-auto">
               <div className="relative">
                 <textarea
@@ -4943,8 +4943,8 @@ export function TalkMigrationPage() {
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Ask about migration..."
-                  className="w-full px-4 py-3 pr-12 border border-[#E5E7EB] rounded-xl text-[13px] resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  style={{ fontFamily: 'Inter, sans-serif', minHeight: '48px', maxHeight: '120px' }}
+                  className="w-full px-4 py-3 pr-12 border border-border rounded-xl text-[13px] resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  style={{ fontFamily: 'var(--font-body)', minHeight: '48px', maxHeight: '120px' }}
                   rows={1}
                 />
                 <button
@@ -4961,23 +4961,23 @@ export function TalkMigrationPage() {
 
         {/* RIGHT PANEL - Report/Dataset Details */}
         {showRightPanel && (
-          <div className="w-[360px] bg-white border-l border-[#E5E7EB] overflow-y-auto p-6" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <div className="w-[360px] bg-white border-l border-border overflow-y-auto p-6" style={{ fontFamily: 'var(--font-body)' }}>
             {/* Show placeholder when no report or dataset selected */}
             {!selectedReport && !selectedDataset && (
               <>
                 <div className="flex items-start justify-between mb-4">
-                  <h3 className="text-[16px] font-semibold text-[#111827]">
+                  <h3 className="text-[16px] font-semibold text-foreground">
                     Report Selection
                   </h3>
                   <button
                     onClick={() => setShowRightPanel(false)}
-                    className="p-1 hover:bg-gray-100 rounded"
+                    className="p-1 hover:bg-muted rounded"
                   >
-                    <X className="w-4 h-4 text-gray-500" />
+                    <X className="w-4 h-4 text-muted-foreground" />
                   </button>
                 </div>
                 <div className="flex items-center justify-center h-[200px]">
-                  <p className="text-[13px] text-[#6B7280] text-center">
+                  <p className="text-[13px] text-muted-foreground text-center">
                     No report selected yet
                   </p>
                 </div>
@@ -4988,14 +4988,14 @@ export function TalkMigrationPage() {
             {(selectedReport || selectedDataset) && (
               <>
                 <div className="flex items-start justify-between mb-4">
-                  <h3 className="text-[16px] font-semibold text-[#111827]">
+                  <h3 className="text-[16px] font-semibold text-foreground">
                     {selectedReport ? selectedReport.name : (selectedDataset?.dataset_name || 'No report selected yet')}
                   </h3>
                   <button
                     onClick={() => setShowRightPanel(false)}
-                    className="p-1 hover:bg-gray-100 rounded"
+                    className="p-1 hover:bg-muted rounded"
                   >
-                    <X className="w-4 h-4 text-gray-500" />
+                    <X className="w-4 h-4 text-muted-foreground" />
                   </button>
                 </div>
 
@@ -5004,13 +5004,13 @@ export function TalkMigrationPage() {
               <div className="space-y-4">
                 {/* Basic Info */}
                 <div>
-                  <h4 className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide mb-2">
+                  <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
                     Report Details
                   </h4>
                   <div className="space-y-2 text-[12px]">
                     <div className="flex justify-between">
-                      <span className="text-[#6B7280]">Source Platform:</span>
-                      <span className="text-[#111827] font-medium">
+                      <span className="text-muted-foreground">Source Platform:</span>
+                      <span className="text-foreground font-medium">
                         {selectedReport.sourcePlatform === 'tableau' ? 'Tableau' : 
                          selectedReport.sourcePlatform === 'powerbi' ? 'Power BI' :
                          selectedReport.sourcePlatform === 'qlik' ? 'Qlik' : 'Report Hub'}
@@ -5018,8 +5018,8 @@ export function TalkMigrationPage() {
                     </div>
                     {selectedReport.destinationPlatform && (
                       <div className="flex justify-between">
-                        <span className="text-[#6B7280]">Destination:</span>
-                        <span className="text-[#111827] font-medium">
+                        <span className="text-muted-foreground">Destination:</span>
+                        <span className="text-foreground font-medium">
                           {selectedReport.destinationPlatform === 'bifabric' ? 'Report Hub' : 
                            selectedReport.destinationPlatform === 'qlik' ? 'Qlik' : 
                            selectedReport.destinationPlatform === 'looker' ? 'Looker' : '—'}
@@ -5028,8 +5028,8 @@ export function TalkMigrationPage() {
                     )}
                     {selectedReport.visualConfig && (
                       <div className="flex justify-between">
-                        <span className="text-[#6B7280]">Visual Handling:</span>
-                        <span className="text-[#111827] font-medium">
+                        <span className="text-muted-foreground">Visual Handling:</span>
+                        <span className="text-foreground font-medium">
                           {selectedReport.visualConfig.layoutOption === 'keep_current' 
                             ? 'Reuse layout' 
                             : 'Reference existing'}
@@ -5037,33 +5037,33 @@ export function TalkMigrationPage() {
                       </div>
                     )}
                     <div className="flex justify-between">
-                      <span className="text-[#6B7280]">Owner:</span>
-                      <span className="text-[#111827] font-medium">{selectedReport.owner}</span>
+                      <span className="text-muted-foreground">Owner:</span>
+                      <span className="text-foreground font-medium">{selectedReport.owner}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-[#6B7280]">Last Updated:</span>
-                      <span className="text-[#111827] font-medium">{selectedReport.lastUpdated}</span>
+                      <span className="text-muted-foreground">Last Updated:</span>
+                      <span className="text-foreground font-medium">{selectedReport.lastUpdated}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Usage Stats */}
                 <div>
-                  <h4 className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide mb-2">
+                  <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
                     Usage Snapshot
                   </h4>
                   <div className="space-y-2 text-[12px]">
                     <div className="flex justify-between">
-                      <span className="text-[#6B7280]">Active Users:</span>
-                      <span className="text-[#111827] font-medium">{selectedReport.users} users</span>
+                      <span className="text-muted-foreground">Active Users:</span>
+                      <span className="text-foreground font-medium">{selectedReport.users} users</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-[#6B7280]">Monthly Views:</span>
-                      <span className="text-[#111827] font-medium">{(selectedReport.views / 1000).toFixed(1)}k</span>
+                      <span className="text-muted-foreground">Monthly Views:</span>
+                      <span className="text-foreground font-medium">{(selectedReport.views / 1000).toFixed(1)}k</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-[#6B7280]">Usage Level:</span>
-                      <span className={`font-medium ${selectedReport.usageLevel === 'high' ? 'text-green-600' : 'text-gray-600'}`}>
+                      <span className="text-muted-foreground">Usage Level:</span>
+                      <span className={`font-medium ${selectedReport.usageLevel === 'high' ? 'text-green-600' : 'text-muted-foreground'}`}>
                         {selectedReport.usageLevel === 'high' ? 'High' : 'Low'}
                       </span>
                     </div>
@@ -5077,21 +5077,21 @@ export function TalkMigrationPage() {
               <div className="space-y-4">
               {/* Basic Info */}
               <div>
-                <h4 className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide mb-2">
+                <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
                   Overview
                 </h4>
                 <div className="space-y-2 text-[12px]">
                   <div className="flex justify-between">
-                    <span className="text-[#6B7280]">Domain:</span>
-                    <span className="text-[#111827] font-medium">{selectedDataset.domain}</span>
+                    <span className="text-muted-foreground">Domain:</span>
+                    <span className="text-foreground font-medium">{selectedDataset.domain}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-[#6B7280]">Source:</span>
-                    <span className="text-[#111827] font-medium">{selectedDataset.source_system}</span>
+                    <span className="text-muted-foreground">Source:</span>
+                    <span className="text-foreground font-medium">{selectedDataset.source_system}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-[#6B7280]">Certified:</span>
-                    <span className={`font-medium ${selectedDataset.certified_flag ? 'text-green-600' : 'text-gray-600'}`}>
+                    <span className="text-muted-foreground">Certified:</span>
+                    <span className={`font-medium ${selectedDataset.certified_flag ? 'text-green-600' : 'text-muted-foreground'}`}>
                       {selectedDataset.certified_flag ? 'Yes' : 'No'}
                     </span>
                   </div>
@@ -5100,17 +5100,17 @@ export function TalkMigrationPage() {
 
               {/* Data Health */}
               <div>
-                <h4 className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide mb-2">
+                <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
                   Data Health
                 </h4>
                 <div className="space-y-2 text-[12px]">
                   <div className="flex justify-between">
-                    <span className="text-[#6B7280]">Freshness:</span>
-                    <span className="text-[#111827] font-medium">{selectedDataset.dataset_health?.freshness_status}</span>
+                    <span className="text-muted-foreground">Freshness:</span>
+                    <span className="text-foreground font-medium">{selectedDataset.dataset_health?.freshness_status}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-[#6B7280]">Quality Score:</span>
-                    <span className="text-[#111827] font-medium">{selectedDataset.dataset_health?.quality_score}/100</span>
+                    <span className="text-muted-foreground">Quality Score:</span>
+                    <span className="text-foreground font-medium">{selectedDataset.dataset_health?.quality_score}/100</span>
                   </div>
                 </div>
               </div>
@@ -5118,12 +5118,12 @@ export function TalkMigrationPage() {
               {/* Connected Reports */}
               {selectedDataset.connected_reports && selectedDataset.connected_reports.length > 0 && (
                 <div>
-                  <h4 className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide mb-2">
+                  <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
                     Connected Reports ({selectedDataset.connected_reports.length})
                   </h4>
                   <div className="space-y-2">
                     {selectedDataset.connected_reports.map((report: any) => (
-                      <div key={report.report_id} className="text-[12px] text-[#111827] p-2 bg-gray-50 rounded">
+                      <div key={report.report_id} className="text-[12px] text-foreground p-2 bg-muted rounded">
                         {report.report_name}
                       </div>
                     ))}

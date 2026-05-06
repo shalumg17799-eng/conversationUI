@@ -28,6 +28,8 @@ export interface UITypeTree {
   sections?: ReportSection[];
 }
 
+export type DashboardTemplate = 'summary' | 'deep_dive' | 'trend_analysis' | 'comparison' | 'qa_answer';
+
 export interface ReportSection {
   type: "summary" | "analysis" | "details";
   components: UITypeTree[];

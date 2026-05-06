@@ -13,12 +13,77 @@ import {
   Bell,
   User,
   ChevronDown,
+  Sparkles,
+  BarChart2,
 } from 'lucide-react';
 import { cn } from "../../../lib/utils";
 import { usePersona, personas, PersonaType } from '../../context/PersonaContext';
 
 interface LayoutProps {
   children: React.ReactNode;
+}
+
+function ModeToggle() {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const [searchParams, setSearchParams] = React.useState<URLSearchParams>(() => new URLSearchParams(location.search));
+
+  React.useEffect(() => {
+    setSearchParams(new URLSearchParams(location.search));
+  }, [location.search]);
+
+  // Only show on the conversational page
+  if (!location.pathname.startsWith('/conversational') && !location.pathname.startsWith('/talk/')) return null;
+
+  const isStatic = searchParams.get('response-mode') === 'static';
+
+  const toggle = (mode: 'static' | 'llm') => {
+    const params = new URLSearchParams(location.search);
+    if (mode === 'static') {
+      params.set('response-mode', 'static');
+    } else {
+      params.delete('response-mode');
+    }
+    navigate(`${location.pathname}?${params.toString()}`, { replace: true });
+  };
+
+  return (
+    <div
+      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50"
+      style={{ fontFamily: 'Inter, sans-serif' }}
+    >
+      <div
+        className="flex items-center gap-0.5 p-1 rounded-full shadow-lg border border-[#E5E3DF]"
+        style={{ background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
+      >
+        <button
+          onClick={() => toggle('static')}
+          className={cn(
+            'flex items-center gap-1.5 px-4 py-2 rounded-full text-[12px] font-medium transition-all duration-200',
+            isStatic
+              ? 'bg-[#1A1917] text-white shadow-sm'
+              : 'text-[#6B6965] hover:text-[#1A1917] hover:bg-[#F4F2EF]'
+          )}
+        >
+          <BarChart2 className="w-3.5 h-3.5" />
+          Static
+        </button>
+        <button
+          onClick={() => toggle('llm')}
+          className={cn(
+            'flex items-center gap-1.5 px-4 py-2 rounded-full text-[12px] font-medium transition-all duration-200',
+            !isStatic
+              ? 'bg-[#1A1917] text-white shadow-sm'
+              : 'text-[#6B6965] hover:text-[#1A1917] hover:bg-[#F4F2EF]'
+          )}
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          LLM
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export function Layout({ children }: LayoutProps) {
@@ -272,6 +337,9 @@ export function Layout({ children }: LayoutProps) {
            {children}
         </div>
       </main>
+
+      {/* Floating Mode Toggle */}
+      <ModeToggle />
     </div>
   );
 }

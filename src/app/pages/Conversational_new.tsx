@@ -290,6 +290,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
   const [isGenerating, setIsGenerating] = useState(false);
   const [flowState, setFlowState] = useState<string>('new');
   const [clarificationContext, setClarificationContext] = useState<string | null>(null);
+  const [clarificationHistory, setClarificationHistory] = useState<{question: string; answer: string}[]>([]);
   const [hoveredConvId, setHoveredConvId] = useState<string | null>(null);
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [isReportPanelOpen, setIsReportPanelOpen] = useState(false);
@@ -760,8 +761,13 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
   const handleContextCardClick = (action: string) => {
     const isFirstMessage = flowState === 'new';
     addUserMessage(action, isFirstMessage);
-    setIsGenerating(true);
 
+    if (searchParams.get('response-mode') !== 'static') {
+      sendToLLM(action);
+      return;
+    }
+
+    setIsGenerating(true);
     setTimeout(() => {
       setIsGenerating(false);
 
@@ -796,8 +802,13 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
   const handleStarterPillClick = (action: string) => {
     const isFirstMessage = flowState === 'new';
     addUserMessage(action, isFirstMessage);
-    setIsGenerating(true);
 
+    if (searchParams.get('response-mode') !== 'static') {
+      sendToLLM(action);
+      return;
+    }
+
+    setIsGenerating(true);
     setTimeout(() => {
       setIsGenerating(false);
 
@@ -2497,22 +2508,45 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
     }
   };
 
-  const handleAsk = async () => {
-    const userQuestion = inputValue.trim();
-    if (!userQuestion) return;
+  const getStaticResponse = (q: string): string => {
+    const lq = q.toLowerCase();
+    if (lq.includes('report') && (lq.includes('list') || lq.includes('all') || lq.includes('show'))) {
+      const names = allReports.slice(0, 5).map(r => `• **${r.report_name}** (${r.domain})`).join('\n');
+      return `Here are your available reports:\n\n${names}\n\nAsk me about any of these to explore further.`;
+    }
+    if (lq.includes('dataset') && (lq.includes('list') || lq.includes('all') || lq.includes('show'))) {
+      const names = allDatasets.slice(0, 5).map(d => `• **${d.dataset_name}** (${d.domain})`).join('\n');
+      return `Here are your available datasets:\n\n${names}`;
+    }
+    if (lq.includes('churn')) {
+      return `Churn rate analysis shows a current rate of **3.2%**, down from **3.8%** last quarter.\n\nKey drivers: improved onboarding (–0.4%), seasonal retention programs (–0.2%).`;
+    }
+    if (lq.includes('revenue') || lq.includes('sales')) {
+      return `Sales performance is **stable** over the last 30 days with a **+2.3% MoM** increase in revenue.\n\nNortheast Metro leads all territories. Midwest Central is underperforming by ~12%.`;
+    }
+    if (lq.includes('trend') || lq.includes('performance')) {
+      return `Overall performance trend is **positive** over the last 6 months.\n\n• Q1: Baseline\n• Q2: +4.1%\n• Q3: +2.8%\n• Current: +6.2% YTD`;
+    }
+    if (lq.includes('insight') || lq.includes('summary') || lq.includes('overview')) {
+      return `**Key Insights (Static Mode)**\n\n• Revenue up 6.2% YTD across all segments\n• Churn down 0.6% from last quarter\n• Northeast Metro outperforming by 18%\n• 3 reports flagged for refresh`;
+    }
+    if (lq.includes('help') || lq.includes('what can')) {
+      return `In **Static mode**, I use hardcoded data to answer questions about:\n\n• Reports and datasets\n• Revenue, churn, and performance trends\n• Key business insights\n\nSwitch to **LLM mode** for live AI-generated analysis.`;
+    }
+    return `I can answer questions about your reports, datasets, and performance trends in **Static mode**.\n\nTry asking: "Show my reports", "What's the churn rate?", or "Give me a sales summary".`;
+  };
 
-    const isClarificationAnswer = !!clarificationContext;
-    const queryToSend = clarificationContext
-      ? `${clarificationContext}. ${userQuestion}`
-      : userQuestion;
+  const getLastReportContext = (): string | undefined => {
+    const lastReport = [...messages].reverse().find(m => m.renderType === 'generative_ui' && m.data?.meta);
+    if (!lastReport) return undefined;
+    const meta = lastReport.data?.meta;
+    const title = meta?.title ?? '';
+    const description = meta?.description ?? meta?.message ?? '';
+    return title ? `Title: "${title}". Summary: ${description}` : undefined;
+  };
 
-    const isFirstMessage = flowState === 'new';
-    addUserMessage(userQuestion, isFirstMessage);
-    setInputValue('');
-    setClarificationContext(null);
+  const sendToLLM = async (query: string, skipClarification = false, history: {question: string; answer: string}[] = [], includePriorContext = false) => {
     setIsGenerating(true);
-
-    // Create a streaming message slot
     const streamMsgId = crypto.randomUUID();
     setMessages(prev => [...prev, {
       id: streamMsgId,
@@ -2524,11 +2558,13 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
       timestamp: new Date(),
     }]);
 
+    const priorContext = includePriorContext ? getLastReportContext() : undefined;
+
     try {
       const res = await fetch("http://localhost:3001/api/conversational/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: queryToSend, skipClarification: isClarificationAnswer }),
+        body: JSON.stringify({ query, skipClarification, clarificationHistory: history, priorContext }),
       });
 
       if (!res.ok || !res.body) throw new Error(`Backend error: ${res.status}`);
@@ -2571,7 +2607,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
               console.log('Intent  :', payload.intent, '| metric:', payload.metric, '| dimension:', payload.dimension);
               console.groupEnd();
             } else if (event === 'clarification') {
-              patchMsg(m => ({ ...m, isStreaming: false, renderType: 'clarification', originalQuery: userQuestion, data: { questions: payload.questions } }));
+              patchMsg(m => ({ ...m, isStreaming: false, renderType: 'clarification', originalQuery: query, data: { opener: payload.opener, currentQuestion: payload.currentQuestion, isRecovery: payload.isRecovery ?? false } }));
             } else if (event === 'error') {
               patchMsg(m => ({ ...m, isStreaming: false, renderType: 'text', content: payload.message || 'Error' }));
             }
@@ -2592,11 +2628,61 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
     }
   };
 
+  const handleAsk = async () => {
+    const userQuestion = inputValue.trim();
+    if (!userQuestion) return;
+
+    // Auto-detect if this is a clarification answer
+    const lastClarificationMsg = [...messages].reverse().find(m => m.renderType === 'clarification');
+    const activeContext = clarificationContext ?? (lastClarificationMsg ? lastClarificationMsg.originalQuery : null);
+    const isClarificationAnswer = !!activeContext;
+
+    let historyToSend = clarificationHistory;
+    let queryToSend: string;
+
+    if (isClarificationAnswer && activeContext) {
+      // Append typed answer to history using the last clarification question
+      const lastQuestion = lastClarificationMsg?.data?.currentQuestion?.question ?? '';
+      const newHistory = [...clarificationHistory, { question: lastQuestion, answer: userQuestion }];
+      setClarificationHistory(newHistory);
+      historyToSend = newHistory;
+      queryToSend = activeContext;
+    } else {
+      // Fresh query — clear history
+      setClarificationHistory([]);
+      historyToSend = [];
+      queryToSend = userQuestion;
+    }
+
+    const isFirstMessage = flowState === 'new';
+    addUserMessage(userQuestion, isFirstMessage);
+    setInputValue('');
+    setClarificationContext(null);
+
+    const isStaticMode = searchParams.get('response-mode') === 'static';
+    if (isStaticMode) {
+      setIsGenerating(true);
+      setTimeout(() => {
+        addAssistantMessage(getStaticResponse(queryToSend), 'text');
+        setIsGenerating(false);
+      }, 500);
+      return;
+    }
+
+    const hasExistingReport = messages.some(m => m.renderType === 'generative_ui' && m.data?.meta);
+    await sendToLLM(queryToSend, false, historyToSend, hasExistingReport && !isClarificationAnswer);
+  };
+
 
   const handleReportContextPrompt = (prompt: string) => {
     addUserMessage(prompt);
-    setIsGenerating(true);
 
+    if (searchParams.get('response-mode') !== 'static') {
+      sendToLLM(prompt, false, [], true);
+      return;
+    }
+
+    setIsGenerating(true);
     setTimeout(() => {
       setIsGenerating(false);
       const q = prompt.toLowerCase();
@@ -5270,28 +5356,48 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
               </div>
             )}
 
-            {/* Clarification — Gemma needs more context before generating */}
-            {message.renderType === 'clarification' && message.data?.questions && (
+            {/* Clarification — one question at a time with option chips */}
+            {message.renderType === 'clarification' && message.data?.currentQuestion && (
               <div className="mt-3 space-y-3">
-                <p className="text-[13px] text-[#6B7280] leading-relaxed">
-                  I need a bit more context to generate the right report. Could you clarify:
+                {message.data.opener && (
+                  <p className="text-[13px] text-[#374151] leading-relaxed">
+                    {message.data.opener}
+                  </p>
+                )}
+                <p className="text-[13px] font-medium text-[#111827] leading-relaxed">
+                  {message.data.currentQuestion.question}
                 </p>
-                <div className="space-y-2">
-                  {message.data.questions.map((q: string, i: number) => (
-                    <button
-                      key={i}
-                      onClick={() => {
-                        setClarificationContext(message.originalQuery || '');
-                        setInputValue('');
-                      }}
-                      className="w-full text-left px-4 py-2.5 bg-white border border-[#E5E7EB] rounded-xl text-[13px] text-[#374151] hover:bg-gray-50 hover:border-gray-300 transition-all flex items-center gap-2"
-                    >
-                      <span className="text-rose-400 font-bold">{i + 1}.</span>
-                      {q}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[11px] text-[#9CA3AF]">Click a question to select it, then type your answer below.</p>
+                {message.data.currentQuestion.options?.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {message.data.currentQuestion.options.map((opt: string, i: number) => (
+                      <button
+                        key={i}
+                        onClick={() => {
+                          addUserMessage(opt, false);
+                          if (message.data.isRecovery) {
+                            // Recovery: use selected option as a fresh query, reset all context
+                            setClarificationHistory([]);
+                            setClarificationContext(null);
+                            sendToLLM(opt, false, []);
+                          } else {
+                            const originalQuery = message.originalQuery || '';
+                            const newHistory = [
+                              ...clarificationHistory,
+                              { question: message.data.currentQuestion.question, answer: opt },
+                            ];
+                            setClarificationHistory(newHistory);
+                            setClarificationContext(originalQuery);
+                            sendToLLM(originalQuery, false, newHistory);
+                          }
+                        }}
+                        className="px-3 py-1.5 bg-white border border-[#E5E3DF] rounded-full text-[12px] text-[#6B6965] hover:bg-[#FEF0EC] hover:border-[#D4572A] hover:text-[#D4572A] transition-all"
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <p className="text-[11px] text-[#9CA3AF]">Pick an option above or type your own answer below.</p>
               </div>
             )}
 

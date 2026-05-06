@@ -111,29 +111,29 @@ function KpiCard({
   icon: React.ReactNode;
 }) {
   const deltaColor =
-    trend === 'up' ? 'text-emerald-600' : trend === 'down' ? 'text-red-500' : 'text-gray-400';
+    trend === 'up' ? 'text-emerald-600' : trend === 'down' ? 'text-red-500' : 'text-muted-foreground';
   const deltaBg =
-    trend === 'up' ? 'bg-emerald-50' : trend === 'down' ? 'bg-red-50' : 'bg-gray-100';
+    trend === 'up' ? 'bg-emerald-50' : trend === 'down' ? 'bg-red-50' : 'bg-muted';
   const TrendIcon =
     trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
 
   return (
-    <div className="bg-white rounded-xl border border-[#E5E7EB] p-5 shadow-sm flex flex-col gap-3">
+    <div className="bg-card rounded-xl border border-border p-5 shadow-sm flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wide" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide" style={{ fontFamily: 'var(--font-body)' }}>
           {label}
         </span>
-        <span className="text-[#9CA3AF]">{icon}</span>
+        <span className="text-muted-foreground">{icon}</span>
       </div>
-      <div className="text-[30px] font-bold text-[#111827] leading-none" style={{ fontFamily: 'Inter, sans-serif' }}>
+      <div className="text-[30px] font-bold text-foreground leading-none" style={{ fontFamily: 'var(--font-body)' }}>
         {value}
       </div>
       <div className="flex items-center gap-2">
-        <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${deltaBg} ${deltaColor}`} style={{ fontFamily: 'Inter, sans-serif' }}>
+        <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${deltaBg} ${deltaColor}`} style={{ fontFamily: 'var(--font-body)' }}>
           <TrendIcon className="w-3 h-3" />
           {delta}
         </span>
-        <span className="text-[11px] text-[#9CA3AF]" style={{ fontFamily: 'Inter, sans-serif' }}>{subtext}</span>
+        <span className="text-[11px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>{subtext}</span>
       </div>
     </div>
   );
@@ -144,7 +144,7 @@ const customTooltipStyle = {
   border: '1px solid #E5E7EB',
   borderRadius: '8px',
   fontSize: '12px',
-  fontFamily: 'Inter, sans-serif',
+  fontFamily: 'var(--font-body)',
   boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
 };
 
@@ -164,21 +164,21 @@ export function FullReportPage() {
 
   if (!report) {
     return (
-      <div className="min-h-screen bg-[#F8F9FB] flex items-center justify-center p-8">
-        <div className="bg-white rounded-xl border border-[#E5E7EB] p-10 shadow-sm text-center max-w-md">
-          <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Activity className="w-6 h-6 text-gray-400" />
+      <div className="min-h-screen bg-muted flex items-center justify-center p-8">
+        <div className="bg-card rounded-xl border border-border p-10 shadow-sm text-center max-w-md">
+          <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+            <Activity className="w-6 h-6 text-muted-foreground" />
           </div>
-          <h2 className="text-[18px] font-semibold text-[#111827] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <h2 className="text-[18px] font-semibold text-foreground mb-2" style={{ fontFamily: 'var(--font-body)' }}>
             Report not found
           </h2>
-          <p className="text-[13px] text-[#6B7280] mb-5" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <p className="text-[13px] text-muted-foreground mb-5" style={{ fontFamily: 'var(--font-body)' }}>
             This report may have been removed or the link is invalid.
           </p>
           <button
             onClick={() => window.close()}
-            className="px-5 py-2.5 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg text-[13px] font-medium"
-            style={{ fontFamily: 'Inter, sans-serif' }}
+            className="px-5 py-2.5 bg-foreground hover:bg-foreground text-white rounded-lg text-[13px] font-medium"
+            style={{ fontFamily: 'var(--font-body)' }}
           >
             Close Tab
           </button>
@@ -203,32 +203,32 @@ export function FullReportPage() {
   const pc = platformColors[platform] ?? { bg: '#F3F4F6', text: '#374151' };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FB]">
+    <div className="min-h-screen bg-muted">
 
       {/* ── HEADER ─────────────────────────────────────────── */}
-      <div className="bg-white border-b border-[#E5E7EB] px-8 py-4 sticky top-0 z-20">
+      <div className="bg-white border-b border-border px-8 py-4 sticky top-0 z-20">
         <div className="max-w-[1440px] mx-auto flex items-center justify-between">
 
           {/* Left: nav + title */}
           <div className="flex items-center gap-4 min-w-0">
             <button
               onClick={() => window.history.length > 1 ? navigate(`/reports/${reportId}`) : navigate('/reports')}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+              className="p-2 hover:bg-muted rounded-lg transition-colors flex-shrink-0"
               title="Back"
             >
-              <ArrowLeft className="w-4 h-4 text-[#6B7280]" />
+              <ArrowLeft className="w-4 h-4 text-muted-foreground" />
             </button>
 
             <div className="min-w-0">
               {/* Breadcrumb */}
-              <div className="flex items-center gap-1 text-[11px] text-[#9CA3AF] mb-0.5" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <div className="flex items-center gap-1 text-[11px] text-muted-foreground mb-0.5" style={{ fontFamily: 'var(--font-body)' }}>
                 <span>Reports</span>
                 <span>/</span>
                 <span className="truncate max-w-[180px]">{report.report_name}</span>
                 <span>/</span>
-                <span className="text-[#111827] font-medium">Full Report</span>
+                <span className="text-foreground font-medium">Full Report</span>
               </div>
-              <h1 className="text-[19px] font-bold text-[#111827] truncate" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <h1 className="text-[19px] font-bold text-foreground truncate" style={{ fontFamily: 'var(--font-body)' }}>
                 {report.report_name}
               </h1>
             </div>
@@ -237,14 +237,14 @@ export function FullReportPage() {
           {/* Right: meta + actions */}
           <div className="flex items-center gap-4 flex-shrink-0">
             {/* Meta pills */}
-            <div className="hidden lg:flex items-center gap-2 text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <div className="hidden lg:flex items-center gap-2 text-[11px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
               <span
                 className="px-2 py-1 rounded font-semibold text-[10px]"
                 style={{ backgroundColor: pc.bg, color: pc.text }}
               >
                 {platform || 'Internal'}
               </span>
-              <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-[10px] font-medium">
+              <span className="bg-muted text-muted-foreground px-2 py-1 rounded text-[10px] font-medium">
                 {report.domain}
               </span>
               <span className="flex items-center gap-1">
@@ -256,15 +256,15 @@ export function FullReportPage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => navigate('/reports')}
-                className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-[#374151] rounded-lg text-[12px] font-medium transition-colors flex items-center gap-1.5"
-                style={{ fontFamily: 'Inter, sans-serif' }}
+                className="px-3 py-1.5 bg-muted hover:bg-border text-foreground rounded-lg text-[12px] font-medium transition-colors flex items-center gap-1.5"
+                style={{ fontFamily: 'var(--font-body)' }}
               >
                 <Home className="w-3.5 h-3.5" />
                 Report Hub
               </button>
               <button
-                className="px-3 py-1.5 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg text-[12px] font-medium transition-colors flex items-center gap-1.5"
-                style={{ fontFamily: 'Inter, sans-serif' }}
+                className="px-3 py-1.5 bg-foreground hover:bg-foreground text-white rounded-lg text-[12px] font-medium transition-colors flex items-center gap-1.5"
+                style={{ fontFamily: 'var(--font-body)' }}
               >
                 <Download className="w-3.5 h-3.5" />
                 Export
@@ -276,7 +276,7 @@ export function FullReportPage() {
       </div>
 
       {/* ── TAB BAR ────────────────────────────────────────── */}
-      <div className="bg-white border-b border-[#E5E7EB] px-8">
+      <div className="bg-white border-b border-border px-8">
         <div className="max-w-[1440px] mx-auto flex items-center gap-0">
           {tabs.map(tab => (
             <button
@@ -284,23 +284,23 @@ export function FullReportPage() {
               onClick={() => setActiveTab(tab.id)}
               className={`px-5 py-3 text-[13px] font-medium border-b-2 transition-colors ${
                 activeTab === tab.id
-                  ? 'border-[#111827] text-[#111827]'
-                  : 'border-transparent text-[#6B7280] hover:text-[#374151]'
+                  ? 'border-[#111827] text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
-              style={{ fontFamily: 'Inter, sans-serif' }}
+              style={{ fontFamily: 'var(--font-body)' }}
             >
               {tab.label}
             </button>
           ))}
           <div className="ml-auto flex items-center gap-2 py-2">
-            <span className="text-[11px] text-[#9CA3AF]" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <span className="text-[11px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
               Period:
             </span>
             {['FY 2024', 'FY 2023', 'Last 12 Mo'].map(p => (
               <button
                 key={p}
-                className="px-3 py-1 text-[11px] font-medium rounded-full border border-[#E5E7EB] text-[#6B7280] hover:border-gray-400 hover:text-[#111827] transition-colors"
-                style={{ fontFamily: 'Inter, sans-serif' }}
+                className="px-3 py-1 text-[11px] font-medium rounded-full border border-border text-muted-foreground hover:border-gray-400 hover:text-foreground transition-colors"
+                style={{ fontFamily: 'var(--font-body)' }}
               >
                 {p}
               </button>
@@ -325,13 +325,13 @@ export function FullReportPage() {
         <div className="grid grid-cols-12 gap-4">
 
           {/* Multi-line trend chart */}
-          <div className="col-span-8 bg-white rounded-xl border border-[#E5E7EB] p-6 shadow-sm">
+          <div className="col-span-8 bg-card rounded-xl border border-border p-6 shadow-sm">
             <div className="flex items-center justify-between mb-5">
               <div>
-                <h3 className="text-[14px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <h3 className="text-[14px] font-semibold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                   Revenue Trend — FY 2024
                 </h3>
-                <p className="text-[11px] text-[#9CA3AF] mt-0.5" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <p className="text-[11px] text-muted-foreground mt-0.5" style={{ fontFamily: 'var(--font-body)' }}>
                   Monthly performance vs prior year and target (USD thousands)
                 </p>
               </div>
@@ -339,10 +339,10 @@ export function FullReportPage() {
             <ResponsiveContainer width="100%" height={260}>
               <LineChart data={MONTHLY_TREND} margin={{ top: 5, right: 20, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                <XAxis dataKey="month" tick={{ fontSize: 11, fontFamily: 'Inter, sans-serif', fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fontFamily: 'Inter, sans-serif', fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={v => `$${v/1000}M`} />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fontFamily: 'var(--font-body)', fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fontFamily: 'var(--font-body)', fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={v => `$${v/1000}M`} />
                 <Tooltip contentStyle={customTooltipStyle} formatter={(v: number) => [`$${v.toLocaleString()}K`, '']} />
-                <Legend wrapperStyle={{ fontSize: '11px', fontFamily: 'Inter, sans-serif' }} />
+                <Legend wrapperStyle={{ fontSize: '11px', fontFamily: 'var(--font-body)' }} />
                 <Line type="monotone" dataKey="thisYear" name="This Year"  stroke="#3B82F6" strokeWidth={2.5} dot={{ r: 3, fill: '#3B82F6' }} activeDot={{ r: 5 }} />
                 <Line type="monotone" dataKey="lastYear" name="Last Year"  stroke="#94A3B8" strokeWidth={2}   strokeDasharray="4 2" dot={false} />
                 <Line type="monotone" dataKey="target"   name="Target"     stroke="#F59E0B" strokeWidth={1.5} strokeDasharray="6 3" dot={false} />
@@ -351,12 +351,12 @@ export function FullReportPage() {
           </div>
 
           {/* Segment Pie / Donut */}
-          <div className="col-span-4 bg-white rounded-xl border border-[#E5E7EB] p-6 shadow-sm">
+          <div className="col-span-4 bg-card rounded-xl border border-border p-6 shadow-sm">
             <div className="mb-4">
-              <h3 className="text-[14px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <h3 className="text-[14px] font-semibold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                 Revenue by Segment
               </h3>
-              <p className="text-[11px] text-[#9CA3AF] mt-0.5" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <p className="text-[11px] text-muted-foreground mt-0.5" style={{ fontFamily: 'var(--font-body)' }}>
                 FY 2024 share breakdown
               </p>
             </div>
@@ -383,13 +383,13 @@ export function FullReportPage() {
                 <div key={i} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: seg.color }} />
-                    <span className="text-[11px] text-[#374151]" style={{ fontFamily: 'Inter, sans-serif' }}>{seg.name}</span>
+                    <span className="text-[11px] text-foreground" style={{ fontFamily: 'var(--font-body)' }}>{seg.name}</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
                       <div className="h-full rounded-full" style={{ width: `${seg.value}%`, backgroundColor: seg.color }} />
                     </div>
-                    <span className="text-[11px] font-semibold text-[#111827] w-8 text-right" style={{ fontFamily: 'Inter, sans-serif' }}>{seg.value}%</span>
+                    <span className="text-[11px] font-semibold text-foreground w-8 text-right" style={{ fontFamily: 'var(--font-body)' }}>{seg.value}%</span>
                   </div>
                 </div>
               ))}
@@ -402,22 +402,22 @@ export function FullReportPage() {
         <div className="grid grid-cols-12 gap-4">
 
           {/* YoY Quarterly Grouped Bar */}
-          <div className="col-span-6 bg-white rounded-xl border border-[#E5E7EB] p-6 shadow-sm">
+          <div className="col-span-6 bg-card rounded-xl border border-border p-6 shadow-sm">
             <div className="mb-5">
-              <h3 className="text-[14px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <h3 className="text-[14px] font-semibold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                 Quarterly Revenue — Year over Year
               </h3>
-              <p className="text-[11px] text-[#9CA3AF] mt-0.5" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <p className="text-[11px] text-muted-foreground mt-0.5" style={{ fontFamily: 'var(--font-body)' }}>
                 FY 2024 vs FY 2023 (USD thousands)
               </p>
             </div>
             <ResponsiveContainer width="100%" height={230}>
               <BarChart data={QUARTERLY_YOY} barCategoryGap="30%" barGap={4}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-                <XAxis dataKey="quarter" tick={{ fontSize: 11, fontFamily: 'Inter, sans-serif', fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fontFamily: 'Inter, sans-serif', fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(0)}M`} />
+                <XAxis dataKey="quarter" tick={{ fontSize: 11, fontFamily: 'var(--font-body)', fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fontFamily: 'var(--font-body)', fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(0)}M`} />
                 <Tooltip contentStyle={customTooltipStyle} formatter={(v: number) => [`$${v.toLocaleString()}K`, '']} />
-                <Legend wrapperStyle={{ fontSize: '11px', fontFamily: 'Inter, sans-serif' }} />
+                <Legend wrapperStyle={{ fontSize: '11px', fontFamily: 'var(--font-body)' }} />
                 <Bar dataKey="thisYear" name="FY 2024" fill="#3B82F6" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="lastYear" name="FY 2023" fill="#CBD5E1" radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -425,12 +425,12 @@ export function FullReportPage() {
           </div>
 
           {/* Regional Horizontal Bar */}
-          <div className="col-span-6 bg-white rounded-xl border border-[#E5E7EB] p-6 shadow-sm">
+          <div className="col-span-6 bg-card rounded-xl border border-border p-6 shadow-sm">
             <div className="mb-5">
-              <h3 className="text-[14px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <h3 className="text-[14px] font-semibold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                 Revenue by Region
               </h3>
-              <p className="text-[11px] text-[#9CA3AF] mt-0.5" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <p className="text-[11px] text-muted-foreground mt-0.5" style={{ fontFamily: 'var(--font-body)' }}>
                 Share of total FY 2024 revenue
               </p>
             </div>
@@ -438,10 +438,10 @@ export function FullReportPage() {
               {REGION_DATA.map((r, i) => (
                 <div key={i} className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-[12px] font-medium text-[#374151]" style={{ fontFamily: 'Inter, sans-serif' }}>{r.region}</span>
-                    <span className="text-[12px] font-bold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>{r.pct}%</span>
+                    <span className="text-[12px] font-medium text-foreground" style={{ fontFamily: 'var(--font-body)' }}>{r.region}</span>
+                    <span className="text-[12px] font-bold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>{r.pct}%</span>
                   </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all"
                       style={{
@@ -460,15 +460,15 @@ export function FullReportPage() {
               ))}
             </div>
             {/* Summary mini-row */}
-            <div className="mt-5 pt-4 border-t border-[#E5E7EB] grid grid-cols-3 gap-3">
+            <div className="mt-5 pt-4 border-t border-border grid grid-cols-3 gap-3">
               {[
                 { label: 'Regions', value: '6' },
                 { label: 'Fastest Growing', value: 'APAC +31%' },
                 { label: 'Highest Revenue', value: 'N. America' },
               ].map((s, i) => (
                 <div key={i} className="text-center">
-                  <div className="text-[13px] font-bold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>{s.value}</div>
-                  <div className="text-[10px] text-[#9CA3AF]" style={{ fontFamily: 'Inter, sans-serif' }}>{s.label}</div>
+                  <div className="text-[13px] font-bold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>{s.value}</div>
+                  <div className="text-[10px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>{s.label}</div>
                 </div>
               ))}
             </div>
@@ -477,13 +477,13 @@ export function FullReportPage() {
         </div>
 
         {/* ── ROW 3: Engagement Area Chart (full width) ────── */}
-        <div className="bg-white rounded-xl border border-[#E5E7EB] p-6 shadow-sm">
+        <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
           <div className="flex items-center justify-between mb-5">
             <div>
-              <h3 className="text-[14px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <h3 className="text-[14px] font-semibold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                 Engagement & Activity Trend
               </h3>
-              <p className="text-[11px] text-[#9CA3AF] mt-0.5" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <p className="text-[11px] text-muted-foreground mt-0.5" style={{ fontFamily: 'var(--font-body)' }}>
                 Active users, sessions, and conversions — last 6 months
               </p>
             </div>
@@ -495,7 +495,7 @@ export function FullReportPage() {
               ].map((l, i) => (
                 <div key={i} className="flex items-center gap-1.5">
                   <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: l.color }} />
-                  <span className="text-[10px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>{l.label}</span>
+                  <span className="text-[10px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>{l.label}</span>
                 </div>
               ))}
             </div>
@@ -517,8 +517,8 @@ export function FullReportPage() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-              <XAxis dataKey="month" tick={{ fontSize: 11, fontFamily: 'Inter, sans-serif', fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fontFamily: 'Inter, sans-serif', fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}K` : v} />
+              <XAxis dataKey="month" tick={{ fontSize: 11, fontFamily: 'var(--font-body)', fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fontFamily: 'var(--font-body)', fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}K` : v} />
               <Tooltip contentStyle={customTooltipStyle} formatter={(v: number) => [v.toLocaleString(), '']} />
               <Area type="monotone" dataKey="activeUsers"  name="Active Users"  stroke="#3B82F6" strokeWidth={2} fill="url(#gradUsers)"       dot={false} />
               <Area type="monotone" dataKey="sessions"     name="Sessions"      stroke="#10B981" strokeWidth={2} fill="url(#gradSessions)"    dot={false} />
@@ -528,29 +528,29 @@ export function FullReportPage() {
         </div>
 
         {/* ── TABLE 1: Top Performers ─────────────────────── */}
-        <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-sm overflow-hidden">
-          <div className="px-6 py-5 border-b border-[#E5E7EB] flex items-center justify-between">
+        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+          <div className="px-6 py-5 border-b border-border flex items-center justify-between">
             <div>
-              <h3 className="text-[14px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <h3 className="text-[14px] font-semibold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                 Top 10 Performers
               </h3>
-              <p className="text-[11px] text-[#9CA3AF] mt-0.5" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <p className="text-[11px] text-muted-foreground mt-0.5" style={{ fontFamily: 'var(--font-body)' }}>
                 Ranked by FY 2024 total revenue contribution
               </p>
             </div>
-            <span className="text-[11px] text-[#6B7280] bg-gray-100 px-3 py-1 rounded-full" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <span className="text-[11px] text-muted-foreground bg-muted px-3 py-1 rounded-full" style={{ fontFamily: 'var(--font-body)' }}>
               10 of 48,293 accounts
             </span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-[#F8F9FB]">
+              <thead className="bg-muted">
                 <tr>
                   {['#', 'Account Name', 'Region', 'Revenue', 'YoY Growth', 'Customers', 'Mkt Share', 'Trend'].map((h, i) => (
                     <th
                       key={i}
-                      className={`px-5 py-3 text-[10px] font-semibold text-[#6B7280] uppercase tracking-wider border-b border-[#E5E7EB] ${i === 0 ? 'text-center' : i >= 3 ? 'text-right' : 'text-left'}`}
-                      style={{ fontFamily: 'Inter, sans-serif' }}
+                      className={`px-5 py-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border ${i === 0 ? 'text-center' : i >= 3 ? 'text-right' : 'text-left'}`}
+                      style={{ fontFamily: 'var(--font-body)' }}
                     >
                       {h}
                     </th>
@@ -561,32 +561,32 @@ export function FullReportPage() {
                 {TOP_PERFORMERS.map((row) => (
                   <tr key={row.rank} className="hover:bg-[#FAFAFA] transition-colors">
                     <td className="px-5 py-3.5 text-center">
-                      <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-bold ${row.rank <= 3 ? 'bg-amber-50 text-amber-600' : 'bg-gray-100 text-gray-500'}`} style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-bold ${row.rank <= 3 ? 'bg-amber-50 text-amber-600' : 'bg-muted text-muted-foreground'}`} style={{ fontFamily: 'var(--font-body)' }}>
                         {row.rank}
                       </span>
                     </td>
                     <td className="px-5 py-3.5">
-                      <span className="text-[13px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>{row.name}</span>
+                      <span className="text-[13px] font-semibold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>{row.name}</span>
                     </td>
                     <td className="px-5 py-3.5">
-                      <span className="text-[12px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>{row.region}</span>
+                      <span className="text-[12px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>{row.region}</span>
                     </td>
                     <td className="px-5 py-3.5 text-right">
-                      <span className="text-[13px] font-bold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>{row.revenue}</span>
+                      <span className="text-[13px] font-bold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>{row.revenue}</span>
                     </td>
                     <td className="px-5 py-3.5 text-right">
                       <span
                         className={`text-[12px] font-semibold ${row.growth.startsWith('+') ? 'text-emerald-600' : 'text-red-500'}`}
-                        style={{ fontFamily: 'Inter, sans-serif' }}
+                        style={{ fontFamily: 'var(--font-body)' }}
                       >
                         {row.growth}
                       </span>
                     </td>
                     <td className="px-5 py-3.5 text-right">
-                      <span className="text-[12px] text-[#374151]" style={{ fontFamily: 'Inter, sans-serif' }}>{row.customers.toLocaleString()}</span>
+                      <span className="text-[12px] text-foreground" style={{ fontFamily: 'var(--font-body)' }}>{row.customers.toLocaleString()}</span>
                     </td>
                     <td className="px-5 py-3.5 text-right">
-                      <span className="text-[12px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>{row.share}</span>
+                      <span className="text-[12px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>{row.share}</span>
                     </td>
                     <td className="px-5 py-3.5 text-right">
                       {row.trend === 'up'
@@ -601,34 +601,34 @@ export function FullReportPage() {
         </div>
 
         {/* ── TABLE 2: Segment Breakdown ──────────────────── */}
-        <div className="bg-white rounded-xl border border-[#E5E7EB] shadow-sm overflow-hidden">
-          <div className="px-6 py-5 border-b border-[#E5E7EB] flex items-center justify-between">
+        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+          <div className="px-6 py-5 border-b border-border flex items-center justify-between">
             <div>
-              <h3 className="text-[14px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <h3 className="text-[14px] font-semibold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                 Segment Revenue Breakdown
               </h3>
-              <p className="text-[11px] text-[#9CA3AF] mt-0.5" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <p className="text-[11px] text-muted-foreground mt-0.5" style={{ fontFamily: 'var(--font-body)' }}>
                 Quarterly and annual revenue by business segment
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full bg-emerald-50 text-emerald-600" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full bg-emerald-50 text-emerald-600" style={{ fontFamily: 'var(--font-body)' }}>
                 <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" /> On Track
               </span>
-              <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full bg-red-50 text-red-500" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full bg-red-50 text-red-500" style={{ fontFamily: 'var(--font-body)' }}>
                 <span className="w-1.5 h-1.5 bg-red-400 rounded-full" /> At Risk
               </span>
             </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-[#F8F9FB]">
+              <thead className="bg-muted">
                 <tr>
                   {['Segment', 'Q1 2024', 'Q2 2024', 'Q3 2024', 'Q4 2024', 'YTD Total', 'YoY Change', 'YoY %', 'Status'].map((h, i) => (
                     <th
                       key={i}
-                      className={`px-5 py-3 text-[10px] font-semibold text-[#6B7280] uppercase tracking-wider border-b border-[#E5E7EB] ${i === 0 ? 'text-left' : i === 8 ? 'text-center' : 'text-right'}`}
-                      style={{ fontFamily: 'Inter, sans-serif' }}
+                      className={`px-5 py-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-border ${i === 0 ? 'text-left' : i === 8 ? 'text-center' : 'text-right'}`}
+                      style={{ fontFamily: 'var(--font-body)' }}
                     >
                       {h}
                     </th>
@@ -639,20 +639,20 @@ export function FullReportPage() {
                 {SEGMENT_BREAKDOWN.map((row, idx) => (
                   <tr key={idx} className="hover:bg-[#FAFAFA] transition-colors">
                     <td className="px-5 py-3.5">
-                      <span className="text-[12px] font-medium text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>{row.segment}</span>
+                      <span className="text-[12px] font-medium text-foreground" style={{ fontFamily: 'var(--font-body)' }}>{row.segment}</span>
                     </td>
                     {[row.q1, row.q2, row.q3, row.q4].map((v, i) => (
                       <td key={i} className="px-5 py-3.5 text-right">
-                        <span className="text-[12px] text-[#374151]" style={{ fontFamily: 'Inter, sans-serif' }}>{v}</span>
+                        <span className="text-[12px] text-foreground" style={{ fontFamily: 'var(--font-body)' }}>{v}</span>
                       </td>
                     ))}
                     <td className="px-5 py-3.5 text-right">
-                      <span className="text-[12px] font-bold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>{row.ytd}</span>
+                      <span className="text-[12px] font-bold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>{row.ytd}</span>
                     </td>
                     <td className="px-5 py-3.5 text-right">
                       <span
                         className={`text-[12px] font-semibold ${row.change.startsWith('+') ? 'text-emerald-600' : 'text-red-500'}`}
-                        style={{ fontFamily: 'Inter, sans-serif' }}
+                        style={{ fontFamily: 'var(--font-body)' }}
                       >
                         {row.change}
                       </span>
@@ -660,7 +660,7 @@ export function FullReportPage() {
                     <td className="px-5 py-3.5 text-right">
                       <span
                         className={`text-[12px] font-semibold ${row.pct.startsWith('+') ? 'text-emerald-600' : 'text-red-500'}`}
-                        style={{ fontFamily: 'Inter, sans-serif' }}
+                        style={{ fontFamily: 'var(--font-body)' }}
                       >
                         {row.pct}
                       </span>
@@ -672,7 +672,7 @@ export function FullReportPage() {
                             ? 'bg-emerald-50 text-emerald-600'
                             : 'bg-red-50 text-red-500'
                         }`}
-                        style={{ fontFamily: 'Inter, sans-serif' }}
+                        style={{ fontFamily: 'var(--font-body)' }}
                       >
                         <span className={`w-1.5 h-1.5 rounded-full ${row.status === 'on-track' ? 'bg-emerald-500' : 'bg-red-400'}`} />
                         {row.status === 'on-track' ? 'On Track' : 'At Risk'}
@@ -682,18 +682,18 @@ export function FullReportPage() {
                 ))}
               </tbody>
               {/* Summary row */}
-              <tfoot className="bg-[#F8F9FB] border-t-2 border-[#E5E7EB]">
+              <tfoot className="bg-muted border-t-2 border-border">
                 <tr>
                   <td className="px-5 py-3.5">
-                    <span className="text-[12px] font-bold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>Total</span>
+                    <span className="text-[12px] font-bold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>Total</span>
                   </td>
                   {['$8,580K', '$9,400K', '$10,960K', '$12,460K', '$41,400K', '+$4,880K', '+13.4%'].map((v, i) => (
                     <td key={i} className="px-5 py-3.5 text-right">
-                      <span className="text-[12px] font-bold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>{v}</span>
+                      <span className="text-[12px] font-bold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>{v}</span>
                     </td>
                   ))}
                   <td className="px-5 py-3.5 text-center">
-                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-600" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-600" style={{ fontFamily: 'var(--font-body)' }}>
                       <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
                       Overall
                     </span>
@@ -705,11 +705,11 @@ export function FullReportPage() {
         </div>
 
         {/* ── FOOTER ───────────────────────────────────────── */}
-        <div className="bg-white rounded-xl border border-[#E5E7EB] px-6 py-4 shadow-sm flex items-center justify-between">
-          <div className="text-[11px] text-[#9CA3AF]" style={{ fontFamily: 'Inter, sans-serif' }}>
-            Powered by <span className="font-semibold text-[#374151]">Report Hub</span>
+        <div className="bg-card rounded-xl border border-border px-6 py-4 shadow-sm flex items-center justify-between">
+          <div className="text-[11px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
+            Powered by <span className="font-semibold text-foreground">Report Hub</span>
             {sourceDataset && (
-              <> · Dataset: <span className="font-medium text-[#374151]">{sourceDataset.dataset_name}</span></>
+              <> · Dataset: <span className="font-medium text-foreground">{sourceDataset.dataset_name}</span></>
             )}
             {' '}· Last refreshed {formatRelativeTime(report.last_updated_ts)}
           </div>
@@ -717,7 +717,7 @@ export function FullReportPage() {
             <button
               onClick={() => navigate(`/reports/${reportId}`)}
               className="text-[12px] text-[#3B82F6] hover:text-[#2563EB] hover:underline font-medium"
-              style={{ fontFamily: 'Inter, sans-serif' }}
+              style={{ fontFamily: 'var(--font-body)' }}
             >
               Report Detail
             </button>
@@ -725,7 +725,7 @@ export function FullReportPage() {
             <button
               onClick={() => navigate('/reports')}
               className="text-[12px] text-[#3B82F6] hover:text-[#2563EB] hover:underline font-medium"
-              style={{ fontFamily: 'Inter, sans-serif' }}
+              style={{ fontFamily: 'var(--font-body)' }}
             >
               All Reports
             </button>
