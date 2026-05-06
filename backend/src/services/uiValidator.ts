@@ -3,7 +3,7 @@ import registry from '../registry/componentRegistry.json';
 
 export const validateUITypeTree = async (uiTree: UITypeTree): Promise<ValidationResult> => {
   // Layer 4: Validator (Deterministic validation using Component Registry)
-  console.log('Layer 4 - Validating UI Type Tree');
+  console.log(`Layer 4 - Validating UI Type Tree [${uiTree.renderType}]`);
 
   const errors: string[] = [];
 

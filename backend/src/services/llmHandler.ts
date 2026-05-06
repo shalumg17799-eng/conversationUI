@@ -54,19 +54,26 @@ function getAI() {
 
 // ── System prompt ─────────────────────────────────────────────────────────────
 
+import { METRIC_MAP, DIMENSION_MAP } from './intentClassifier';
+
+const ALLOWED_METRICS = Object.keys(METRIC_MAP).join(', ');
+const ALLOWED_DIMENSIONS = Object.keys(DIMENSION_MAP).join(', ');
+
+const ALLOWED_COMPONENTS = ["LineChart", "BarChart", "KPI", "KPIGrid", "GenerativeTable"];
+
 const REPORT_SYSTEM_PROMPT = `You are an expert business intelligence analyst and UI architect.
 You receive a user query and a sample of real data from BigQuery.
 Your job is to design the best report to answer the query.
 
-AVAILABLE COMPONENTS (pick 1-4 that best suit the data):
+STRICT RULE: You must ONLY use the following allowed components:
+${ALLOWED_COMPONENTS.map(c => `- ${c}`).join('\n')}
 
-- KPI: single metric. Props: { title, value (number), trend ("+X%" string), explanation }
-- KPIGrid: 2-6 metrics. Props: { metrics: [{title, value, trend}], explanation }
-- BarChart: categorical comparison. Props: { title, xKey (column name), yKey (column name), explanation }
-  DO NOT include data — the pipeline will attach it.
-- LineChart: time series / trend. Props: { title, xKey (date/time column), yKey (numeric column), explanation }
-  DO NOT include data — the pipeline will attach it.
-- GenerativeTable: tabular detail. Props: { title, columns: [column names], explanation }
+COMPONENT DETAILS:
+- KPI: single metric highlight.
+- KPIGrid: 2-6 headline metrics.
+- BarChart: categorical comparison.
+- LineChart: time series trends.
+- GenerativeTable: detailed tabular data.
   DO NOT include data — the pipeline will attach it.
 
 RULES:
@@ -74,7 +81,9 @@ RULES:
 - For KPI and KPIGrid, read actual values from the data sample (use first row or compute average/total if obvious).
 - Write a real trend string like "+12%" or "-3%" only if you can infer it; otherwise omit trend.
 - explanation: one sentence (max 20 words) describing what this component shows.
-- followUp: 3-4 short questions the user might ask next.
+- followUp: ONLY generate questions that involve the following allowed metrics or dimensions.
+  - Metrics: ${ALLOWED_METRICS}
+  - Dimensions: ${ALLOWED_DIMENSIONS}
 - NEVER invent column names. Only use columns that exist in the sample.
 
 OUTPUT FORMAT — valid JSON only, no markdown, no code fences:
@@ -98,16 +107,17 @@ OUTPUT FORMAT — valid JSON only, no markdown, no code fences:
 const CLARIFY_SYSTEM = `You are a business intelligence assistant routing layer.
 Decide if a user query has enough context to generate a BI report, or if you need more information.
 
-A query is SPECIFIC ENOUGH if it mentions ANY of:
-- A metric (revenue, sales, churn, performance, take rate, calls, CSAT, scores, units)
-- A dimension (region, territory, market, employee, device, outlet, team, department)
-- A dataset or domain (contact center, sales, network, catalog)
-- A time period (monthly, Q1, last quarter, this year)
+A query is SPECIFIC ENOUGH if it mentions a REAL BUSINESS METRIC or DIMENSION:
+- Metrics: revenue, sales, churn, performance, take rate, calls, CSAT, units, growth, profit, traffic
+- Dimensions: region, territory, market, employee, device, outlet, channel, department
+- Specific Time Periods: monthly, Q1, last year
 
 A query is TOO VAGUE if it is:
-- A greeting or non-BI question ("hi", "hello", "how are you")
-- A generic request with no data context ("create a report", "show me something", "give me data")
-- Ambiguous with no clear metric or dimension
+- A generic action with no data context: "create a report", "show me something", "give me data", "open dashboard", "report"
+- A greeting: "hi", "hello"
+- Ambiguous: "show me the best", "what is happening"
+
+IMPORTANT: If the user just says "report" or "create report" without naming a metric (like sales) or dimension (like region), you MUST ask for clarification.
 
 RESPOND WITH JSON ONLY:
 {
@@ -117,9 +127,9 @@ RESPOND WITH JSON ONLY:
 OR
 {
   "action": "clarify",
-  "questions": ["Question 1?", "Question 2?"]
+  "questions": ["What metric would you like to see? (e.g., Revenue or Sales)", "Which dimension should I use? (e.g., Market or Region)"]
 }
-Max 2 short, specific questions. Questions should guide the user to specify metric + dimension or time period.`;
+Max 2 short, specific questions.`;
 
 export async function clarifyOrGenerate(query: string): Promise<ClarifyResult> {
   const ai = getAI();
@@ -154,7 +164,8 @@ export async function clarifyOrGenerate(query: string): Promise<ClarifyResult> {
 export async function generateReport(
   query: string,
   shape: ShapeSignature,
-  sampleRows: any[]
+  sampleRows: any[],
+  preferredComponent?: string
 ): Promise<LLMReport> {
   const ai = getAI();
 
@@ -162,7 +173,7 @@ export async function generateReport(
     .map(([col, type]) => `${col} (${type})`)
     .join(', ');
 
-  const userMessage = `USER QUERY: "${query}"
+  let userMessage = `USER QUERY: "${query}"
 
 DATA SUMMARY:
 - Total rows in BigQuery: ${shape.rowCount}
@@ -175,6 +186,10 @@ DATA SAMPLE (first ${sampleRows.length} rows):
 ${JSON.stringify(sampleRows, null, 2)}
 
 Design the best report to answer the user's query using the real data above.`;
+
+  if (preferredComponent) {
+    userMessage += `\n\nGUIDELINE: You should use the component: ${preferredComponent}. If the data strongly contradicts this choice, you may select a better alternative from allowed components.`;
+  }
 
   try {
     const response = await ai.models.generateContent({

@@ -42,6 +42,21 @@ export function generateKey(key: unknown, useHash = false): string {
   return useHash ? simpleHash(str) : str;
 }
 
+/**
+ * Generates a stable key for component selection decisions.
+ * Based on intent, row count, column count, and time series status.
+ */
+export function generateDecisionKey(intent: any, shape: any): string {
+  return generateKey({
+    metric: intent.metric,
+    dimension: intent.dimension,
+    isTimeSeries: shape.isTimeSeries,
+    rows: shape.rowCount,
+    cols: shape.columnCount,
+    type: 'decision'
+  }, true);
+}
+
 export class CacheService {
   private cache = new Map<string, CacheEntry>();
   // Default TTL: 5 minutes

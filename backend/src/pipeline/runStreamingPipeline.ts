@@ -4,7 +4,11 @@ import { executeQuery } from '../services/queryEngine';
 import { analyzeDataShape } from '../services/dataShapeAnalyzer';
 import { generateReport, clarifyOrGenerate, ReportCard } from '../services/llmHandler';
 import { UITypeTree } from '../types';
-import { cacheService, generateKey } from '../services/cacheService';
+import { cacheService, generateKey, generateDecisionKey } from '../services/cacheService';
+import { selectComponent } from '../services/componentSelector';
+import { validateUITypeTree } from '../services/uiValidator';
+import { filterFollowUps } from '../services/followUpFilter';
+import { generateStaticReport } from '../services/reportHelper';
 
 dotenv.config();
 
@@ -46,10 +50,11 @@ function hydrate(card: ReportCard, allRows: any[]): UITypeTree {
 }
 
 export async function runStreamingPipeline(query: string, send: SendFn, skipClarification = false): Promise<void> {
+  console.log('--- NEW PIPELINE REQUEST ---');
+  console.log(`[Pipeline] RAW QUERY: "${query}"`);
+  
   const cacheKey = generateKey({ query, stream: true, v: 2 });
   const cached = cacheService.get<{ components: UITypeTree[]; title: string; message: string }>(cacheKey);
-
-  console.log(`[Pipeline] query="${query}" skipClarification=${skipClarification} cacheHit=${!!cached}`);
 
   if (cached) {
     send('meta', { title: cached.title, description: cached.message, cached: true });
@@ -86,9 +91,53 @@ export async function runStreamingPipeline(query: string, send: SendFn, skipClar
   const dataShape = await analyzeDataShape(allRows);
   const sampleRows = allRows.slice(0, SAMPLE_SIZE);
 
-  // Step 4 — single Gemma call: decides everything
-  send('status', { message: `Analysing ${allRows.length} rows with Gemma...` });
-  const report = await generateReport(query, dataShape, sampleRows);
+  // Step 3.5 — Rule-based selection (Deterministic guideline)
+  const decisionKey = generateDecisionKey(intent, dataShape);
+  const cachedDecision = cacheService.get<string>(decisionKey);
+  
+  let preferredType: string;
+  let report: any;
+  let selection: any;
+
+  if (cachedDecision) {
+    console.log(`[Cache] Decision hit: Using cached component ${cachedDecision}`);
+    preferredType = cachedDecision;
+  } else {
+    selection = selectComponent(dataShape);
+    preferredType = selection.type;
+  }
+
+  // NEW: High-Confidence Bypass
+  if (!cachedDecision && selection?.confidence === 'high') {
+    console.log(`[Pipeline] High confidence (${selection.type}). Bypassing LLM...`);
+    report = generateStaticReport(query, intent, dataShape, selection);
+  } else {
+    // Step 4 — single Gemma call: decides everything (respecting guideline)
+    send('status', { message: `Analysing ${allRows.length} rows with Gemma...` });
+    report = await generateReport(query, dataShape, sampleRows, preferredType);
+  }
+
+  // Step 4.5 — Strict Validation with Retry
+  let attempts = 0;
+  let isValid = false;
+
+  while (attempts < 2 && !isValid) {
+    attempts++;
+    // Test hydrate all cards to check validity
+    const testNodes = report.cards.map((c: ReportCard) => hydrate(c, allRows));
+    const validations = await Promise.all(testNodes.map((n: UITypeTree) => validateUITypeTree(n)));
+    
+    if (validations.every(v => v.isValid)) {
+      isValid = true;
+      // Store the decision if it was a cache miss
+      if (!cachedDecision && report.cards[0]) {
+        cacheService.set(decisionKey, report.cards[0].renderType);
+      }
+    } else if (attempts < 2) {
+      console.warn(`Layer 4 - Validation failed on attempt ${attempts}. Retrying LLM...`);
+      report = await generateReport(query, dataShape, sampleRows, selection.type);
+    }
+  }
 
   if (report.cards.length === 0) {
     send('error', { message: 'Gemma could not determine a suitable report structure. Try a more specific query.' });
@@ -102,18 +151,40 @@ export async function runStreamingPipeline(query: string, send: SendFn, skipClar
     rowCount: allRows.length,
   });
 
-  // Step 6 — hydrate + stream each card
+  // Step 6 — Final Hydration + Streaming with Fallback
   const validComponents: UITypeTree[] = [];
 
   for (const card of report.cards) {
-    const node = hydrate(card, allRows);
+    let node = hydrate(card, allRows);
+    
+    // Final check for this specific node
+    const validation = await validateUITypeTree(node);
+    if (!validation.isValid) {
+      console.error(`Layer 4 - CRITICAL: Component ${node.renderType} still invalid after retry. Falling back to GenerativeTable.`);
+      // Safe fallback
+      node = {
+        renderType: 'GenerativeTable',
+        props: { 
+          title: `Raw Data: ${node.props.title || 'Details'}`,
+          columns: allRows[0] ? Object.keys(allRows[0]) : [],
+          data: allRows,
+          rows: allRows,
+          explanation: 'This table was generated as a fallback because the requested chart was invalid.'
+        },
+        children: []
+      };
+    }
+
     send('component', node);
     validComponents.push(node);
   }
 
-  // Step 7 — stream follow-up suggestions
+  // Step 7 — stream follow-up suggestions (grounded in DB capabilities)
   if (report.followUp.length > 0) {
-    send('followUp', report.followUp);
+    const groundedFollowUps = filterFollowUps(report.followUp);
+    if (groundedFollowUps.length > 0) {
+      send('followUp', groundedFollowUps);
+    }
   }
 
   send('status', { message: `Done in ${Date.now() - start}ms` });
