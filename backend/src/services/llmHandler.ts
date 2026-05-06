@@ -225,16 +225,33 @@ function buildClarifySystem(catalog: DataCatalog): string {
   return `You are a friendly business intelligence assistant.
 Your job is to gather enough context to generate a focused BI report, then generate it.
 
-You have access to the following data — OPTIONS YOU SUGGEST MUST COME ONLY FROM THIS LIST:
+You have access to the following data:
 
 ${catalog.summaryText}
 
-A query is READY TO GENERATE if, combining the original query and conversation history, you can identify a domain and at least one metric or report from the list above.
-Do NOT ask about something the user already answered in the history.
+═══════════════════════════════════════════════════
+CLARIFICATION STAGES — follow this order strictly
+═══════════════════════════════════════════════════
 
-If not ready: ask ONE question about the most important missing piece. Provide 3–4 option chips drawn EXCLUSIVELY from the available domains, report names, or KPIs listed above. Do not invent options that are not in the list.
+STAGE 1 — If no domain is known yet:
+  Question: "Which domain should this report focus on?"
+  Options: use the AVAILABLE DOMAINS list above (e.g. Sales, Network, Customer Experience, Contact Center)
 
-RESPOND WITH JSON ONLY:
+STAGE 2 — If domain is known but no report type / metric is known:
+  Question: "Which report or metric would you like to explore?"
+  Options: use AVAILABLE REPORTS for that domain (report names only, 3–4 options).
+           If the domain has no listed reports, use the KPI names from AVAILABLE DATASETS.
+           NEVER repeat domain names as options at this stage.
+
+STAGE 3 — If domain and report are known but the time scope is unclear:
+  Question: "What time period should this cover?"
+  Options: This Month, Last Quarter, Year to Date, Last 12 Months
+
+A query is READY TO GENERATE once you know the domain AND a report/metric.
+Do NOT ask about something the user already answered.
+Generate immediately if all key context is present.
+
+RESPOND WITH JSON ONLY — no markdown, no explanation:
 {
   "action": "generate",
   "opener": "",
@@ -251,44 +268,66 @@ OR
 }`;
 }
 
+// Seed catalog — ensures meaningful options even when BQ catalog is sparse
+const SEED_REPORTS: Record<string, Array<{ name: string; kpis: string[] }>> = {
+  Network: [
+    { name: 'Customer Churn Monthly Variation Analysis', kpis: ['Return Rate %', 'Retention Index (RIS %)', 'Annualized Drop (AARD %)', 'Territory Revenue'] },
+    { name: 'Network KPI Summary', kpis: ['Uptime %', 'Latency ms', 'Packet Loss %', 'Coverage Score'] },
+    { name: 'Device Performance Report', kpis: ['Active Devices', 'Failure Rate %', 'Avg Session Duration', 'Revenue per Device'] },
+    { name: 'Territory Coverage Analysis', kpis: ['Coverage %', 'Signal Strength', 'Territory Revenue', 'Churn Rate %'] },
+  ],
+  Sales: [
+    { name: 'Revenue by Region', kpis: ['Total Revenue', 'Revenue Growth %', 'Units Sold', 'Avg Order Value'] },
+    { name: 'Sales Performance Scorecard', kpis: ['Quota Attainment %', 'Win Rate %', 'Pipeline Value', 'Avg Deal Size'] },
+    { name: 'Monthly Sales Trend', kpis: ['MoM Revenue Growth', 'New Customers', 'Churn Revenue', 'Net Revenue Retention'] },
+    { name: 'Product Mix Analysis', kpis: ['Revenue by Product', 'Units by Category', 'Margin %', 'Top SKUs'] },
+  ],
+  'Customer Experience': [
+    { name: 'Customer Churn Analysis', kpis: ['Churn Rate %', 'Early-life Churn', 'Saves Rate %', 'At-risk Accounts'] },
+    { name: 'Retention Rate Analysis', kpis: ['Retention Rate %', 'Cohort Survival', 'Avg Tenure Months', 'Reactivation Rate'] },
+    { name: 'Customer Satisfaction Scores', kpis: ['NPS Score', 'CSAT %', 'CES Score', 'Detractor Rate'] },
+    { name: 'Churn Risk Segmentation', kpis: ['High-risk Accounts', 'Risk Score', 'Predicted Churn %', 'Segment Breakdown'] },
+  ],
+  'Contact Center': [
+    { name: 'Agent Performance Report', kpis: ['Handle Time', 'First Call Resolution %', 'CSAT Score', 'Calls per Hour'] },
+    { name: 'Call Volume Analysis', kpis: ['Total Calls', 'Abandon Rate %', 'Queue Wait Time', 'Peak Hours'] },
+    { name: 'Resolution Rate Trends', kpis: ['FCR %', 'Escalation Rate', 'Repeat Contact Rate', 'Resolution Time'] },
+    { name: 'Contact Center Efficiency', kpis: ['Cost per Contact', 'Occupancy %', 'Shrinkage %', 'Schedule Adherence'] },
+  ],
+};
+
 function narrowCatalogByHistory(catalog: DataCatalog, history: ClarificationTurn[]): DataCatalog {
   if (history.length === 0) return catalog;
 
-  // Collect all answers so far as lowercase tokens for matching
   const answers = history.map(t => t.answer.toLowerCase());
 
-  // Find if any answer matches a known domain
   const matchedDomain = catalog.domains.find(domain =>
     answers.some(a => a.includes(domain.toLowerCase()) || domain.toLowerCase().includes(a))
   );
 
   if (!matchedDomain) return catalog;
 
-  // Filter reports and datasets to only the matched domain
-  const filteredReports = catalog.reports.filter(r =>
-    r.domain.toLowerCase() === matchedDomain.toLowerCase()
-  );
-  const filteredDatasets = catalog.datasets.filter(d =>
-    d.domain.toLowerCase() === matchedDomain.toLowerCase()
-  );
+  // Merge BQ catalog reports with seed reports — seed fills gaps when BQ catalog is sparse
+  const bqReports = catalog.reports.filter(r => r.domain.toLowerCase() === matchedDomain.toLowerCase());
+  const bqDatasets = catalog.datasets.filter(d => d.domain.toLowerCase() === matchedDomain.toLowerCase());
+  const seedReports = (SEED_REPORTS[matchedDomain] ?? []).map(r => ({ ...r, domain: matchedDomain }));
 
-  // If no matches found for that domain, return full catalog (fallback)
-  if (filteredReports.length === 0 && filteredDatasets.length === 0) return catalog;
+  // Deduplicate by name (BQ takes precedence)
+  const bqNames = new Set(bqReports.map(r => r.name.toLowerCase()));
+  const mergedReports = [...bqReports, ...seedReports.filter(r => !bqNames.has(r.name.toLowerCase()))];
 
   const summaryText = [
     `SELECTED DOMAIN: ${matchedDomain}`,
     '',
-    `AVAILABLE REPORTS IN ${matchedDomain.toUpperCase()} (options must come from this list):`,
-    ...filteredReports.map(r => `- ${r.name} — KPIs: ${r.kpis.slice(0, 4).join(', ')}`),
-    '',
-    `AVAILABLE DATASETS IN ${matchedDomain.toUpperCase()}:`,
-    ...filteredDatasets.map(d => `- ${d.name}`),
+    `AVAILABLE REPORTS IN ${matchedDomain.toUpperCase()} (use these names as Stage 2 options):`,
+    ...mergedReports.map(r => `- ${r.name} — KPIs: ${r.kpis.slice(0, 4).join(', ')}`),
+    ...(bqDatasets.length > 0 ? ['', `AVAILABLE DATASETS IN ${matchedDomain.toUpperCase()}:`, ...bqDatasets.map(d => `- ${d.name}`)] : []),
   ].join('\n');
 
   return {
     domains: [matchedDomain],
-    reports: filteredReports,
-    datasets: filteredDatasets,
+    reports: mergedReports,
+    datasets: bqDatasets,
     summaryText,
   };
 }
