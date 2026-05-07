@@ -291,6 +291,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
   const [flowState, setFlowState] = useState<string>('new');
   const [clarificationContext, setClarificationContext] = useState<string | null>(null);
   const [clarificationHistory, setClarificationHistory] = useState<{question: string; answer: string}[]>([]);
+  const [activeTableRef, setActiveTableRef] = useState<string | undefined>(undefined);
   const [hoveredConvId, setHoveredConvId] = useState<string | null>(null);
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [isReportPanelOpen, setIsReportPanelOpen] = useState(false);
@@ -2564,7 +2565,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
       const res = await fetch("http://localhost:3001/api/conversational/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, skipClarification, clarificationHistory: history, priorContext }),
+        body: JSON.stringify({ query, skipClarification, clarificationHistory: history, priorContext, activeTable: activeTableRef }),
       });
 
       if (!res.ok || !res.body) throw new Error(`Backend error: ${res.status}`);
@@ -2593,6 +2594,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
             const payload = JSON.parse(line.slice(6));
             if (event === 'meta') {
               patchMsg(m => ({ ...m, content: payload.description || payload.message || '', data: { ...m.data, meta: payload } }));
+              if (payload.activeTable) setActiveTableRef(payload.activeTable);
             } else if (event === 'component') {
               patchMsg(m => ({ ...m, data: { ...m.data, components: [...(m.data?.components || []), payload] } }));
             } else if (event === 'followUp') {
@@ -2648,8 +2650,9 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
       historyToSend = newHistory;
       queryToSend = activeContext;
     } else {
-      // Fresh query — clear history
+      // Fresh query — clear history and active table context
       setClarificationHistory([]);
+      setActiveTableRef(undefined);
       historyToSend = [];
       queryToSend = userQuestion;
     }

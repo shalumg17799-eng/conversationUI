@@ -1,7 +1,8 @@
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, Type, Tool } from '@google/genai';
 import dotenv from 'dotenv';
 import { ShapeSignature } from '../types';
 import { runQueryWithMeta, qualifiedTable } from '../lib/bigqueryClient';
+import { DATA_SOURCES, ALL_DOMAINS, ALL_TABLES, getSourcesByDomain } from './dataSourceMap';
 
 dotenv.config();
 
@@ -15,7 +16,7 @@ interface DataCatalog {
 }
 
 let catalogCache: { data: DataCatalog; fetchedAt: number } | null = null;
-const CATALOG_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const CATALOG_TTL_MS = 10 * 60 * 1000;
 
 export async function getDataCatalog(): Promise<DataCatalog> {
   if (catalogCache && Date.now() - catalogCache.fetchedAt < CATALOG_TTL_MS) {
@@ -45,10 +46,10 @@ export async function getDataCatalog(): Promise<DataCatalog> {
     const summaryText = [
       `AVAILABLE DOMAINS: ${domains.join(', ')}`,
       '',
-      'AVAILABLE REPORTS (use these names and KPIs as options):',
+      'AVAILABLE REPORTS:',
       ...reports.map(r => `- ${r.name} [${r.domain}] — KPIs: ${r.kpis.slice(0, 3).join(', ')}`),
       '',
-      'AVAILABLE DATASETS (use these as data source options):',
+      'AVAILABLE DATASETS:',
       ...datasets.map(d => `- ${d.name} [${d.domain}]`),
     ].join('\n');
 
@@ -57,14 +58,12 @@ export async function getDataCatalog(): Promise<DataCatalog> {
     return catalog;
   } catch (err) {
     console.error('getDataCatalog error:', err);
-    // Fallback — known domains from actual BQ tables
-    const fallback: DataCatalog = {
+    return {
       domains: ['Sales', 'Customer Experience', 'Network', 'Contact Center'],
       reports: [],
       datasets: [],
       summaryText: 'AVAILABLE DOMAINS: Sales, Customer Experience, Network, Contact Center',
     };
-    return fallback;
   }
 }
 
@@ -83,6 +82,10 @@ export interface ClarifyResult {
   currentQuestion: ClarifyQuestion | null;
   questions: string[];
 }
+
+export type AnalyzeResult =
+  | { action: 'clarify'; opener: string; question: string; options: string[] }
+  | { action: 'route'; table: string; intent: 'trend' | 'comparison' | 'metric_by_dimension' };
 
 export interface ReportCard {
   renderType: string;
@@ -112,7 +115,6 @@ function stripThinkTags(text: string): string {
 }
 
 function extractJSON(text: string): string {
-  // Grab outermost { ... } block
   const start = text.indexOf('{');
   const end = text.lastIndexOf('}');
   if (start !== -1 && end !== -1 && end > start) return text.slice(start, end + 1);
@@ -125,255 +127,393 @@ function getAI() {
   return _ai;
 }
 
-// ── System prompt ─────────────────────────────────────────────────────────────
+function getFunctionCall(response: any): { name: string; args: Record<string, any> } | null {
+  try {
+    const calls = response.functionCalls; // getter, not a method
+    if (Array.isArray(calls) && calls.length > 0) return calls[0];
+  } catch {}
+  try {
+    const part = response.candidates?.[0]?.content?.parts?.[0];
+    if (part?.functionCall) return part.functionCall;
+  } catch {}
+  return null;
+}
 
-const REPORT_SYSTEM_PROMPT = `You are an expert business intelligence analyst and UI architect.
-You receive a user query and real data from BigQuery.
-Your job is to design a rich, interactive dashboard that best answers the query.
+// ── Tool declarations ─────────────────────────────────────────────────────────
 
-═══════════════════════════════════════════════════
-STEP 1 — CHOOSE A TEMPLATE
-═══════════════════════════════════════════════════
-Pick the ONE template that best fits the query intent:
+const ANALYZE_QUERY_TOOLS: Tool[] = [
+  {
+    functionDeclarations: [
+      {
+        name: 'request_clarification',
+        description: 'Ask the user a clarifying question when the query lacks enough context to generate a useful report.',
+        parameters: {
+          type: Type.OBJECT,
+          properties: {
+            opener: { type: Type.STRING, description: 'One sentence acknowledging the query and leading into the question.' },
+            question: { type: Type.STRING, description: 'One short, specific question to ask.' },
+            options: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
+              description: '3–4 answer options for the question.',
+            },
+          },
+          required: ['opener', 'question', 'options'],
+        },
+      },
+      {
+        name: 'route_to_data',
+        description: 'Route the query to the correct BigQuery table when enough context is available to generate a report.',
+        parameters: {
+          type: Type.OBJECT,
+          properties: {
+            table: {
+              type: Type.STRING,
+              enum: ALL_TABLES,
+              description: 'The exact BigQuery table name to query. Pick the one whose description best matches the user intent.',
+            },
+            intent: {
+              type: Type.STRING,
+              enum: ['trend', 'comparison', 'metric_by_dimension'],
+              description: 'Type of analysis requested.',
+            },
+          },
+          required: ['table', 'intent'],
+        },
+      },
+    ],
+  },
+];
 
-- "summary"        → High-level overview. Use for "show me X", "what is the status of Y". Lead with KPIGrid + 1-2 charts.
-- "deep_dive"      → Full analysis. Use for "analyze X", "give me a full report on Y". Use metrics + charts + table + insights.
-- "trend_analysis" → Time-based focus. Use for "how has X changed", "trend of Y over time". Lead with LineChart or AreaChart.
-- "comparison"     → Side-by-side. Use for "compare X vs Y", "which region/territory is best/worst". Use TwoColumn layout.
-- "qa_answer"      → Direct question. Use for "why is X happening", "what caused Y", "explain Z". Lead with InsightCard + SummaryText, then supporting data.
+const DESIGN_REPORT_TOOLS: Tool[] = [
+  {
+    functionDeclarations: [
+      {
+        name: 'design_report',
+        description: 'Design the BI dashboard layout and components to answer the user query.',
+        parameters: {
+          type: Type.OBJECT,
+          properties: {
+            template: {
+              type: Type.STRING,
+              enum: ['summary', 'deep_dive', 'trend_analysis', 'comparison', 'qa_answer'],
+            },
+            title: { type: Type.STRING, description: 'Report title, 5–8 words.' },
+            message: { type: Type.STRING, description: '2–3 sentence narrative summary of the analysis.' },
+            cards: {
+              type: Type.ARRAY,
+              description: 'Dashboard components to render. Each card has renderType, props, and optional children.',
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  renderType: { type: Type.STRING },
+                  props: { type: Type.OBJECT },
+                  children: { type: Type.ARRAY, items: { type: Type.OBJECT } },
+                },
+                required: ['renderType', 'props'],
+              },
+            },
+            followUp: {
+              type: Type.ARRAY,
+              description: '3–4 follow-up questions the user might ask.',
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  label: { type: Type.STRING },
+                  intent: { type: Type.STRING },
+                },
+                required: ['label', 'intent'],
+              },
+            },
+          },
+          required: ['template', 'title', 'message', 'cards', 'followUp'],
+        },
+      },
+    ],
+  },
+];
 
-═══════════════════════════════════════════════════
-STEP 2 — CHOOSE COMPONENTS (2–6 total)
-═══════════════════════════════════════════════════
-
-METRIC COMPONENTS (embed real values from the data sample):
-- KPICard   → Single metric with trend. Props: { title, value, trend?, delta?, deltaLabel?, explanation? }
-             Use when: one key number is the answer (e.g. "what is our churn rate")
-- KPIGrid   → 2–6 metrics side by side. Props: { metrics: [{title, value, trend?, delta?}], explanation? }
-             Use when: multiple KPIs summarise the dataset well
-- StatDelta → Current vs previous period. Props: { title, current, previous, currentLabel?, previousLabel?, trend, explanation? }
-             Use when: the query is about change between two periods
-
-CHART COMPONENTS (DO NOT include data — the pipeline attaches it):
-- BarChart  → Categorical comparison. Props: { title, xKey, yKey, explanation? }
-             Use when: comparing values across categories (territories, channels, products)
-- LineChart → Time-series trend. Props: { title, xKey, yKey, explanation? }
-             Use when: showing change over time with a date/time column
-- AreaChart → Volume/cumulative trend. Props: { title, xKey, yKey, explanation? }
-             Use when: showing volume, growth, or filled area trends over time
-- PieChart  → Distribution / share. Props: { title, nameKey, valueKey, explanation? }
-             Use when: showing proportional breakdown (market share, segment split). Max 8 slices.
-- RankedList → Ordered top/bottom N. Props: { title, labelKey, valueKey, limit?, explanation? }
-             Use when: user asks "top X", "best/worst", "ranked by"
-
-DATA COMPONENTS (DO NOT include data — the pipeline attaches it):
-- Table     → Full tabular data. Props: { title, columns: [exact column names from data], explanation? }
-             Use when: user needs row-level detail or the dataset is small enough to show fully
-
-NARRATIVE COMPONENTS (embed content directly — no data hydration):
-- InsightCard  → Key finding callout. Props: { title, body, type?: "insight"|"warning"|"success", highlight? }
-               Use when: there is a critical finding worth surfacing (anomaly, top performer, risk)
-- AlertBanner  → Warning or info strip. Props: { message, type: "warning"|"info"|"success"|"error" }
-               Use when: data shows a threshold breach, anomaly, or needs user attention
-- SummaryText  → Narrative paragraph. Props: { text }
-               Use when: a qa_answer template needs a prose explanation before the charts
-
-LAYOUT COMPONENTS (wrap other components — children required):
-- TwoColumn → Side-by-side layout. Props: {}. children: EXACTLY 2 component objects — never 1, never 3+.
-             Use when: comparison template or showing two small related charts together.
-             FORBIDDEN: wrapping a single BarChart, LineChart, AreaChart, RankedList, or Table alone in TwoColumn.
-             These components are full-width — place them at the top level, not inside TwoColumn.
-- Section   → Titled group of components. Props: { title, description? }. children: 1–4 component objects.
-             Use when: deep_dive template with logical groupings (e.g. "Revenue Overview", "Regional Breakdown")
-
-═══════════════════════════════════════════════════
-RULES
-═══════════════════════════════════════════════════
-- ONLY use column names that appear exactly in the data sample. Never invent column names.
-- For KPICard / KPIGrid / StatDelta: compute real values from the sample (average, sum, or first row as appropriate).
-- trend strings must be like "+4.2%" or "-1.5%". Only include if you can infer from the data; otherwise omit.
-- explanation: one sentence, max 20 words, describing what this component shows.
-- For nested layout components (TwoColumn, Section), put the child cards in the "children" array of that component.
-- followUp: 3–4 short, natural follow-up questions the user might ask next.
-- Max 6 top-level cards. Use layout wrappers to group related components.
-- BarChart, LineChart, AreaChart, PieChart, RankedList, Table are FULL-WIDTH components. Never nest them alone inside TwoColumn. Only use TwoColumn when you have exactly 2 components to place side by side.
-
-═══════════════════════════════════════════════════
-OUTPUT FORMAT — valid JSON only, no markdown, no code fences
-═══════════════════════════════════════════════════
-{
-  "template": "summary|deep_dive|trend_analysis|comparison|qa_answer",
-  "title": "Report title (5-8 words)",
-  "message": "2-3 sentence narrative summary of the analysis",
-  "cards": [
-    {
-      "renderType": "ComponentName",
-      "props": { ...component props... },
-      "children": []
-    }
-  ],
-  "followUp": [
-    { "label": "Short button label", "intent": "full question this follow-up asks" }
-  ]
-}`;
-
-// ── Clarification gate ────────────────────────────────────────────────────────
+// ── analyzeQuery — replaces clarifyOrGenerate + classifyIntent ────────────────
 
 interface ClarificationTurn { question: string; answer: string; }
 
-function buildClarifySystem(catalog: DataCatalog): string {
-  return `You are a friendly business intelligence assistant.
-Your job is to gather enough context to generate a focused BI report, then generate it.
-
-You have access to the following data:
-
-${catalog.summaryText}
-
-═══════════════════════════════════════════════════
-CLARIFICATION STAGES — follow this order strictly
-═══════════════════════════════════════════════════
-
-STAGE 1 — If no domain is known yet:
-  Question: "Which domain should this report focus on?"
-  Options: use the AVAILABLE DOMAINS list above (e.g. Sales, Network, Customer Experience, Contact Center)
-
-STAGE 2 — If domain is known but no report type / metric is known:
-  Question: "Which report or metric would you like to explore?"
-  Options: use AVAILABLE REPORTS for that domain (report names only, 3–4 options).
-           If the domain has no listed reports, use the KPI names from AVAILABLE DATASETS.
-           NEVER repeat domain names as options at this stage.
-
-STAGE 3 — If domain and report are known but the time scope is unclear:
-  Question: "What time period should this cover?"
-  Options: This Month, Last Quarter, Year to Date, Last 12 Months
-
-A query is READY TO GENERATE once you know the domain AND a report/metric.
-Do NOT ask about something the user already answered.
-Generate immediately if all key context is present.
-
-RESPOND WITH JSON ONLY — no markdown, no explanation:
-{
-  "action": "generate",
-  "opener": "",
-  "currentQuestion": null
-}
-OR
-{
-  "action": "clarify",
-  "opener": "One sentence acknowledging the last answer and leading into the next question.",
-  "currentQuestion": {
-    "question": "One short, specific question?",
-    "options": ["Option A", "Option B", "Option C", "Option D"]
-  }
-}`;
-}
-
-// Seed catalog — ensures meaningful options even when BQ catalog is sparse
-const SEED_REPORTS: Record<string, Array<{ name: string; kpis: string[] }>> = {
-  Network: [
-    { name: 'Customer Churn Monthly Variation Analysis', kpis: ['Return Rate %', 'Retention Index (RIS %)', 'Annualized Drop (AARD %)', 'Territory Revenue'] },
-    { name: 'Network KPI Summary', kpis: ['Uptime %', 'Latency ms', 'Packet Loss %', 'Coverage Score'] },
-    { name: 'Device Performance Report', kpis: ['Active Devices', 'Failure Rate %', 'Avg Session Duration', 'Revenue per Device'] },
-    { name: 'Territory Coverage Analysis', kpis: ['Coverage %', 'Signal Strength', 'Territory Revenue', 'Churn Rate %'] },
-  ],
-  Sales: [
-    { name: 'Revenue by Region', kpis: ['Total Revenue', 'Revenue Growth %', 'Units Sold', 'Avg Order Value'] },
-    { name: 'Sales Performance Scorecard', kpis: ['Quota Attainment %', 'Win Rate %', 'Pipeline Value', 'Avg Deal Size'] },
-    { name: 'Monthly Sales Trend', kpis: ['MoM Revenue Growth', 'New Customers', 'Churn Revenue', 'Net Revenue Retention'] },
-    { name: 'Product Mix Analysis', kpis: ['Revenue by Product', 'Units by Category', 'Margin %', 'Top SKUs'] },
-  ],
-  'Customer Experience': [
-    { name: 'Customer Churn Analysis', kpis: ['Churn Rate %', 'Early-life Churn', 'Saves Rate %', 'At-risk Accounts'] },
-    { name: 'Retention Rate Analysis', kpis: ['Retention Rate %', 'Cohort Survival', 'Avg Tenure Months', 'Reactivation Rate'] },
-    { name: 'Customer Satisfaction Scores', kpis: ['NPS Score', 'CSAT %', 'CES Score', 'Detractor Rate'] },
-    { name: 'Churn Risk Segmentation', kpis: ['High-risk Accounts', 'Risk Score', 'Predicted Churn %', 'Segment Breakdown'] },
-  ],
-  'Contact Center': [
-    { name: 'Agent Performance Report', kpis: ['Handle Time', 'First Call Resolution %', 'CSAT Score', 'Calls per Hour'] },
-    { name: 'Call Volume Analysis', kpis: ['Total Calls', 'Abandon Rate %', 'Queue Wait Time', 'Peak Hours'] },
-    { name: 'Resolution Rate Trends', kpis: ['FCR %', 'Escalation Rate', 'Repeat Contact Rate', 'Resolution Time'] },
-    { name: 'Contact Center Efficiency', kpis: ['Cost per Contact', 'Occupancy %', 'Shrinkage %', 'Schedule Adherence'] },
-  ],
-};
-
-function narrowCatalogByHistory(catalog: DataCatalog, history: ClarificationTurn[]): DataCatalog {
-  if (history.length === 0) return catalog;
-
+function buildAnalyzeSystem(history: ClarificationTurn[]): string {
   const answers = history.map(t => t.answer.toLowerCase());
-
-  const matchedDomain = catalog.domains.find(domain =>
-    answers.some(a => a.includes(domain.toLowerCase()) || domain.toLowerCase().includes(a))
+  const matchedDomain = ALL_DOMAINS.find(d =>
+    answers.some(a => a.includes(d.toLowerCase()) || d.toLowerCase().includes(a))
   );
 
-  if (!matchedDomain) return catalog;
+  // Build catalog text from DATA_SOURCES only — guaranteed to have real BQ data
+  let catalogText: string;
+  if (matchedDomain) {
+    const sources = getSourcesByDomain(matchedDomain);
+    catalogText = [
+      `SELECTED DOMAIN: ${matchedDomain}`,
+      '',
+      `AVAILABLE REPORTS (all backed by real data):`,
+      ...sources.map(s => `- "${s.reportName}" → table: ${s.table} — KPIs: ${s.kpis.slice(0, 4).join(', ')}`),
+    ].join('\n');
+  } else {
+    catalogText = [
+      `AVAILABLE DOMAINS: ${ALL_DOMAINS.join(', ')}`,
+      '',
+      'ALL AVAILABLE REPORTS (all backed by real data):',
+      ...DATA_SOURCES.map(s => `- [${s.domain}] "${s.reportName}" → table: ${s.table}`),
+    ].join('\n');
+  }
 
-  // Merge BQ catalog reports with seed reports — seed fills gaps when BQ catalog is sparse
-  const bqReports = catalog.reports.filter(r => r.domain.toLowerCase() === matchedDomain.toLowerCase());
-  const bqDatasets = catalog.datasets.filter(d => d.domain.toLowerCase() === matchedDomain.toLowerCase());
-  const seedReports = (SEED_REPORTS[matchedDomain] ?? []).map(r => ({ ...r, domain: matchedDomain }));
+  const historyText = history.length > 0
+    ? `\nCONVERSATION HISTORY:\n${history.map(t => `Q: ${t.question}\nA: ${t.answer}`).join('\n')}`
+    : '';
 
-  // Deduplicate by name (BQ takes precedence)
-  const bqNames = new Set(bqReports.map(r => r.name.toLowerCase()));
-  const mergedReports = [...bqReports, ...seedReports.filter(r => !bqNames.has(r.name.toLowerCase()))];
+  return `You are a business intelligence assistant. Decide whether to ask a clarifying question or route directly to data.
 
-  const summaryText = [
-    `SELECTED DOMAIN: ${matchedDomain}`,
-    '',
-    `AVAILABLE REPORTS IN ${matchedDomain.toUpperCase()} (use these names as Stage 2 options):`,
-    ...mergedReports.map(r => `- ${r.name} — KPIs: ${r.kpis.slice(0, 4).join(', ')}`),
-    ...(bqDatasets.length > 0 ? ['', `AVAILABLE DATASETS IN ${matchedDomain.toUpperCase()}:`, ...bqDatasets.map(d => `- ${d.name}`)] : []),
-  ].join('\n');
+IMPORTANT: Only offer options from the list below. Every report listed here is backed by real BigQuery data. Never suggest reports or options not in this list.
+
+${catalogText}
+${historyText}
+
+CLARIFICATION RULES:
+1. If domain is unknown → call request_clarification. options MUST be exactly: ${JSON.stringify(ALL_DOMAINS)}
+2. If domain known but report unknown → call request_clarification. options MUST be the "reportName" values for that domain only (from the list above).
+3. Route directly (call route_to_data) if: domain + report are both known from the query or history.
+
+Never re-ask something already answered. Never invent report names not in the list above.`;
+}
+
+function sanitizeOptions(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  return raw
+    .filter((o): o is string => typeof o === 'string')
+    .map(o => o.trim())
+    .filter(o => o.length > 0 && !o.includes(']') && !o.includes('{') && !o.includes(':'))
+    .filter(o => { if (seen.has(o)) return false; seen.add(o); return true; });
+}
+
+// ── Context extraction ────────────────────────────────────────────────────────
+
+// Scan query text AND history answers for a matching domain + report.
+// This is the fast path: if the user spelled out enough in their original message,
+// skip clarification entirely without making any LLM call.
+function extractContextFromText(texts: string[]): { domain?: string; source?: ReturnType<typeof getSourcesByDomain>[0] } {
+  const joined = texts.join(' ');
+  const q = joined.toLowerCase();
+
+  const domain = ALL_DOMAINS.find(d => q.includes(d.toLowerCase()));
+  if (!domain) return {};
+
+  const sources = getSourcesByDomain(domain);
+  const source = sources.find(s => q.includes(s.reportName.toLowerCase()));
+  return { domain, source };
+}
+
+// Deterministic fallback used when LLM call fails.
+// Builds the correct next question from whatever context is already known.
+function deterministicFallback(query: string, history: ClarificationTurn[]): AnalyzeResult {
+  const allTexts = [query, ...history.map(t => t.answer)];
+  const { domain, source } = extractContextFromText(allTexts);
+
+  if (source) {
+    return { action: 'route', table: source.table, intent: 'metric_by_dimension' };
+  }
+
+  if (domain) {
+    const sources = getSourcesByDomain(domain);
+    return {
+      action: 'clarify',
+      opener: `I can help with ${domain} reports.`,
+      question: 'Which report would you like to see?',
+      options: sources.map(s => s.reportName),
+    };
+  }
 
   return {
-    domains: [matchedDomain],
-    reports: mergedReports,
-    datasets: bqDatasets,
-    summaryText,
+    action: 'clarify',
+    opener: 'I can help you create a report.',
+    question: 'Which domain would you like to report on?',
+    options: ALL_DOMAINS,
   };
+}
+
+// ── LLM-driven query analysis ─────────────────────────────────────────────────
+//
+// The LLM reads the user query + history, then decides:
+//   • route   → enough context; pick the exact table from DATA_SOURCES
+//   • clarify → ask one specific question (we supply the options deterministically)
+//
+// Using JSON mode (responseMimeType) — reliable with Gemma, unlike function calling mode:ANY.
+
+function buildAnalyzePrompt(query: string, history: ClarificationTurn[]): { system: string; user: string } {
+  const historyText = history.length > 0
+    ? `\nCONVERSATION SO FAR:\n${history.map(t => `Q: ${t.question}\nA: ${t.answer}`).join('\n')}`
+    : '';
+
+  const catalogText = DATA_SOURCES.map(s =>
+    `- domain="${s.domain}" report="${s.reportName}" table="${s.table}"`
+  ).join('\n');
+
+  const system = `You are a business intelligence assistant that decides if a user query has enough context to generate a report.
+
+AVAILABLE DATA (only suggest options from this list):
+${catalogText}
+
+RULES:
+1. If the query + history clearly specifies a domain AND a report name → action="route", set table to the exact table string from the list above.
+2. If domain is unclear → action="clarify". Set question="Which domain would you like to report on?"
+3. If domain is clear but report is unclear → action="clarify". Set question="Which report would you like to see?"
+4. opener MUST acknowledge what the user asked. Reference their specific words.
+5. Never invent table names. Only use tables from the list above.
+
+Respond with valid JSON only. No markdown. No code fences.
+{
+  "action": "route" | "clarify",
+  "opener": "...",
+  "question": "...",
+  "table": "...",
+  "intent": "trend" | "comparison" | "metric_by_dimension"
+}
+(omit "question" if action=route; omit "table"/"intent" if action=clarify)`;
+
+  const user = `USER QUERY: "${query}"${historyText}
+
+Analyze this. Respond with JSON.`;
+
+  return { system, user };
+}
+
+export async function analyzeQuery(
+  query: string,
+  history: ClarificationTurn[] = [],
+): Promise<AnalyzeResult> {
+  const ai = getAI();
+  const allTexts = [query, ...history.map(t => t.answer)];
+
+  // Fast path: query already contains full context → route directly, no LLM needed
+  const { source: directSource } = extractContextFromText(allTexts);
+  if (directSource) {
+    console.log(`[analyzeQuery] Fast-path route → table: ${directSource.table}`);
+    return { action: 'route', table: directSource.table, intent: 'metric_by_dimension' };
+  }
+
+  // LLM path: ask Gemma to interpret the query and decide what's missing
+  try {
+    const { system, user } = buildAnalyzePrompt(query, history);
+
+    const response = await ai.models.generateContent({
+      model: MODEL,
+      config: {
+        temperature: 0.2,
+        maxOutputTokens: 512,
+        responseMimeType: 'application/json',
+        systemInstruction: system,
+      },
+      contents: [{ role: 'user', parts: [{ text: user }] }],
+    });
+
+    const raw = response.text ?? '';
+    const cleaned = stripThinkTags(raw);
+    const jsonStr = extractJSON(cleaned);
+    const parsed = JSON.parse(jsonStr);
+
+    if (parsed.action === 'route' && parsed.table) {
+      // Validate: table must exist in DATA_SOURCES
+      const validSource = DATA_SOURCES.find(s => s.table === parsed.table);
+      if (validSource) {
+        console.log(`[analyzeQuery] LLM route → table: ${parsed.table}`);
+        return {
+          action: 'route',
+          table: parsed.table,
+          intent: parsed.intent ?? 'metric_by_dimension',
+        };
+      }
+      console.warn(`[analyzeQuery] LLM returned unknown table "${parsed.table}" — falling back`);
+    }
+
+    if (parsed.action === 'clarify') {
+      // LLM determines what to ask; we supply the options from DATA_SOURCES (not LLM)
+      const allTextsForDomain = [query, ...history.map(t => t.answer)];
+      const { domain } = extractContextFromText(allTextsForDomain);
+      const options = domain
+        ? getSourcesByDomain(domain).map(s => s.reportName)
+        : ALL_DOMAINS;
+
+      return {
+        action: 'clarify',
+        opener: parsed.opener ?? 'I can help you create a report.',
+        question: parsed.question ?? (domain ? 'Which report would you like to see?' : 'Which domain would you like to report on?'),
+        options,
+      };
+    }
+  } catch (err) {
+    console.error('[analyzeQuery] LLM call failed:', err);
+  }
+
+  // Last resort: deterministic fallback
+  console.log('[analyzeQuery] Using deterministic fallback');
+  return deterministicFallback(query, history);
 }
 
 export async function clarifyOrGenerate(
   query: string,
   history: ClarificationTurn[] = [],
 ): Promise<ClarifyResult> {
-  const ai = getAI();
-  try {
-    const catalog = await getDataCatalog();
-    const narrowedCatalog = narrowCatalogByHistory(catalog, history);
-    const systemInstruction = buildClarifySystem(narrowedCatalog);
-
-    const historyText = history.length > 0
-      ? `\nConversation so far:\n${history.map(t => `Q: ${t.question}\nA: ${t.answer}`).join('\n')}`
-      : '';
-
-    const response = await ai.models.generateContent({
-      model: MODEL,
-      config: {
-        temperature: 0,
-        maxOutputTokens: 512,
-        responseMimeType: 'application/json',
-        systemInstruction,
-      },
-      contents: [{ role: 'user', parts: [{ text: `Original query: "${query}"${historyText}` }] }],
-    });
-
-    const raw = stripThinkTags(response.text ?? '');
-    const parsed = JSON.parse(extractJSON(raw));
-
+  const result = await analyzeQuery(query, history);
+  if (result.action === 'clarify') {
     return {
-      action: parsed.action === 'clarify' ? 'clarify' : 'generate',
-      opener: parsed.opener ?? '',
-      currentQuestion: parsed.currentQuestion ?? null,
+      action: 'clarify',
+      opener: result.opener,
+      currentQuestion: { question: result.question, options: result.options },
       questions: [],
     };
-  } catch (err) {
-    console.error('clarifyOrGenerate error:', err);
-    // On error, default to generating — don't block the user
-    return { action: 'generate', opener: '', currentQuestion: null, questions: [] };
   }
+  return { action: 'generate', opener: '', currentQuestion: null, questions: [] };
 }
 
-// ── Main export ──────────────────────────────────────────────────────────────
+// ── Report system prompt (used as context for design_report tool) ─────────────
+
+const REPORT_SYSTEM_PROMPT = `You are an expert business intelligence analyst and UI architect.
+You receive a user query and real BigQuery data.
+Respond with valid JSON only — no markdown, no code fences, no explanation.
+
+OUTPUT FORMAT:
+{
+  "template": "summary|deep_dive|trend_analysis|comparison|qa_answer",
+  "title": "Report title (5-8 words)",
+  "message": "2-3 sentence narrative summary",
+  "cards": [ { "renderType": "ComponentName", "props": { ...props... }, "children": [] } ],
+  "followUp": [ { "label": "Short label", "intent": "full question" } ]
+}
+
+COLUMN NAME RULE — MOST IMPORTANT:
+The EXACT_COLUMNS list in the user message contains the exact column names as they exist in the database.
+You MUST copy these names character-for-character into xKey, yKey, nameKey, valueKey, labelKey, and columns[].
+NEVER lowercase, rename, or invent column names. If unsure, check EXACT_COLUMNS.
+
+TEMPLATES:
+- "summary"        → High-level overview. Lead with KPIGrid + 1-2 charts.
+- "deep_dive"      → Full analysis. Use metrics + charts + table + insights.
+- "trend_analysis" → Time-based. Lead with LineChart or AreaChart.
+- "comparison"     → Side-by-side. Use TwoColumn layout.
+- "qa_answer"      → Direct question. Lead with InsightCard + SummaryText.
+
+COMPONENTS:
+Metric (embed real values from sample): KPICard, KPIGrid, StatDelta
+Charts (pipeline attaches data — you only set keys): BarChart, LineChart, AreaChart, PieChart, RankedList
+Data: Table — set columns[] to EXACT column names you want shown
+Narrative (embed content): InsightCard, AlertBanner, SummaryText
+Layout: TwoColumn (exactly 2 children), Section (1–4 children)
+
+RULES:
+- xKey/yKey/nameKey/valueKey/labelKey: MUST be from EXACT_COLUMNS list.
+- KPICard/KPIGrid/StatDelta: compute real numeric values from data sample.
+- trend: "+4.2%" or "-1.5%". Only include if clearly calculable from data.
+- TwoColumn: exactly 2 children only.
+- BarChart, LineChart, AreaChart, PieChart, RankedList, Table are FULL-WIDTH — never nest alone in TwoColumn.
+- followUp: 3–4 natural follow-up questions the user might ask.
+- Max 6 top-level cards. Must produce at least 2 cards.`;
+
+// ── generateReport ────────────────────────────────────────────────────────────
 
 export async function generateReport(
   query: string,
@@ -383,27 +523,27 @@ export async function generateReport(
 ): Promise<LLMReport> {
   const ai = getAI();
 
-  const columnSummary = Object.entries(shape.columnTypes)
-    .map(([col, type]) => `${col} (${type})`)
-    .join(', ');
-
+  const allColumns = Object.keys(shape.columnTypes);
   const priorSection = priorContext
-    ? `\nPRIOR REPORT CONTEXT (already shown to user — your response MUST be different, focused on the new query):\n${priorContext}\n`
+    ? `\nPRIOR REPORT CONTEXT:\n${priorContext}\n`
     : '';
 
   const userMessage = `USER QUERY: "${query}"
 ${priorSection}
+EXACT_COLUMNS (copy these character-for-character into all key fields):
+  Dimension columns: ${shape.dimensionColumns.join(', ') || 'none'}
+  Measure columns:   ${shape.measureColumns.join(', ') || 'none'}
+  ${shape.isTimeSeries ? `Time column:       ${shape.timeColumn}` : 'Not a time series'}
+  All columns:       ${allColumns.join(', ')}
+
 DATA SUMMARY:
 - Total rows in BigQuery: ${shape.rowCount}
-- Columns: ${columnSummary}
-- Dimension columns: ${shape.dimensionColumns.join(', ') || 'none'}
-- Measure columns: ${shape.measureColumns.join(', ') || 'none'}
 - Time series: ${shape.isTimeSeries ? `yes (${shape.timeColumn})` : 'no'}
 
-DATA SAMPLE (first ${sampleRows.length} rows):
+DATA SAMPLE (first ${sampleRows.length} rows — column names are EXACT):
 ${JSON.stringify(sampleRows, null, 2)}
 
-Design the best report to answer the user's query using the real data above.`;
+Design the best dashboard to answer this query. Use EXACT_COLUMNS for all key fields. Respond with JSON only.`;
 
   try {
     const response = await ai.models.generateContent({
@@ -421,7 +561,6 @@ Design the best report to answer the user's query using the real data above.`;
     const cleaned = stripThinkTags(raw);
     const jsonStr = extractJSON(cleaned);
     const parsed = JSON.parse(jsonStr);
-
     return {
       template: parsed.template ?? 'summary',
       message: parsed.message ?? 'Here is your analysis.',
@@ -432,14 +571,7 @@ Design the best report to answer the user's query using the real data above.`;
     };
   } catch (err: any) {
     console.error('generateReport error:', err?.message ?? err);
-    return {
-      template: 'summary',
-      message: 'I encountered an error generating the report.',
-      title: 'Report',
-      description: '',
-      cards: [],
-      followUp: [],
-    };
+    return { template: 'summary', message: 'I encountered an error generating the report.', title: 'Report', description: '', cards: [], followUp: [] };
   }
 }
 

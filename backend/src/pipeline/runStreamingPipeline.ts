@@ -1,10 +1,97 @@
 import dotenv from 'dotenv';
-import { classifyIntent } from '../services/intentClassifier';
 import { executeQuery } from '../services/queryEngine';
 import { analyzeDataShape } from '../services/dataShapeAnalyzer';
-import { generateReport, clarifyOrGenerate, getDataCatalog, ReportCard } from '../services/llmHandler';
-import { UITypeTree } from '../types';
+import { generateReport, analyzeQuery, ReportCard } from '../services/llmHandler';
+import { DATA_SOURCES, ALL_DOMAINS, getSourcesByDomain } from '../services/dataSourceMap';
+import { UITypeTree, ShapeSignature } from '../types';
 import { cacheService, generateKey } from '../services/cacheService';
+
+// Fixes column name casing in LLM-generated cards.
+// BQ returns columns in their original case (e.g. TEAM, CSAT_SCORE) but the LLM
+// often lowercases them (team, csat_score), causing Recharts to find nothing.
+function fixColumnCasing(cards: ReportCard[], actualColumns: string[]): ReportCard[] {
+  const caseMap = new Map<string, string>();
+  actualColumns.forEach(col => caseMap.set(col.toLowerCase(), col));
+
+  const fixProps = (props: Record<string, any>): Record<string, any> => {
+    const out = { ...props };
+    for (const key of ['xKey', 'yKey', 'nameKey', 'valueKey', 'labelKey', 'timeColumn']) {
+      if (typeof out[key] === 'string') {
+        out[key] = caseMap.get(out[key].toLowerCase()) ?? out[key];
+      }
+    }
+    if (Array.isArray(out.columns)) {
+      out.columns = out.columns.map((c: string) => caseMap.get(c.toLowerCase()) ?? c);
+    }
+    if (Array.isArray(out.metrics)) {
+      out.metrics = out.metrics.map((m: any) => typeof m === 'object' ? m : m);
+    }
+    return out;
+  };
+
+  const fixCard = (card: ReportCard): ReportCard => ({
+    ...card,
+    props: fixProps(card.props),
+    children: card.children?.map(fixCard),
+  });
+
+  return cards.map(fixCard);
+}
+
+// Guaranteed fallback: always produces at least one renderable card from the data shape.
+// Used when the LLM returns cards:[] for any reason.
+function generateFallbackCards(shape: ShapeSignature): ReportCard[] {
+  const cards: ReportCard[] = [];
+
+  // KPIGrid from the first 4 numeric columns
+  if (shape.measureColumns.length > 0) {
+    cards.push({
+      renderType: 'KPIGrid',
+      props: {
+        metrics: shape.measureColumns.slice(0, 4).map(col => ({ title: col, value: '—' })),
+        explanation: 'Key metrics from the dataset.',
+      },
+    });
+  }
+
+  // Time-series chart
+  if (shape.isTimeSeries && shape.timeColumn && shape.measureColumns.length > 0) {
+    cards.push({
+      renderType: 'LineChart',
+      props: {
+        title: `${shape.measureColumns[0]} Over Time`,
+        xKey: shape.timeColumn,
+        yKey: shape.measureColumns[0],
+        explanation: `Trend of ${shape.measureColumns[0]} over time.`,
+      },
+    });
+  } else if (shape.dimensionColumns.length > 0 && shape.measureColumns.length > 0) {
+    cards.push({
+      renderType: 'BarChart',
+      props: {
+        title: `${shape.measureColumns[0]} by ${shape.dimensionColumns[0]}`,
+        xKey: shape.dimensionColumns[0],
+        yKey: shape.measureColumns[0],
+        explanation: `${shape.measureColumns[0]} broken down by ${shape.dimensionColumns[0]}.`,
+      },
+    });
+  }
+
+  // Always include a table as last resort
+  const columns = [...shape.dimensionColumns, ...shape.measureColumns].slice(0, 8);
+  if (columns.length > 0) {
+    cards.push({
+      renderType: 'Table',
+      props: {
+        title: 'Data Detail',
+        columns,
+        explanation: 'Full dataset view.',
+      },
+    });
+  }
+
+  return cards;
+}
 
 dotenv.config();
 
@@ -102,65 +189,111 @@ export interface ClarificationTurn {
   answer: string;
 }
 
+// Modification-intent keywords — signals the user wants to change an existing report
+const FOLLOW_UP_KEYWORDS = [
+  'remove', 'add', 'show only', 'hide', 'filter', 'sort', 'exclude', 'include',
+  'change', 'without', 'with only', 'limit to', 'top ', 'only show', 'group by',
+  'drill down', 'break down', 'update', 'replace', 'swap',
+];
+
+function isFollowUpCommand(query: string): boolean {
+  const q = query.toLowerCase();
+  return FOLLOW_UP_KEYWORDS.some(kw => q.includes(kw));
+}
+
 export async function runStreamingPipeline(
   query: string,
   send: SendFn,
   skipClarification = false,
   clarificationHistory: ClarificationTurn[] = [],
   priorContext?: string,
+  activeTable?: string,
 ): Promise<void> {
   const cacheKey = generateKey({ query, stream: true, v: 2, history: clarificationHistory, prior: priorContext });
-  const cached = cacheService.get<{ components: UITypeTree[]; title: string; message: string }>(cacheKey);
+  const cached = cacheService.get<{ components: UITypeTree[]; title: string; message: string; activeTable?: string }>(cacheKey);
 
-  console.log(`[Pipeline] query="${query}" skipClarification=${skipClarification} history=${clarificationHistory.length} cacheHit=${!!cached}`);
+  console.log(`[Pipeline] query="${query}" skipClarification=${skipClarification} history=${clarificationHistory.length} activeTable=${activeTable ?? 'none'} cacheHit=${!!cached}`);
 
   if (cached) {
-    send('meta', { title: cached.title, description: cached.message, cached: true });
+    send('meta', { title: cached.title, description: cached.message, cached: true, activeTable: cached.activeTable });
     for (const component of cached.components) send('component', component);
     return;
   }
 
+  // Follow-up command detection: if we know the active table and this looks like a
+  // modification request (not a new domain/report selection), skip clarification and
+  // reuse the same table. The LLM still handles the full report generation.
+  const isFollowUp = !!activeTable && !!priorContext && clarificationHistory.length === 0 && isFollowUpCommand(query);
+  if (isFollowUp) {
+    console.log(`[Pipeline] Follow-up command detected — reusing table: ${activeTable}`);
+    skipClarification = true;
+  }
+
   const start = Date.now();
 
-  // Build enriched query from original + clarification history
+  // Build enriched query from original + clarification history (or follow-up modification)
   const enrichedQuery = clarificationHistory.length > 0
     ? `${query}. Context: ${clarificationHistory.map(t => `${t.question} → ${t.answer}`).join('; ')}`
-    : query;
+    : isFollowUp
+      ? `MODIFICATION REQUEST: ${query}` // signal to LLM this is an update, not a new report
+      : query;
 
-  // Step 0 — clarification gate: force generate after 3 Q&A turns, otherwise ask LLM
+  // Step 0+1 — single LLM call: decide clarify vs route
   const forceGenerate = skipClarification || clarificationHistory.length >= 3;
-  if (!forceGenerate) {
-    send('status', { message: 'Understanding your query...' });
-    const clarification = await clarifyOrGenerate(query, clarificationHistory);
+  let tableOverride: string | undefined;
+  let intent: { metric: string; dimension: string; intent: 'trend' | 'comparison' | 'metric_by_dimension' };
 
-    if (clarification.action === 'clarify') {
+  if (isFollowUp && activeTable) {
+    // Follow-up path — skip all routing, use the same table as the prior report
+    tableOverride = activeTable;
+    intent = { metric: activeTable, dimension: 'unknown', intent: 'metric_by_dimension' };
+  } else if (!forceGenerate) {
+    send('status', { message: 'Understanding your query...' });
+    const analysis = await analyzeQuery(query, clarificationHistory);
+
+    if (analysis.action === 'clarify') {
       send('clarification', {
-        opener: clarification.opener,
-        currentQuestion: clarification.currentQuestion,
+        opener: analysis.opener,
+        currentQuestion: { question: analysis.question, options: analysis.options },
       });
       return;
     }
-  }
 
-  // Step 1 — route intent to the right BQ table (use enriched query for better routing)
-  const intent = await classifyIntent(enrichedQuery);
+    tableOverride = analysis.table;
+    intent = { metric: analysis.table, dimension: 'unknown', intent: analysis.intent };
+  } else {
+    const { classifyIntent } = await import('../services/intentClassifier');
+    intent = await classifyIntent(enrichedQuery);
+  }
 
   // Step 2 — fetch real BigQuery data
   send('status', { message: 'Querying BigQuery...' });
-  const allRows = await executeQuery(intent, (meta) => send('bq_debug', meta));
+  const allRows = await executeQuery(intent, (meta) => send('bq_debug', meta), tableOverride);
+
+  // Track which table ultimately produced data (for follow-up routing)
+  const resolvedTable = tableOverride ?? activeTable;
 
   if (allRows.length === 0) {
-    // Recovery — show options grounded in real catalog data, not hardcoded guesses
-    const catalog = await getDataCatalog();
-    const recoveryOptions = catalog.reports.length > 0
-      ? catalog.reports.slice(0, 4).map(r => r.name)
-      : catalog.domains.slice(0, 4);
+    // Recovery — derive options from DATA_SOURCES (guaranteed real data), grouped by domain
+    const answeredDomain = clarificationHistory
+      .map(t => t.answer)
+      .find(a => ALL_DOMAINS.some(d => d.toLowerCase() === a.toLowerCase()));
+
+    let recoveryOptions: string[];
+    let recoveryQuestion: string;
+
+    if (answeredDomain) {
+      const sources = getSourcesByDomain(answeredDomain);
+      recoveryOptions = sources.map(s => s.reportName);
+      recoveryQuestion = `Which ${answeredDomain} report would you like to explore?`;
+    } else {
+      recoveryOptions = ALL_DOMAINS;
+      recoveryQuestion = 'Which domain would you like to explore?';
+    }
+
     send('clarification', {
-      opener: `I couldn't find data matching that combination. Here are reports I have data for:`,
-      currentQuestion: {
-        question: 'Which would you like to explore?',
-        options: recoveryOptions,
-      },
+      opener: `I couldn't retrieve data for that selection. Here are reports I have data for:`,
+      currentQuestion: { question: recoveryQuestion, options: recoveryOptions },
       isRecovery: true,
     });
     return;
@@ -174,9 +307,17 @@ export async function runStreamingPipeline(
   send('status', { message: `Analysing ${allRows.length} rows with Gemma...` });
   const report = await generateReport(enrichedQuery, dataShape, sampleRows, priorContext);
 
+  // Fix column casing: LLM often lowercases BQ column names which breaks charts
+  const actualColumns = Object.keys(dataShape.columnTypes);
+  report.cards = fixColumnCasing(report.cards, actualColumns);
+
   if (report.cards.length === 0) {
-    send('error', { message: 'Gemma could not determine a suitable report structure. Try a more specific query.' });
-    return;
+    console.warn('generateReport returned empty cards — using deterministic fallback');
+    report.cards = generateFallbackCards(dataShape);
+    if (report.cards.length === 0) {
+      send('error', { message: 'No data could be rendered. Try a more specific query.' });
+      return;
+    }
   }
 
   // Step 5 — stream report metadata (includes template so frontend can adapt layout)
@@ -185,6 +326,7 @@ export async function runStreamingPipeline(
     description: report.message,
     rowCount: allRows.length,
     template: report.template,
+    activeTable: resolvedTable,
   });
 
   // Step 6 — hydrate + stream each card (recursive for layout wrappers)
@@ -207,5 +349,6 @@ export async function runStreamingPipeline(
     components: validComponents,
     title: report.title,
     message: report.message,
+    activeTable: resolvedTable,
   }, 5 * 60 * 1000);
 }

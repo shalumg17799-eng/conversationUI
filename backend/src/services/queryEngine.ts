@@ -1,5 +1,6 @@
 import { runQueryWithMeta, qualifiedTable } from '../lib/bigqueryClient';
 import { IntentResult } from '../types';
+import { DATA_SOURCES, buildQuerySQL } from './dataSourceMap';
 
 export interface BQQueryMeta {
   project: string;
@@ -15,14 +16,15 @@ export interface BQQueryMeta {
 export const executeQuery = async (
   intent: IntentResult,
   onMeta?: (meta: BQQueryMeta) => void,
+  tableOverride?: string,
 ): Promise<any[]> => {
-  const { metric, dimension, timeRange, intent: intentType } = intent;
+  const { metric, dimension, intent: intentType } = intent;
   const m = metric.toLowerCase();
   const d = dimension.toLowerCase();
 
-  console.log(`BQ Query — intent: ${intentType}, metric: ${m}, dimension: ${d}, time: ${timeRange}`);
+  console.log(`BQ Query — table: ${tableOverride ?? 'auto'}, intent: ${intentType}, metric: ${m}, dimension: ${d}`);
 
-  const withMeta = async (sql: string, slice?: number): Promise<any[]> => {
+  const runTable = async (_table: string, sql: string): Promise<any[]> => {
     const result = await runQueryWithMeta(sql);
     onMeta?.({
       project: result.project,
@@ -34,50 +36,52 @@ export const executeQuery = async (
       metric: m,
       dimension: d,
     });
-    return slice ? result.rows.slice(0, slice) : result.rows;
+    return result.rows;
   };
 
   try {
-    if (m === 'revenue' || m === 'sales' || intentType === 'trend') {
-      return await withMeta(`SELECT * FROM ${qualifiedTable('fact_sug_monthly_rollup')} ORDER BY month_id DESC`, 50);
+    // Direct table routing — used when analyzeQuery returns a specific table
+    if (tableOverride) {
+      const source = DATA_SOURCES.find(ds => ds.table === tableOverride);
+      if (source) {
+        const sql = buildQuerySQL(source, qualifiedTable);
+        return await runTable(tableOverride, sql);
+      }
     }
-    if (m === 'take_rate' || m === 'takerate' || m.includes('take')) {
-      return await withMeta(`SELECT * FROM ${qualifiedTable('fact_sug_monthly_rollup')} ORDER BY month_id DESC`);
+
+    // Keyword fallback — used when forceGenerate skips LLM routing
+    if (m === 'revenue' || m === 'sales' || m === 'take_rate' || intentType === 'trend') {
+      return await runTable('fact_sug_monthly_rollup',
+        `SELECT * FROM ${qualifiedTable('fact_sug_monthly_rollup')} ORDER BY month_id DESC LIMIT 50`);
     }
-    if (m === 'churn' || m.includes('churn')) {
-      return await withMeta(`SELECT * FROM ${qualifiedTable('churn_monthly')} ORDER BY month_date DESC`);
-    }
-    if (d === 'region' || m === 'performance' || m === 'score') {
-      return await withMeta(`SELECT * FROM ${qualifiedTable('performance_by_region')} ORDER BY performance_score DESC`);
-    }
-    if (d === 'device' || d === 'product' || m === 'device') {
-      return await withMeta(`SELECT * FROM ${qualifiedTable('revenue_by_device_group')} ORDER BY revenue DESC`);
+    if (m === 'churn' || m === 'retention') {
+      return await runTable('fact_sug_monthly_rollup',
+        `SELECT * FROM ${qualifiedTable('fact_sug_monthly_rollup')} ORDER BY month_id DESC LIMIT 50`);
     }
     if (m === 'contact' || m === 'agent' || m === 'employee' || d === 'employee') {
-      return await withMeta(`SELECT * FROM ${qualifiedTable('fact_contact_center_metrics')} ORDER BY status`);
+      return await runTable('fact_contact_center_metrics',
+        `SELECT * FROM ${qualifiedTable('fact_contact_center_metrics')} ORDER BY status`);
     }
     if (m === 'rank' || m === 'score' || m === 'dynamic') {
-      return await withMeta(`SELECT * FROM ${qualifiedTable('fact_dynamic_scores')} ORDER BY rank`);
+      return await runTable('fact_dynamic_scores',
+        `SELECT * FROM ${qualifiedTable('fact_dynamic_scores')} ORDER BY rank`);
     }
-    if (d === 'market' || m === 'market') {
-      return await withMeta(`SELECT * FROM ${qualifiedTable('dim_markets')} ORDER BY market_name`);
+    if (m === 'network' || m === 'kpi') {
+      return await runTable('fact_network_kpi_points',
+        `SELECT * FROM ${qualifiedTable('fact_network_kpi_points')} ORDER BY timestamp DESC LIMIT 100`);
     }
-    if (d === 'territory') {
-      return await withMeta(`SELECT * FROM ${qualifiedTable('dim_territories')} ORDER BY territory_name`);
+    if (d === 'territory' || m === 'performance' || m === 'territory') {
+      return await runTable('v_monthly_territory_performance',
+        `SELECT * FROM ${qualifiedTable('v_monthly_territory_performance')} ORDER BY month_id DESC, territory_name LIMIT 50`);
     }
-    if (d === 'outlet' || d === 'store' || d === 'city') {
-      return await withMeta(`SELECT * FROM ${qualifiedTable('dim_outlets')} ORDER BY outlet_name`);
+    if (intentType === 'comparison' || d === 'outlet') {
+      return await runTable('v_daily_sales_detail',
+        `SELECT * FROM ${qualifiedTable('v_daily_sales_detail')} ORDER BY date DESC, outlet_name LIMIT 100`);
     }
-    if (m === 'report' || d === 'report') {
-      return await withMeta(`SELECT * FROM ${qualifiedTable('catalog_reports')} ORDER BY last_updated_ts DESC`);
-    }
-    if (m === 'dataset' || d === 'dataset') {
-      return await withMeta(`SELECT * FROM ${qualifiedTable('catalog_datasets')} ORDER BY last_refresh_ts DESC`);
-    }
-    if (m === 'units' || intentType === 'comparison') {
-      return await withMeta(`SELECT * FROM ${qualifiedTable('v_daily_sales_detail')} ORDER BY date DESC, outlet_name`, 100);
-    }
-    return await withMeta(`SELECT * FROM ${qualifiedTable('v_monthly_territory_performance')} ORDER BY month_id DESC, territory_name`, 50);
+
+    // Default — most populated table
+    return await runTable('v_monthly_territory_performance',
+      `SELECT * FROM ${qualifiedTable('v_monthly_territory_performance')} ORDER BY month_id DESC, territory_name LIMIT 50`);
 
   } catch (err: any) {
     console.error('BigQuery executeQuery error:', err.message);
