@@ -1,4 +1,5 @@
 import { ShapeSignature } from '../types';
+import { resolveAlias } from './metadataService';
 
 /**
  * Detects the type of a column based on a sample value.

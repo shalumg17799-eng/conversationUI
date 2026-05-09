@@ -1,5 +1,6 @@
 import { runQueryWithMeta, qualifiedTable } from '../lib/bigqueryClient';
 import { IntentResult } from '../types';
+import { resolveAlias } from './metadataService';
 
 export interface BQQueryMeta {
   project: string;
@@ -12,6 +13,46 @@ export interface BQQueryMeta {
   dimension: string;
 }
 
+/**
+ * Deterministically generates analytical SQL based on intent.
+ */
+const buildAnalyticalSQL = (intent: IntentResult, table: string): string => {
+  const metricCol = resolveAlias(intent.metric);
+  const dimCol = resolveAlias(intent.dimension);
+  const tableRef = qualifiedTable(table);
+
+  let sqlType = 'raw';
+  let sql = '';
+
+  switch (intent.intent) {
+    case 'metric_only':
+      sqlType = 'aggregated_kpi';
+      sql = `SELECT SUM(${metricCol}) as total_${intent.metric} FROM ${tableRef}`;
+      break;
+      
+    case 'metric_by_dimension':
+    case 'comparison' as any: // Treat comparison as a grouped aggregation
+      sqlType = 'grouped_aggregation';
+      sql = `SELECT ${dimCol}, SUM(${metricCol}) as total_${intent.metric} FROM ${tableRef} GROUP BY ${dimCol} ORDER BY total_${intent.metric} DESC LIMIT 15`;
+      break;
+
+    case 'trend':
+      sqlType = 'time_series_aggregation';
+      // Optimized for fact_sug_monthly_rollup structure
+      const timeCol = 'month_name';
+      const sortCol = 'month_id';
+      sql = `SELECT ${timeCol}, ${sortCol}, SUM(${metricCol}) as total_${intent.metric} FROM ${tableRef} GROUP BY ${timeCol}, ${sortCol} ORDER BY ${sortCol} ASC`;
+      break;
+
+    default:
+      sqlType = 'raw_fallback';
+      sql = `SELECT * FROM ${tableRef} LIMIT 100`;
+  }
+
+  console.log(`[QueryEngine] Generated SQL Type: ${sqlType}`);
+  return sql;
+};
+
 export const executeQuery = async (
   intent: IntentResult,
   onMeta?: (meta: BQQueryMeta) => void,
@@ -20,7 +61,7 @@ export const executeQuery = async (
   const m = metric.toLowerCase();
   const d = dimension.toLowerCase();
 
-  console.log(`BQ Query — intent: ${intentType}, metric: ${m}, dimension: ${d}, time: ${timeRange}`);
+  console.log(`[QueryEngine] Routing Intent: intent=${intentType} metric=${m} dimension=${d}`);
 
   const withMeta = async (sql: string, slice?: number): Promise<any[]> => {
     const result = await runQueryWithMeta(sql);
@@ -38,46 +79,45 @@ export const executeQuery = async (
   };
 
   try {
-    if (m === 'revenue' || m === 'sales' || intentType === 'trend') {
-      return await withMeta(`SELECT * FROM ${qualifiedTable('fact_sug_monthly_rollup')} ORDER BY month_id DESC`, 50);
+    // 1. Analytical Fact Tables (Preferred for charts/KPIs)
+    if (m === 'revenue' || m === 'sales' || intentType === 'trend' || m === 'take_rate') {
+      const sql = buildAnalyticalSQL(intent, 'fact_sug_monthly_rollup');
+      return await withMeta(sql);
     }
-    if (m === 'take_rate' || m === 'takerate' || m.includes('take')) {
-      return await withMeta(`SELECT * FROM ${qualifiedTable('fact_sug_monthly_rollup')} ORDER BY month_id DESC`);
+    
+    if (m === 'churn') {
+      const sql = buildAnalyticalSQL(intent, 'churn_monthly');
+      return await withMeta(sql);
     }
-    if (m === 'churn' || m.includes('churn')) {
-      return await withMeta(`SELECT * FROM ${qualifiedTable('churn_monthly')} ORDER BY month_date DESC`);
-    }
+
     if (d === 'region' || m === 'performance' || m === 'score') {
-      return await withMeta(`SELECT * FROM ${qualifiedTable('performance_by_region')} ORDER BY performance_score DESC`);
+      const sql = buildAnalyticalSQL(intent, 'performance_by_region');
+      return await withMeta(sql);
     }
+
     if (d === 'device' || d === 'product' || m === 'device') {
-      return await withMeta(`SELECT * FROM ${qualifiedTable('revenue_by_device_group')} ORDER BY revenue DESC`);
+      const sql = buildAnalyticalSQL(intent, 'revenue_by_device_group');
+      return await withMeta(sql);
     }
-    if (m === 'contact' || m === 'agent' || m === 'employee' || d === 'employee') {
-      return await withMeta(`SELECT * FROM ${qualifiedTable('fact_contact_center_metrics')} ORDER BY status`);
-    }
-    if (m === 'rank' || m === 'score' || m === 'dynamic') {
-      return await withMeta(`SELECT * FROM ${qualifiedTable('fact_dynamic_scores')} ORDER BY rank`);
-    }
+
+    // 2. Dimensional Lookups (Only for explicit browsing)
     if (d === 'market' || m === 'market') {
       return await withMeta(`SELECT * FROM ${qualifiedTable('dim_markets')} ORDER BY market_name`);
     }
     if (d === 'territory') {
       return await withMeta(`SELECT * FROM ${qualifiedTable('dim_territories')} ORDER BY territory_name`);
     }
-    if (d === 'outlet' || d === 'store' || d === 'city') {
-      return await withMeta(`SELECT * FROM ${qualifiedTable('dim_outlets')} ORDER BY outlet_name`);
+
+    // 3. Detailed Views
+    if (m === 'units' || intentType === 'comparison' as any) {
+      // If it's a comparison but we don't have a specific fact table, use the detailed view with aggregation
+      const sql = buildAnalyticalSQL(intent, 'v_daily_sales_detail');
+      return await withMeta(sql);
     }
-    if (m === 'report' || d === 'report') {
-      return await withMeta(`SELECT * FROM ${qualifiedTable('catalog_reports')} ORDER BY last_updated_ts DESC`);
-    }
-    if (m === 'dataset' || d === 'dataset') {
-      return await withMeta(`SELECT * FROM ${qualifiedTable('catalog_datasets')} ORDER BY last_refresh_ts DESC`);
-    }
-    if (m === 'units' || intentType === 'comparison') {
-      return await withMeta(`SELECT * FROM ${qualifiedTable('v_daily_sales_detail')} ORDER BY date DESC, outlet_name`, 100);
-    }
-    return await withMeta(`SELECT * FROM ${qualifiedTable('v_monthly_territory_performance')} ORDER BY month_id DESC, territory_name`, 50);
+
+    // Default Analytical Fallback
+    const fallbackSql = buildAnalyticalSQL(intent, 'v_monthly_territory_performance');
+    return await withMeta(fallbackSql);
 
   } catch (err: any) {
     console.error('BigQuery executeQuery error:', err.message);

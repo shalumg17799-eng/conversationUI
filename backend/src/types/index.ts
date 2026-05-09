@@ -1,5 +1,5 @@
 export interface IntentResult {
-  intent: "metric_by_dimension" | "trend" | "comparison";
+  intent: "metric_by_dimension" | "trend" | "comparison" | "metric_only";
   metric: string;
   dimension: string;
   timeRange?: string;

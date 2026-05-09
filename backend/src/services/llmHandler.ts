@@ -24,8 +24,8 @@ export async function getDataCatalog(): Promise<DataCatalog> {
 
   try {
     const [reportRows, datasetRows] = await Promise.all([
-      runQueryWithMeta(`SELECT report_name, domain, key_kpis FROM \`${qualifiedTable('catalog_reports')}\``).then(r => r.rows),
-      runQueryWithMeta(`SELECT dataset_name, domain, key_fields FROM \`${qualifiedTable('catalog_datasets')}\``).then(r => r.rows),
+      runQueryWithMeta(`SELECT report_name, domain, key_kpis FROM ${qualifiedTable('catalog_reports')}`).then(r => r.rows),
+      runQueryWithMeta(`SELECT dataset_name, domain, key_fields FROM ${qualifiedTable('catalog_datasets')}`).then(r => r.rows),
     ]);
 
     const reports = reportRows.map((r: any) => ({
@@ -84,6 +84,10 @@ export interface ClarifyResult {
   questions: string[];
 }
 
+export interface NarrativeCard {
+  insight: string;
+}
+
 export interface ReportCard {
   renderType: string;
   props: Record<string, any>;
@@ -95,8 +99,8 @@ export interface LLMReport {
   message: string;
   title: string;
   description: string;
-  cards: ReportCard[];
-  followUp: Array<{ label: string; intent: string }>;
+  cards: NarrativeCard[];
+  followUp: string[];
 }
 
 export interface LLMResponse {
@@ -373,6 +377,9 @@ export async function clarifyOrGenerate(
   }
 }
 
+import { getAvailableMetrics, getAvailableDimensions } from './intentClassifier';
+import { getGroundedContextString } from './metadataService';
+
 // ── Main export ──────────────────────────────────────────────────────────────
 
 export async function generateReport(
@@ -380,8 +387,13 @@ export async function generateReport(
   shape: ShapeSignature,
   sampleRows: any[],
   priorContext?: string,
+  components: string[] = [],
 ): Promise<LLMReport> {
   const ai = getAI();
+
+  const groundedSchema = getGroundedContextString();
+  const metrics = [...new Set(getAvailableMetrics())].join(', ');
+  const dimensions = [...new Set(getAvailableDimensions())].join(', ');
 
   const columnSummary = Object.entries(shape.columnTypes)
     .map(([col, type]) => `${col} (${type})`)
@@ -393,17 +405,30 @@ export async function generateReport(
 
   const userMessage = `USER QUERY: "${query}"
 ${priorSection}
-DATA SUMMARY:
+
+${groundedSchema}
+
+DATA SUMMARY FOR THIS QUERY:
 - Total rows in BigQuery: ${shape.rowCount}
 - Columns: ${columnSummary}
 - Dimension columns: ${shape.dimensionColumns.join(', ') || 'none'}
 - Measure columns: ${shape.measureColumns.join(', ') || 'none'}
 - Time series: ${shape.isTimeSeries ? `yes (${shape.timeColumn})` : 'no'}
 
+SYSTEM CAPABILITIES (Strictly only suggest follow-ups using these):
+- Metrics: ${metrics}
+- Dimensions: ${dimensions}
+
+COMPONENTS TO POPULATE (Order is strict):
+${components.join(', ')}
+
 DATA SAMPLE (first ${sampleRows.length} rows):
 ${JSON.stringify(sampleRows, null, 2)}
 
-Design the best report to answer the user's query using the real data above.`;
+Task: For each component, provide an 'insight' (narrative analysis). 
+Provide a high-level 'message' (summary) that will be shown once at the top.
+Generate 3 'followUp' questions strictly grounded in the SYSTEM CAPABILITIES (e.g., "Show ${shape.measureColumns[0] || 'revenue'} by ${shape.dimensionColumns[0] || 'market'}").
+DO NOT suggest component types or structure. DO NOT repeat the summary in insights.`;
 
   try {
     const response = await ai.models.generateContent({
@@ -412,7 +437,12 @@ Design the best report to answer the user's query using the real data above.`;
         temperature: 0.4,
         maxOutputTokens: 6000,
         responseMimeType: 'application/json',
-        systemInstruction: REPORT_SYSTEM_PROMPT,
+        systemInstruction: `Return JSON only: { 
+          "title": "Analysis of ${query}",
+          "message": "Executive summary of the findings", 
+          "cards": [ { "insight": "Specific analysis for this component" } ], 
+          "followUp": ["Question grounded in ${shape.dimensionColumns.join('/') || 'data'}"] 
+        }. The cards array must match length ${components.length}.`,
       },
       contents: [{ role: 'user', parts: [{ text: userMessage }] }],
     });
@@ -423,7 +453,7 @@ Design the best report to answer the user's query using the real data above.`;
     const parsed = JSON.parse(jsonStr);
 
     return {
-      template: parsed.template ?? 'summary',
+      template: 'summary',
       message: parsed.message ?? 'Here is your analysis.',
       title: parsed.title ?? 'Data Report',
       description: parsed.description ?? '',

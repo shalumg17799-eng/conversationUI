@@ -5,10 +5,17 @@ import { runStreamingPipeline } from './pipeline/runStreamingPipeline';
 import { BigQueryService } from './services/bigqueryService';
 import { callLLM } from './services/llmHandler';
 
+import { syncMetadata, getMetadataContext } from './services/metadataService';
+
 dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3001;
+
+// Initialize Metadata Context
+if (!getMetadataContext()) {
+  syncMetadata().catch(err => console.error('[Startup] Metadata sync failed:', err));
+}
 
 app.use(express.json());
 

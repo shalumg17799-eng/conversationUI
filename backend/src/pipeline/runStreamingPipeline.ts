@@ -2,9 +2,14 @@ import dotenv from 'dotenv';
 import { classifyIntent } from '../services/intentClassifier';
 import { executeQuery } from '../services/queryEngine';
 import { analyzeDataShape } from '../services/dataShapeAnalyzer';
-import { generateReport, clarifyOrGenerate, getDataCatalog, ReportCard } from '../services/llmHandler';
+import { generateReport, getDataCatalog, ReportCard } from '../services/llmHandler';
 import { UITypeTree } from '../types';
 import { cacheService, generateKey } from '../services/cacheService';
+import { selectComponent } from '../services/componentSelector';
+import { validateUITypeTree } from '../services/uiValidator';
+import { hydrateTree } from '../lib/hydrator';
+import { getMetadataContext } from '../services/metadataService';
+import { mapProps } from '../services/propMapper';
 
 dotenv.config();
 
@@ -13,89 +18,6 @@ type SendFn = (event: string, data: unknown) => void;
 // How many sample rows Gemma sees (keeps tokens low while giving enough context)
 const SAMPLE_SIZE = 20;
 
-// Recursively attach real BigQuery data to components that need it.
-// Layout wrappers (TwoColumn, Section) are hydrated by recursing into their children.
-// Narrative components (InsightCard, AlertBanner, SummaryText, StatDelta) have
-// values embedded by the LLM and need no hydration.
-function hydrateTree(card: ReportCard, allRows: any[]): UITypeTree {
-  const { renderType, props } = card;
-
-  // Recurse into children first (handles TwoColumn, Section, etc.)
-  const hydratedChildren: UITypeTree[] = (card.children ?? []).map(child =>
-    hydrateTree(child, allRows)
-  );
-
-  switch (renderType) {
-    // ── Charts — attach dataset; aggregate time-series charts by xKey ────────
-    case 'LineChart':
-    case 'AreaChart': {
-      const { xKey, yKey } = props;
-      if (xKey && yKey) {
-        // Aggregate: group by xKey, average yKey — prevents duplicate x-axis labels
-        const grouped = new Map<string, { sum: number; count: number }>();
-        for (const row of allRows) {
-          const x = String(row[xKey] ?? '');
-          const y = Number(row[yKey]) || 0;
-          const entry = grouped.get(x) ?? { sum: 0, count: 0 };
-          entry.sum += y;
-          entry.count += 1;
-          grouped.set(x, entry);
-        }
-        const aggregated = Array.from(grouped.entries()).map(([x, { sum, count }]) => ({
-          ...Object.fromEntries(Object.entries(allRows.find(r => String(r[xKey]) === x) ?? {})),
-          [xKey]: x,
-          [yKey]: Math.round((sum / count) * 100) / 100,
-        }));
-        return { renderType, props: { ...props, data: aggregated }, children: hydratedChildren };
-      }
-      return { renderType, props: { ...props, data: allRows }, children: hydratedChildren };
-    }
-
-    case 'BarChart':
-    case 'PieChart':
-      return { renderType, props: { ...props, data: allRows }, children: hydratedChildren };
-
-    // ── RankedList — deduplicate by labelKey, aggregate valueKey ─────────────
-    case 'RankedList': {
-      const { labelKey, valueKey, limit = 10 } = props;
-      const grouped = new Map<string, { sum: number; count: number }>();
-      for (const row of allRows) {
-        const label = String(row[labelKey] ?? '');
-        const val = Number(row[valueKey]) || 0;
-        const entry = grouped.get(label) ?? { sum: 0, count: 0 };
-        entry.sum += val;
-        entry.count += 1;
-        grouped.set(label, entry);
-      }
-      const items = Array.from(grouped.entries())
-        .map(([label, { sum, count }]) => ({ label, value: Math.round((sum / count) * 100) / 100 }))
-        .sort((a, b) => b.value - a.value)
-        .slice(0, limit)
-        .map((item, i) => ({ rank: i + 1, label: item.label, value: item.value }));
-      return { renderType, props: { ...props, items }, children: hydratedChildren };
-    }
-
-    // ── Tables — attach full dataset ─────────────────────────────────────────
-    case 'Table':
-    case 'GenerativeTable': {
-      const columns = props.columns ?? (allRows[0] ? Object.keys(allRows[0]) : []);
-      return {
-        renderType,
-        props: { ...props, columns, data: allRows, rows: allRows },
-        children: hydratedChildren,
-      };
-    }
-
-    // ── Layout wrappers — pass through with hydrated children ─────────────────
-    case 'TwoColumn':
-    case 'Section':
-      return { renderType, props, children: hydratedChildren };
-
-    // ── Metric / Narrative — LLM already embedded values, no hydration needed ─
-    default:
-      return { renderType, props, children: hydratedChildren };
-  }
-}
 
 export interface ClarificationTurn {
   question: string;
@@ -127,36 +49,41 @@ export async function runStreamingPipeline(
     ? `${query}. Context: ${clarificationHistory.map(t => `${t.question} → ${t.answer}`).join('; ')}`
     : query;
 
-  // Step 0 — clarification gate: force generate after 3 Q&A turns, otherwise ask LLM
-  const forceGenerate = skipClarification || clarificationHistory.length >= 3;
-  if (!forceGenerate) {
-    send('status', { message: 'Understanding your query...' });
-    const clarification = await clarifyOrGenerate(query, clarificationHistory);
-
-    if (clarification.action === 'clarify') {
-      send('clarification', {
-        opener: clarification.opener,
-        currentQuestion: clarification.currentQuestion,
-      });
-      return;
-    }
-  }
-
   // Step 1 — route intent to the right BQ table (use enriched query for better routing)
   const intent = await classifyIntent(enrichedQuery);
+
+  // Safety Override: Ensure metric-only queries are explicitly typed, but DON'T hijack trends
+  if (intent.metric !== 'unknown' && intent.dimension === 'unknown' && intent.intent !== 'trend') {
+    intent.intent = "metric_only";
+  }
+
+  console.log(`[Pipeline] Precedence Check: intent=${intent.intent} metric=${intent.metric} dimension=${intent.dimension}`);
+
+  // PRD Rule 2: Single clarification gate — trigger ONLY when both metric and dimension are unknown
+  if (intent.metric === 'unknown' && intent.dimension === 'unknown') {
+    send('clarification', {
+      opener: "I need a bit more context to generate the right report.",
+      currentQuestion: {
+        question: 'What would you like to analyze?',
+        options: ['Sales Revenue', 'Customer Churn', 'Network Performance', 'Contact Center Efficiency']
+      }
+    });
+    return;
+  }
 
   // Step 2 — fetch real BigQuery data
   send('status', { message: 'Querying BigQuery...' });
   const allRows = await executeQuery(intent, (meta) => send('bq_debug', meta));
 
   if (allRows.length === 0) {
-    // Recovery — show options grounded in real catalog data, not hardcoded guesses
-    const catalog = await getDataCatalog();
-    const recoveryOptions = catalog.reports.length > 0
-      ? catalog.reports.slice(0, 4).map(r => r.name)
-      : catalog.domains.slice(0, 4);
+    // Recovery — use grounded metadata context for better suggestions
+    const metadata = getMetadataContext();
+    const recoveryOptions = metadata && metadata.tables.length > 0
+      ? metadata.tables.slice(0, 4).map(t => t.table_name.replace(/_/g, ' '))
+      : ['Sales Revenue', 'Customer Churn', 'Network Performance', 'Contact Center Efficiency'];
+
     send('clarification', {
-      opener: `I couldn't find data matching that combination. Here are reports I have data for:`,
+      opener: `I couldn't find data matching that combination in the current dataset. Here are some areas I have data for:`,
       currentQuestion: {
         question: 'Which would you like to explore?',
         options: recoveryOptions,
@@ -170,42 +97,85 @@ export async function runStreamingPipeline(
   const dataShape = await analyzeDataShape(allRows);
   const sampleRows = allRows.slice(0, SAMPLE_SIZE);
 
-  // Step 4 — single Gemma call: decides everything (enriched query gives Gemma full context)
-  send('status', { message: `Analysing ${allRows.length} rows with Gemma...` });
-  const report = await generateReport(enrichedQuery, dataShape, sampleRows, priorContext);
+  // PRD Rule 4: Rule-based component selection is primary
+  const components = selectComponent(dataShape, intent);
 
-  if (report.cards.length === 0) {
-    send('error', { message: 'Gemma could not determine a suitable report structure. Try a more specific query.' });
-    return;
+  // Step 4 — single Gemma call: decides narrative ONLY (summary, insights, follow-up)
+  send('status', { message: `Generating insights for ${allRows.length} rows...` });
+  
+  let reportNarrative;
+  try {
+    reportNarrative = await generateReport(enrichedQuery, dataShape, sampleRows, priorContext, components);
+  } catch (err) {
+    console.error('[Pipeline] LLM Insight generation failed, falling back to default narrative:', err);
+    reportNarrative = {
+      title: `Analysis of ${intent.metric}`,
+      message: `Showing analytical results generated from available dataset.`,
+      cards: components.map(() => ({ insight: 'Data analysis provided in the visualization.' })),
+      followUp: []
+    };
   }
 
-  // Step 5 — stream report metadata (includes template so frontend can adapt layout)
+  // Step 5 — stream report metadata (PRD: Remove duplicate summary in description)
   send('meta', {
-    title: report.title,
-    description: report.message,
+    title: reportNarrative.title,
+    description: '', // PRD: message appears ONLY ONCE (at top)
+    message: reportNarrative?.message || 'Showing analytical results.',
     rowCount: allRows.length,
-    template: report.template,
+    template: 'summary',
   });
 
-  // Step 6 — hydrate + stream each card (recursive for layout wrappers)
+  // Step 6 — hydrate + stream each card (merged deterministic type + LLM narrative)
   const validComponents: UITypeTree[] = [];
 
-  for (const card of report.cards) {
-    const node = hydrateTree(card, allRows);
+  for (let i = 0; i < components.length; i++) {
+    const renderType = components[i];
+    const narrative = reportNarrative.cards[i] || { insight: 'Data visualization' };
+
+    // Card title derived from renderType or query context, NOT repeated summary
+    const cardTitle = renderType === 'InsightCard' ? 'Key Insights' : `${intent.metric} Analysis`;
+
+    const baseProps = mapProps(renderType, dataShape);
+
+    let card: ReportCard = {
+      renderType,
+      props: { 
+        ...baseProps,
+        title: baseProps.title || cardTitle, 
+        insight: narrative.insight,
+        metric: intent.metric, 
+      },
+      children: []
+    };
+
+    let node = hydrateTree(card, allRows);
+
+    // PRD Rule 5: Validation must enforce valid UI output (fallback if invalid)
+    const validation = await validateUITypeTree(node);
+    console.log(`[Pipeline] Diagnostic: selectedComponent=${renderType} validationPassed=${validation.isValid} fallbackTriggered=${!validation.isValid}`);
+    if (!validation.isValid) {
+      console.warn(`[Pipeline] Invalid component ${node.renderType}, falling back to Table`, validation.errors);
+      node = hydrateTree({
+        renderType: 'GenerativeTable',
+        props: { title: 'Raw Data View', insight: narrative.insight },
+        children: []
+      }, allRows);
+    }
+
     send('component', node);
     validComponents.push(node);
   }
 
-  // Step 7 — stream follow-up suggestions
-  if (report.followUp.length > 0) {
-    send('followUp', report.followUp);
+  // Step 7 — stream grounded follow-up suggestions
+  if (reportNarrative.followUp.length > 0) {
+    send('followUp', reportNarrative.followUp);
   }
 
   send('status', { message: `Done in ${Date.now() - start}ms` });
 
   cacheService.set(cacheKey, {
     components: validComponents,
-    title: report.title,
-    message: report.message,
+    title: reportNarrative.title,
+    message: reportNarrative.message,
   }, 5 * 60 * 1000);
 }

@@ -1,0 +1,637 @@
+{
+  "lastUpdated": "2026-05-08T10:34:42.940Z",
+  "tables": [
+    {
+      "table_name": "fact_network_kpi_points_temp",
+      "columns": [
+        {
+          "name": "date_id",
+          "type": "INT64"
+        },
+        {
+          "name": "site_id",
+          "type": "STRING"
+        },
+        {
+          "name": "lat",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "lon",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "cqi",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "rsrp",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "sinr",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "score",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "status",
+          "type": "STRING"
+        },
+        {
+          "name": "region",
+          "type": "STRING"
+        }
+      ]
+    },
+    {
+      "table_name": "fact_contact_center_metrics_temp",
+      "columns": [
+        {
+          "name": "employee_id",
+          "type": "STRING"
+        },
+        {
+          "name": "employee_name",
+          "type": "STRING"
+        },
+        {
+          "name": "box_close_pct",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "inb_aht_sec",
+          "type": "INT64"
+        },
+        {
+          "name": "transfer_pct",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "sales_time_pct",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "hold_pct",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "status",
+          "type": "STRING"
+        },
+        {
+          "name": "team",
+          "type": "STRING"
+        },
+        {
+          "name": "territory_id",
+          "type": "STRING"
+        },
+        {
+          "name": "calls_handled",
+          "type": "INT64"
+        },
+        {
+          "name": "csat_score",
+          "type": "FLOAT64"
+        }
+      ]
+    },
+    {
+      "table_name": "dim_markets",
+      "columns": [
+        {
+          "name": "market_id",
+          "type": "STRING"
+        },
+        {
+          "name": "market_name",
+          "type": "STRING"
+        }
+      ]
+    },
+    {
+      "table_name": "fact_sug_sales_daily",
+      "columns": [
+        {
+          "name": "date_id",
+          "type": "INT64"
+        },
+        {
+          "name": "date",
+          "type": "STRING"
+        },
+        {
+          "name": "outlet_id",
+          "type": "STRING"
+        },
+        {
+          "name": "territory_id",
+          "type": "STRING"
+        },
+        {
+          "name": "device_id",
+          "type": "STRING"
+        },
+        {
+          "name": "sug_sales_units",
+          "type": "INT64"
+        },
+        {
+          "name": "eligible_device_units",
+          "type": "INT64"
+        },
+        {
+          "name": "sug_sales_revenue",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "accessory_revenue",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "return_units",
+          "type": "INT64"
+        },
+        {
+          "name": "passing_surveys",
+          "type": "INT64"
+        },
+        {
+          "name": "total_surveys",
+          "type": "INT64"
+        }
+      ]
+    },
+    {
+      "table_name": "dim_territories",
+      "columns": [
+        {
+          "name": "territory_id",
+          "type": "STRING"
+        },
+        {
+          "name": "market_id",
+          "type": "STRING"
+        },
+        {
+          "name": "territory_name",
+          "type": "STRING"
+        }
+      ]
+    },
+    {
+      "table_name": "dim_outlets",
+      "columns": [
+        {
+          "name": "outlet_id",
+          "type": "STRING"
+        },
+        {
+          "name": "territory_id",
+          "type": "STRING"
+        },
+        {
+          "name": "outlet_name",
+          "type": "STRING"
+        },
+        {
+          "name": "city",
+          "type": "STRING"
+        },
+        {
+          "name": "state",
+          "type": "STRING"
+        },
+        {
+          "name": "outlet_type",
+          "type": "STRING"
+        }
+      ]
+    },
+    {
+      "table_name": "market_segment_distribution",
+      "columns": [
+        {
+          "name": "name",
+          "type": "STRING"
+        },
+        {
+          "name": "value",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "revenue",
+          "type": "FLOAT64"
+        }
+      ]
+    },
+    {
+      "table_name": "churn_monthly",
+      "columns": [
+        {
+          "name": "month",
+          "type": "STRING"
+        },
+        {
+          "name": "month_id",
+          "type": "INT64"
+        },
+        {
+          "name": "churn_rate",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "change_vs_previous_month",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "subscribers_lost",
+          "type": "INT64"
+        },
+        {
+          "name": "total_base",
+          "type": "INT64"
+        },
+        {
+          "name": "voluntary_churn_pct",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "involuntary_churn_pct",
+          "type": "FLOAT64"
+        }
+      ]
+    },
+    {
+      "table_name": "take_rate_monthly_trend",
+      "columns": [
+        {
+          "name": "month",
+          "type": "STRING"
+        },
+        {
+          "name": "takeRate",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "change_vs_previous_month",
+          "type": "FLOAT64"
+        }
+      ]
+    },
+    {
+      "table_name": "revenue_by_device_group",
+      "columns": [
+        {
+          "name": "device_group",
+          "type": "STRING"
+        },
+        {
+          "name": "revenue",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "percentage",
+          "type": "FLOAT64"
+        }
+      ]
+    },
+    {
+      "table_name": "segment_performance_trend",
+      "columns": [
+        {
+          "name": "month",
+          "type": "STRING"
+        },
+        {
+          "name": "segmentShareIndex",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "marketPenetration",
+          "type": "FLOAT64"
+        }
+      ]
+    },
+    {
+      "table_name": "fact_dynamic_scores",
+      "columns": [
+        {
+          "name": "employee_id",
+          "type": "STRING"
+        },
+        {
+          "name": "employee_name",
+          "type": "STRING"
+        },
+        {
+          "name": "metric_1",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "metric_2",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "metric_3",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "metric_4",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "metric_5",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "overall_score",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "rank",
+          "type": "INT64"
+        }
+      ]
+    },
+    {
+      "table_name": "fact_dynamic_scores_temp",
+      "columns": [
+        {
+          "name": "employee_id",
+          "type": "STRING"
+        },
+        {
+          "name": "employee_name",
+          "type": "STRING"
+        },
+        {
+          "name": "metric_1",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "metric_2",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "metric_3",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "metric_4",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "metric_5",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "overall_score",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "rank",
+          "type": "INT64"
+        }
+      ]
+    },
+    {
+      "table_name": "dim_markets_temp",
+      "columns": [
+        {
+          "name": "market_id",
+          "type": "STRING"
+        },
+        {
+          "name": "market_name",
+          "type": "STRING"
+        }
+      ]
+    },
+    {
+      "table_name": "fact_sug_monthly_rollup",
+      "columns": [
+        {
+          "name": "month_id",
+          "type": "INT64"
+        },
+        {
+          "name": "month_name",
+          "type": "STRING"
+        },
+        {
+          "name": "territory_id",
+          "type": "STRING"
+        },
+        {
+          "name": "sug_revenue",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "run_rate",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "take_rate_pct",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "aard_pct",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "return_rate_pct",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "ris_pct",
+          "type": "FLOAT64"
+        }
+      ]
+    },
+    {
+      "table_name": "fact_intraday_sales",
+      "columns": [
+        {
+          "name": "date_id",
+          "type": "INT64"
+        },
+        {
+          "name": "hour",
+          "type": "INT64"
+        },
+        {
+          "name": "hour_label",
+          "type": "STRING"
+        },
+        {
+          "name": "outlet_id",
+          "type": "STRING"
+        },
+        {
+          "name": "territory_id",
+          "type": "STRING"
+        },
+        {
+          "name": "device_group",
+          "type": "STRING"
+        },
+        {
+          "name": "sales_units",
+          "type": "INT64"
+        },
+        {
+          "name": "sales_revenue",
+          "type": "FLOAT64"
+        }
+      ]
+    },
+    {
+      "table_name": "dim_devices",
+      "columns": [
+        {
+          "name": "device_id",
+          "type": "STRING"
+        },
+        {
+          "name": "device_name",
+          "type": "STRING"
+        },
+        {
+          "name": "device_group",
+          "type": "STRING"
+        },
+        {
+          "name": "manufacturer",
+          "type": "STRING"
+        },
+        {
+          "name": "msrp",
+          "type": "INT64"
+        },
+        {
+          "name": "plan_eligible",
+          "type": "BOOL"
+        }
+      ]
+    },
+    {
+      "table_name": "performance_by_region",
+      "columns": [
+        {
+          "name": "name",
+          "type": "STRING"
+        },
+        {
+          "name": "value",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "performance",
+          "type": "FLOAT64"
+        }
+      ]
+    },
+    {
+      "table_name": "fact_contact_center_metrics",
+      "columns": [
+        {
+          "name": "employee_id",
+          "type": "STRING"
+        },
+        {
+          "name": "employee_name",
+          "type": "STRING"
+        },
+        {
+          "name": "team",
+          "type": "STRING"
+        },
+        {
+          "name": "territory_id",
+          "type": "STRING"
+        },
+        {
+          "name": "box_close_pct",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "inb_aht_sec",
+          "type": "INT64"
+        },
+        {
+          "name": "transfer_pct",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "sales_time_pct",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "hold_pct",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "calls_handled",
+          "type": "INT64"
+        },
+        {
+          "name": "csat_score",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "status",
+          "type": "STRING"
+        }
+      ]
+    },
+    {
+      "table_name": "fact_network_kpi_points",
+      "columns": [
+        {
+          "name": "date_id",
+          "type": "INT64"
+        },
+        {
+          "name": "site_id",
+          "type": "STRING"
+        },
+        {
+          "name": "lat",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "lon",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "cqi",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "rsrp",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "sinr",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "score",
+          "type": "FLOAT64"
+        },
+        {
+          "name": "status",
+          "type": "STRING"
+        },
+        {
+          "name": "region",
+          "type": "STRING"
+        }
+      ]
+    }
+  ]
+}

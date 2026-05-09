@@ -1,27 +1,32 @@
-import { ShapeSignature } from '../types';
+import { ShapeSignature, IntentResult } from '../types';
 
 /**
- * Deterministically filters available components based on the shape of the data.
- * This reduces LLM hallucination and ensures appropriate component selection.
+ * Final authority for component selection.
+ * The LLM is NOT allowed to change the renderType or structure.
  */
-export const getAllowedComponents = (shape: ShapeSignature): string[] => {
-  console.log('Pre-filtering components based on data shape...');
+export const selectComponent = (shape: ShapeSignature, intent: IntentResult): string[] => {
+  console.log('Deterministic component selection...');
 
-  // 1. Time Series Data
-  if (shape.isTimeSeries) {
+  const { intent: intentType } = intent;
+  console.log(`[Selector] Intent: ${intentType}, Rows: ${shape.rowCount}, Cols: ${shape.columnCount}`);
+
+  // 1. Force Intent-Based Visualizations
+  if (intentType === 'trend') {
     return ['LineChart'];
   }
 
-  // 2. Single Value (KPI)
-  if (shape.rowCount === 1) {
+  if (intentType === 'metric_by_dimension' || intentType === 'comparison' as any) {
+    return ['BarChart'];
+  }
+
+  if (intentType === 'metric_only' || shape.rowCount === 1) {
     return ['KPI'];
   }
 
-  // 3. Wide Data (Too many columns for simple charts)
-  if (shape.columnCount > 5) {
-    return ['Table'];
-  }
+  // 2. Data Shape Fallbacks (Only if intent is ambiguous)
+  if (shape.isTimeSeries && shape.rowCount > 1) return ['LineChart'];
+  if (shape.rowCount > 1 && shape.columnCount <= 5) return ['BarChart'];
 
-  // 4. Default for categorical/comparison data
-  return ['BarChart', 'Table'];
+  // Final Fallback for detailed exploration
+  return ['GenerativeTable'];
 };
