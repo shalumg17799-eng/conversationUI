@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import { ShapeSignature } from '../types';
 import { runQueryWithMeta, qualifiedTable } from '../lib/bigqueryClient';
 import { DATA_SOURCES, ALL_DOMAINS, ALL_TABLES, getSourcesByDomain } from './dataSourceMap';
+import { loadCatalogContext } from './catalogRefresher';
 
 dotenv.config();
 
@@ -125,6 +126,27 @@ let _ai: GoogleGenAI | null = null;
 function getAI() {
   if (!_ai) _ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY || '' });
   return _ai;
+}
+
+// Retry wrapper for Gemma/Gemini API calls.
+// Retries on 500 (Internal) and 429 (rate limit) with exponential backoff.
+async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> {
+  let lastErr: any;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      lastErr = err;
+      const code: number = err?.error?.code ?? err?.status ?? 0;
+      if (code !== 500 && code !== 429) throw err;
+      if (attempt < maxAttempts) {
+        const delayMs = Math.pow(2, attempt) * 600; // 1.2s, 2.4s
+        console.warn(`[LLM] Attempt ${attempt} failed (${code}), retrying in ${delayMs}ms...`);
+        await new Promise(r => setTimeout(r, delayMs));
+      }
+    }
+  }
+  throw lastErr;
 }
 
 function getFunctionCall(response: any): { name: string; args: Record<string, any> } | null {
@@ -344,7 +366,7 @@ function deterministicFallback(query: string, history: ClarificationTurn[]): Ana
 //
 // Using JSON mode (responseMimeType) — reliable with Gemma, unlike function calling mode:ANY.
 
-function buildAnalyzePrompt(query: string, history: ClarificationTurn[]): { system: string; user: string } {
+async function buildAnalyzePrompt(query: string, history: ClarificationTurn[]): Promise<{ system: string; user: string }> {
   const historyText = history.length > 0
     ? `\nCONVERSATION SO FAR:\n${history.map(t => `Q: ${t.question}\nA: ${t.answer}`).join('\n')}`
     : '';
@@ -353,10 +375,19 @@ function buildAnalyzePrompt(query: string, history: ClarificationTurn[]): { syst
     `- domain="${s.domain}" report="${s.reportName}" table="${s.table}"`
   ).join('\n');
 
+  // Inject pre-built catalog context (real BQ column names, descriptions, KPIs).
+  // This gives the LLM field-level knowledge so clarification questions are
+  // grounded in what the data actually contains rather than high-level guesses.
+  const catalogContext = await loadCatalogContext();
+  const catalogContextSection = catalogContext
+    ? `\n\nDATASET FIELD REFERENCE (pre-built from BigQuery — use for smarter clarification):\n${catalogContext}`
+    : '';
+
   const system = `You are a business intelligence assistant that decides if a user query has enough context to generate a report.
 
 AVAILABLE DATA (only suggest options from this list):
 ${catalogText}
+${catalogContextSection}
 
 RULES:
 1. If the query + history clearly specifies a domain AND a report name → action="route", set table to the exact table string from the list above.
@@ -364,6 +395,7 @@ RULES:
 3. If domain is clear but report is unclear → action="clarify". Set question="Which report would you like to see?"
 4. opener MUST acknowledge what the user asked. Reference their specific words.
 5. Never invent table names. Only use tables from the list above.
+6. Use the DATASET FIELD REFERENCE to ask specific, field-aware clarification questions when relevant (e.g. "Do you want to filter by territory_name or market?").
 
 Respond with valid JSON only. No markdown. No code fences.
 {
@@ -398,9 +430,9 @@ export async function analyzeQuery(
 
   // LLM path: ask Gemma to interpret the query and decide what's missing
   try {
-    const { system, user } = buildAnalyzePrompt(query, history);
+    const { system, user } = await buildAnalyzePrompt(query, history);
 
-    const response = await ai.models.generateContent({
+    const response = await withRetry(() => ai.models.generateContent({
       model: MODEL,
       config: {
         temperature: 0.2,
@@ -409,7 +441,7 @@ export async function analyzeQuery(
         systemInstruction: system,
       },
       contents: [{ role: 'user', parts: [{ text: user }] }],
-    });
+    }));
 
     const raw = response.text ?? '';
     const cleaned = stripThinkTags(raw);
@@ -452,6 +484,154 @@ export async function analyzeQuery(
   // Last resort: deterministic fallback
   console.log('[analyzeQuery] Using deterministic fallback');
   return deterministicFallback(query, history);
+}
+
+// ── classifyFollowUpIntent — LLM decides: edit existing report vs new request ──
+
+export type FollowUpIntentResult =
+  | { action: 'new_report' }
+  | { action: 'edit_report'; editType: 'structural' | 'data_change' }
+  | { action: 'clarify_intent' };
+
+export async function classifyFollowUpIntent(
+  query: string,
+  priorContext: string,
+): Promise<FollowUpIntentResult> {
+  const ai = getAI();
+
+  const system = `You are a BI assistant that classifies user intent. The user has an existing report open.
+
+EXISTING REPORT: ${priorContext}
+
+Classify the user's message into exactly one of:
+- "new_report"              — Asking for a completely different topic, domain, or dataset unrelated to the current report.
+- "edit_report_structural"  — Wants to change the CURRENT report's layout/visuals only. No new data needed. Examples: hide a section, change bar chart to line chart, remove a KPI, reorder cards, rename a title.
+- "edit_report_data"        — Wants to change the CURRENT report but needs fresh/filtered data. Examples: show top 5 territories, filter by a specific value, group by a different dimension, show trend over time.
+- "clarify_intent"          — Genuinely ambiguous. Cannot determine if they want to edit or start fresh.
+
+Respond with valid JSON only. No markdown.
+{ "action": "new_report" | "edit_report_structural" | "edit_report_data" | "clarify_intent", "reasoning": "one sentence" }`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: MODEL,
+      config: {
+        temperature: 0.1,
+        maxOutputTokens: 128,
+        responseMimeType: 'application/json',
+        systemInstruction: system,
+      },
+      contents: [{ role: 'user', parts: [{ text: `USER MESSAGE: "${query}"` }] }],
+    });
+
+    const raw = response.text ?? '';
+    const parsed = JSON.parse(extractJSON(stripThinkTags(raw)));
+    console.log(`[classifyFollowUpIntent] action=${parsed.action} — ${parsed.reasoning}`);
+
+    if (parsed.action === 'edit_report_structural') return { action: 'edit_report', editType: 'structural' };
+    if (parsed.action === 'edit_report_data') return { action: 'edit_report', editType: 'data_change' };
+    if (parsed.action === 'clarify_intent') return { action: 'clarify_intent' };
+    return { action: 'new_report' };
+  } catch (err) {
+    console.error('[classifyFollowUpIntent] LLM call failed:', err);
+    // Fallback: if we have cards, assume structural edit; safer than dropping to new_report
+    return { action: 'edit_report', editType: 'structural' };
+  }
+}
+
+// ── classifyAndEditReport — single fused LLM call ────────────────────────────
+// Replaces the previous two-call flow (classifyFollowUpIntent → editReport).
+// One call classifies intent AND applies structural edits in one shot.
+
+export type FusedIntentResult =
+  | { action: 'new_report' }
+  | { action: 'edit_data_change' }
+  | { action: 'clarify_intent' }
+  | {
+      action: 'edit_structural';
+      acknowledgment: string;
+      title: string;
+      message: string;
+      cards: ReportCard[];
+      followUp: Array<{ label: string; intent: string }>;
+    };
+
+export async function classifyAndEditReport(
+  query: string,
+  currentCards: ReportCard[],
+  priorContext: string,
+): Promise<FusedIntentResult> {
+  const ai = getAI();
+  const strippedCards = stripCardData(currentCards);
+
+  const system = `You are a BI dashboard assistant. The user has an existing report open.
+
+EXISTING REPORT: ${priorContext}
+
+CURRENT REPORT CARDS (structure only — data arrays omitted):
+${JSON.stringify(strippedCards, null, 2)}
+
+Read the user's message and respond with JSON only. Choose exactly one action:
+
+── STRUCTURAL EDIT (hide/remove a section, change chart type, rename title, reorder cards — NO new database query needed):
+{
+  "action": "edit_structural",
+  "acknowledgment": "One sentence confirming what you changed.",
+  "title": "Report title (keep existing unless user asked to rename)",
+  "message": "2–3 sentence updated narrative.",
+  "cards": [ ...full modified card tree... ],
+  "followUp": [ { "label": "...", "intent": "..." } ]
+}
+
+── DATA CHANGE EDIT (needs fresh filtered data — top N, different grouping, time filter, drill-down):
+{ "action": "edit_data_change" }
+
+── NEW REPORT (completely different topic, domain, or dataset):
+{ "action": "new_report" }
+
+── AMBIGUOUS (cannot tell if edit or new):
+{ "action": "clarify_intent" }
+
+STRUCTURAL EDIT RULES:
+- "hide"/"remove" → delete that card from the cards array entirely.
+- "change X to line chart" / "show X as Y" → swap renderType, keep all prop keys identical.
+- "add a KPI" → append KPICard using only column names already present in the card tree.
+- Never invent column names. Only use keys already in the current card tree.
+- Return ALL surviving cards, not just the changed one.
+- followUp: 3–4 natural follow-up questions.`;
+
+  return withRetry(async () => {
+    const response = await ai.models.generateContent({
+      model: MODEL,
+      config: {
+        temperature: 0.2,
+        maxOutputTokens: 4000,
+        responseMimeType: 'application/json',
+        systemInstruction: system,
+      },
+      contents: [{ role: 'user', parts: [{ text: `USER MESSAGE: "${query}"` }] }],
+    });
+
+    const raw = response.text ?? '';
+    const parsed = JSON.parse(extractJSON(stripThinkTags(raw)));
+    console.log(`[classifyAndEditReport] action=${parsed.action}`);
+
+    if (parsed.action === 'edit_structural') {
+      return {
+        action: 'edit_structural',
+        acknowledgment: typeof parsed.acknowledgment === 'string'
+          ? parsed.acknowledgment
+          : 'Done — report updated.',
+        title: parsed.title ?? '',
+        message: parsed.message ?? '',
+        cards: Array.isArray(parsed.cards) ? parsed.cards : currentCards,
+        followUp: Array.isArray(parsed.followUp) ? parsed.followUp : [],
+      };
+    }
+    if (parsed.action === 'edit_data_change') return { action: 'edit_data_change' };
+    if (parsed.action === 'clarify_intent') return { action: 'clarify_intent' };
+    return { action: 'new_report' };
+  });
 }
 
 export async function clarifyOrGenerate(
@@ -515,6 +695,26 @@ RULES:
 
 // ── generateReport ────────────────────────────────────────────────────────────
 
+// Compact sample rows for the LLM prompt.
+// Keeps only measure + dimension columns (drops ID cols already excluded by dataShapeAnalyzer),
+// caps at MAX_SAMPLE_ROWS rows, and serializes as compact JSON (no indentation).
+// This keeps the prompt well under Gemma's context window on wide tables.
+const MAX_SAMPLE_ROWS = 8;
+const MAX_SAMPLE_COLS = 10;
+
+function buildCompactSample(rows: any[], shape: ShapeSignature): string {
+  const keepCols = [
+    ...(shape.timeColumn ? [shape.timeColumn] : []),
+    ...shape.dimensionColumns,
+    ...shape.measureColumns,
+  ].slice(0, MAX_SAMPLE_COLS);
+
+  const sliced = rows.slice(0, MAX_SAMPLE_ROWS).map(row =>
+    Object.fromEntries(keepCols.filter(c => c in row).map(c => [c, row[c]]))
+  );
+  return JSON.stringify(sliced);
+}
+
 export async function generateReport(
   query: string,
   shape: ShapeSignature,
@@ -528,6 +728,8 @@ export async function generateReport(
     ? `\nPRIOR REPORT CONTEXT:\n${priorContext}\n`
     : '';
 
+  const compactSample = buildCompactSample(sampleRows, shape);
+
   const userMessage = `USER QUERY: "${query}"
 ${priorSection}
 EXACT_COLUMNS (copy these character-for-character into all key fields):
@@ -540,22 +742,22 @@ DATA SUMMARY:
 - Total rows in BigQuery: ${shape.rowCount}
 - Time series: ${shape.isTimeSeries ? `yes (${shape.timeColumn})` : 'no'}
 
-DATA SAMPLE (first ${sampleRows.length} rows — column names are EXACT):
-${JSON.stringify(sampleRows, null, 2)}
+DATA SAMPLE (${Math.min(sampleRows.length, MAX_SAMPLE_ROWS)} rows, key columns only — column names are EXACT):
+${compactSample}
 
 Design the best dashboard to answer this query. Use EXACT_COLUMNS for all key fields. Respond with JSON only.`;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await withRetry(() => ai.models.generateContent({
       model: MODEL,
       config: {
         temperature: 0.4,
-        maxOutputTokens: 6000,
+        maxOutputTokens: 4000,
         responseMimeType: 'application/json',
         systemInstruction: REPORT_SYSTEM_PROMPT,
       },
       contents: [{ role: 'user', parts: [{ text: userMessage }] }],
-    });
+    }));
 
     const raw = response.text ?? '';
     const cleaned = stripThinkTags(raw);
@@ -572,6 +774,141 @@ Design the best dashboard to answer this query. Use EXACT_COLUMNS for all key fi
   } catch (err: any) {
     console.error('generateReport error:', err?.message ?? err);
     return { template: 'summary', message: 'I encountered an error generating the report.', title: 'Report', description: '', cards: [], followUp: [] };
+  }
+}
+
+// ── editReport — surgical card-tree mutation for follow-up edit requests ──────
+
+export interface EditReportResult {
+  acknowledgment: string;
+  title: string;
+  message: string;
+  cards: ReportCard[];
+  followUp: Array<{ label: string; intent: string }>;
+}
+
+const EDIT_REPORT_SYSTEM_PROMPT = `You are an expert BI dashboard editor.
+You receive the CURRENT report as a JSON card tree and a USER EDIT REQUEST.
+Apply only the requested change. Keep all other cards exactly as-is.
+Respond with valid JSON only. No markdown, no code fences.
+
+OUTPUT FORMAT:
+{
+  "acknowledgment": "One sentence confirming what you changed, e.g. 'Done — I removed the Revenue by Territory chart.'",
+  "title": "Report title (keep existing unless user asked to rename)",
+  "message": "2-3 sentence updated narrative summary",
+  "cards": [ { "renderType": "...", "props": { ... }, "children": [] } ],
+  "followUp": [ { "label": "Short label", "intent": "full question" } ]
+}
+
+EDIT RULES:
+- "hide" / "remove" a section → delete that card from the array entirely.
+- "change chart type" → swap renderType, keep all props/keys identical.
+- "add" a KPI or chart → append new card using only column names already present in existing cards.
+- "show only" → keep only the specified cards, remove the rest.
+- Never invent new column names. Only use keys already present in the current card tree.
+- followUp: 3–4 natural follow-up questions.`;
+
+export { buildHydrationMap, rehydrateEditedCards };
+
+// Strip heavy data arrays from cards before sending to LLM.
+// The LLM only needs the structure (renderType, props keys, children) — not 50 rows of data.
+function stripCardData(cards: ReportCard[]): ReportCard[] {
+  const strip = (card: ReportCard): ReportCard => {
+    const { data: _d, rows: _r, items: _i, ...restProps } = card.props as any;
+    return {
+      renderType: card.renderType,
+      props: restProps,
+      children: card.children?.map(strip),
+    };
+  };
+  return cards.map(strip);
+}
+
+// Build a lookup map from original hydrated cards so we can re-attach data after LLM edits.
+// Key = renderType + primary label (title, xKey, labelKey, etc.)
+function buildHydrationMap(cards: ReportCard[]): Map<string, any> {
+  const map = new Map<string, any>();
+  const index = (card: ReportCard) => {
+    const p = card.props as any;
+    const label = p.title ?? p.xKey ?? p.labelKey ?? p.nameKey ?? '';
+    const key = `${card.renderType}::${String(label).toLowerCase()}`;
+    map.set(key, { data: p.data, rows: p.rows, items: p.items });
+    card.children?.forEach(index);
+  };
+  cards.forEach(index);
+  return map;
+}
+
+// Re-attach hydrated data to LLM-edited cards using the map built above.
+function rehydrateEditedCards(editedCards: ReportCard[], hydrationMap: Map<string, any>): ReportCard[] {
+  const rehydrate = (card: ReportCard): ReportCard => {
+    const p = card.props as any;
+    const label = p.title ?? p.xKey ?? p.labelKey ?? p.nameKey ?? '';
+    const key = `${card.renderType}::${String(label).toLowerCase()}`;
+    const hydrated = hydrationMap.get(key);
+    return {
+      renderType: card.renderType,
+      props: hydrated ? { ...p, ...hydrated } : p,
+      children: card.children?.map(rehydrate),
+    };
+  };
+  return editedCards.map(rehydrate);
+}
+
+export async function editReport(
+  editRequest: string,
+  currentCards: ReportCard[],
+  priorContext?: string,
+): Promise<EditReportResult> {
+  const ai = getAI();
+
+  // Strip data arrays — LLM only needs structure, not 50-row datasets
+  const strippedCards = stripCardData(currentCards);
+
+  const priorSection = priorContext ? `\nREPORT CONTEXT:\n${priorContext}\n` : '';
+  const userMessage = `${priorSection}
+CURRENT REPORT CARDS (structure only — data arrays omitted to save tokens):
+${JSON.stringify(strippedCards, null, 2)}
+
+USER EDIT REQUEST: "${editRequest}"
+
+Apply the edit and return the full modified card tree as JSON.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: MODEL,
+      config: {
+        temperature: 0.2,
+        maxOutputTokens: 4000,
+        responseMimeType: 'application/json',
+        systemInstruction: EDIT_REPORT_SYSTEM_PROMPT,
+      },
+      contents: [{ role: 'user', parts: [{ text: userMessage }] }],
+    });
+
+    const raw = response.text ?? '';
+    const cleaned = stripThinkTags(raw);
+    const jsonStr = extractJSON(cleaned);
+    const parsed = JSON.parse(jsonStr);
+
+    return {
+      acknowledgment: typeof parsed.acknowledgment === 'string' ? parsed.acknowledgment : 'Done — report updated.',
+      title: parsed.title ?? priorContext ?? 'Updated Report',
+      message: parsed.message ?? '',
+      cards: Array.isArray(parsed.cards) ? parsed.cards : currentCards,
+      followUp: Array.isArray(parsed.followUp) ? parsed.followUp : [],
+    };
+  } catch (err: any) {
+    console.error('editReport error:', err?.message ?? err);
+    // Safe fallback: return the existing cards unchanged with a generic ack
+    return {
+      acknowledgment: 'I had trouble applying that edit. The report is unchanged.',
+      title: '',
+      message: '',
+      cards: currentCards,
+      followUp: [],
+    };
   }
 }
 

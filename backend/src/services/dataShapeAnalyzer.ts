@@ -1,13 +1,32 @@
 import { ShapeSignature } from '../types';
 
+// Column name patterns that indicate an ID/key column — numeric but not a metric.
+// These should be treated as dimensions (or ignored) rather than measures.
+const ID_COLUMN_PATTERNS = /(_id|_key|_code|_num|^id$|^key$|month_id|week_id|year_id|day_id|rank$)/i;
+
+// A numeric column is an ID/key if:
+//   1. Its name matches known ID patterns, OR
+//   2. Its values are all integers with suspiciously high cardinality (unique per row) AND
+//      the values don't look like money/rates (i.e. no decimal variance)
+function isIdColumn(colName: string, rows: any[]): boolean {
+  if (ID_COLUMN_PATTERNS.test(colName)) return true;
+
+  // Secondary check: if all values are integers and cardinality = rowCount, it's likely a surrogate key
+  const vals = rows.map(r => r[colName]).filter(v => v !== null && v !== undefined);
+  if (vals.length === 0) return false;
+  const allIntegers = vals.every(v => Number.isInteger(v));
+  const unique = new Set(vals).size;
+  return allIntegers && unique === rows.length;
+}
+
 /**
  * Detects the type of a column based on a sample value.
  */
 const detectColumnType = (value: any): "numeric" | "categorical" | "datetime" => {
   if (value === null || value === undefined) return 'categorical';
-  
+
   if (typeof value === 'number') return 'numeric';
-  
+
   if (typeof value === 'string') {
     // Basic ISO Date check or Date string check
     const date = Date.parse(value);
@@ -15,7 +34,7 @@ const detectColumnType = (value: any): "numeric" | "categorical" | "datetime" =>
       return 'datetime';
     }
   }
-  
+
   return 'categorical';
 };
 
@@ -61,13 +80,14 @@ export const analyzeDataShape = async (rows: any[]): Promise<ShapeSignature> => 
     const type = detectColumnType(firstNonNull ? firstNonNull[col] : null);
     
     columnTypes[col] = type;
-    
+
     if (type === 'datetime') {
       isTimeSeries = true;
       timeColumn = col;
-    } else if (type === 'numeric') {
+    } else if (type === 'numeric' && !isIdColumn(col, rows)) {
       measureColumns.push(col);
     } else {
+      // Numeric ID columns are bucketed as dimensions (used for grouping, not aggregation)
       dimensionColumns.push(col);
     }
     

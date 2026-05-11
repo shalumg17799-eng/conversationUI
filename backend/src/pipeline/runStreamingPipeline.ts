@@ -1,7 +1,11 @@
 import dotenv from 'dotenv';
 import { executeQuery } from '../services/queryEngine';
 import { analyzeDataShape } from '../services/dataShapeAnalyzer';
-import { generateReport, analyzeQuery, ReportCard } from '../services/llmHandler';
+import {
+  generateReport, analyzeQuery,
+  classifyAndEditReport, buildHydrationMap, rehydrateEditedCards,
+  ReportCard,
+} from '../services/llmHandler';
 import { DATA_SOURCES, ALL_DOMAINS, getSourcesByDomain } from '../services/dataSourceMap';
 import { UITypeTree, ShapeSignature } from '../types';
 import { cacheService, generateKey } from '../services/cacheService';
@@ -43,50 +47,56 @@ function fixColumnCasing(cards: ReportCard[], actualColumns: string[]): ReportCa
 function generateFallbackCards(shape: ShapeSignature): ReportCard[] {
   const cards: ReportCard[] = [];
 
-  // KPIGrid from the first 4 numeric columns
-  if (shape.measureColumns.length > 0) {
+  // Pick best dimension: prefer short string columns (territory, name) over numeric IDs
+  const bestDimension = shape.dimensionColumns.find(c => !/(_id|_key|_code|_num)$/i.test(c))
+    ?? shape.dimensionColumns[0];
+
+  // Pick best measures: up to 4, prefer revenue/rate/score columns
+  const preferredOrder = ['revenue', 'rate', 'score', 'pct', 'percent', 'count', 'total', 'avg'];
+  const sortedMeasures = [...shape.measureColumns].sort((a, b) => {
+    const aScore = preferredOrder.findIndex(p => a.toLowerCase().includes(p));
+    const bScore = preferredOrder.findIndex(p => b.toLowerCase().includes(p));
+    return (aScore === -1 ? 99 : aScore) - (bScore === -1 ? 99 : bScore);
+  });
+  const topMeasures = sortedMeasures.slice(0, 4);
+
+  if (topMeasures.length > 0) {
     cards.push({
       renderType: 'KPIGrid',
       props: {
-        metrics: shape.measureColumns.slice(0, 4).map(col => ({ title: col, value: '—' })),
+        metrics: topMeasures.map(col => ({ title: col, value: '—' })),
         explanation: 'Key metrics from the dataset.',
       },
     });
   }
 
-  // Time-series chart
-  if (shape.isTimeSeries && shape.timeColumn && shape.measureColumns.length > 0) {
+  if (shape.isTimeSeries && shape.timeColumn && topMeasures.length > 0) {
     cards.push({
       renderType: 'LineChart',
       props: {
-        title: `${shape.measureColumns[0]} Over Time`,
+        title: `${topMeasures[0]} Over Time`,
         xKey: shape.timeColumn,
-        yKey: shape.measureColumns[0],
-        explanation: `Trend of ${shape.measureColumns[0]} over time.`,
+        yKey: topMeasures[0],
+        explanation: `Trend of ${topMeasures[0]} over time.`,
       },
     });
-  } else if (shape.dimensionColumns.length > 0 && shape.measureColumns.length > 0) {
+  } else if (bestDimension && topMeasures.length > 0) {
     cards.push({
       renderType: 'BarChart',
       props: {
-        title: `${shape.measureColumns[0]} by ${shape.dimensionColumns[0]}`,
-        xKey: shape.dimensionColumns[0],
-        yKey: shape.measureColumns[0],
-        explanation: `${shape.measureColumns[0]} broken down by ${shape.dimensionColumns[0]}.`,
+        title: `${topMeasures[0]} by ${bestDimension}`,
+        xKey: bestDimension,
+        yKey: topMeasures[0],
+        explanation: `${topMeasures[0]} broken down by ${bestDimension}.`,
       },
     });
   }
 
-  // Always include a table as last resort
-  const columns = [...shape.dimensionColumns, ...shape.measureColumns].slice(0, 8);
+  const columns = [bestDimension, ...topMeasures].filter(Boolean).slice(0, 8) as string[];
   if (columns.length > 0) {
     cards.push({
       renderType: 'Table',
-      props: {
-        title: 'Data Detail',
-        columns,
-        explanation: 'Full dataset view.',
-      },
+      props: { title: 'Data Detail', columns, explanation: 'Full dataset view.' },
     });
   }
 
@@ -189,18 +199,6 @@ export interface ClarificationTurn {
   answer: string;
 }
 
-// Modification-intent keywords — signals the user wants to change an existing report
-const FOLLOW_UP_KEYWORDS = [
-  'remove', 'add', 'show only', 'hide', 'filter', 'sort', 'exclude', 'include',
-  'change', 'without', 'with only', 'limit to', 'top ', 'only show', 'group by',
-  'drill down', 'break down', 'update', 'replace', 'swap',
-];
-
-function isFollowUpCommand(query: string): boolean {
-  const q = query.toLowerCase();
-  return FOLLOW_UP_KEYWORDS.some(kw => q.includes(kw));
-}
-
 export async function runStreamingPipeline(
   query: string,
   send: SendFn,
@@ -208,6 +206,7 @@ export async function runStreamingPipeline(
   clarificationHistory: ClarificationTurn[] = [],
   priorContext?: string,
   activeTable?: string,
+  currentCards?: ReportCard[],
 ): Promise<void> {
   const cacheKey = generateKey({ query, stream: true, v: 2, history: clarificationHistory, prior: priorContext });
   const cached = cacheService.get<{ components: UITypeTree[]; title: string; message: string; activeTable?: string }>(cacheKey);
@@ -220,34 +219,113 @@ export async function runStreamingPipeline(
     return;
   }
 
-  // Follow-up command detection: if we know the active table and this looks like a
-  // modification request (not a new domain/report selection), skip clarification and
-  // reuse the same table. The LLM still handles the full report generation.
-  const isFollowUp = !!activeTable && !!priorContext && clarificationHistory.length === 0 && isFollowUpCommand(query);
-  if (isFollowUp) {
-    console.log(`[Pipeline] Follow-up command detected — reusing table: ${activeTable}`);
-    skipClarification = true;
+  // ── LLM intent classification ─────────────────────────────────────────────
+  // When an existing report is open and the user sends a follow-up (no active
+  // clarification in progress), ask the LLM to classify intent before routing.
+  // This replaces keyword matching entirely.
+  const hasExistingReport = !!priorContext && !!activeTable && currentCards && currentCards.length > 0;
+  const inClarificationFlow = clarificationHistory.length > 0;
+
+  if (hasExistingReport && !inClarificationFlow && !skipClarification) {
+    send('status', { message: 'Understanding your request...' });
+
+    // Single fused LLM call: classifies intent AND applies structural edits in one shot.
+    // Replaces the previous two-call flow (classifyFollowUpIntent → editReport).
+    let fusedResult: Awaited<ReturnType<typeof classifyAndEditReport>> | null = null;
+    try {
+      fusedResult = await classifyAndEditReport(query, currentCards!, priorContext!);
+    } catch (err) {
+      console.error('[Pipeline] classifyAndEditReport failed after retries:', err);
+      // Fall through to new-report flow as safe default
+    }
+
+    if (fusedResult) {
+      console.log(`[Pipeline] Fused intent: ${fusedResult.action}`);
+
+      // ── Structural edit: LLM already returned modified cards ──────────────
+      if (fusedResult.action === 'edit_structural') {
+        const hydrationMap = buildHydrationMap(currentCards!);
+        const rehydrated = rehydrateEditedCards(fusedResult.cards, hydrationMap);
+
+        send('acknowledgment', { message: fusedResult.acknowledgment });
+        send('meta', {
+          title: fusedResult.title || (priorContext!.match(/Title: "([^"]+)"/)?.[1] ?? 'Updated Report'),
+          description: fusedResult.message,
+          rowCount: null,
+          template: 'summary',
+          activeTable,
+        });
+        for (const card of rehydrated) send('component', card);
+        if (fusedResult.followUp.length > 0) send('followUp', fusedResult.followUp);
+        return;
+      }
+
+      // ── Data-change edit: re-query BQ, then regenerate with edit context ──
+      if (fusedResult.action === 'edit_data_change') {
+        send('status', { message: 'Fetching updated data...' });
+
+        const { classifyIntent: classifyTable } = await import('../services/intentClassifier');
+        const tableIntent = await classifyTable(query);
+        const allRows = await executeQuery(tableIntent, (meta) => send('bq_debug', meta), activeTable);
+
+        if (allRows.length === 0) {
+          send('acknowledgment', { message: "I couldn't find data matching that filter. The original report is unchanged." });
+          for (const card of currentCards!) send('component', card);
+          return;
+        }
+
+        const dataShape = await analyzeDataShape(allRows);
+        const sampleRows = allRows.slice(0, SAMPLE_SIZE);
+        const editEnrichedQuery = `EDIT REQUEST: ${query}. Prior report: ${priorContext}`;
+
+        send('status', { message: 'Updating report...' });
+        const report = await generateReport(editEnrichedQuery, dataShape, sampleRows, priorContext);
+        const actualColumns = Object.keys(dataShape.columnTypes);
+        report.cards = fixColumnCasing(report.cards, actualColumns);
+        if (report.cards.length === 0) report.cards = generateFallbackCards(dataShape);
+
+        send('acknowledgment', { message: "Here's the updated report with your changes applied." });
+        send('meta', { title: report.title, description: report.message, rowCount: allRows.length, template: report.template, activeTable });
+        const validComponents: UITypeTree[] = [];
+        for (const card of report.cards) {
+          const node = hydrateTree(card, allRows);
+          send('component', node);
+          validComponents.push(node);
+        }
+        if (report.followUp.length > 0) send('followUp', report.followUp);
+        cacheService.set(cacheKey, { components: validComponents, title: report.title, message: report.message, activeTable }, 5 * 60 * 1000);
+        return;
+      }
+
+      // ── Ambiguous: ask user to clarify ────────────────────────────────────
+      if (fusedResult.action === 'clarify_intent') {
+        send('clarification', {
+          opener: 'I want to make sure I understand what you need.',
+          currentQuestion: {
+            question: 'Are you looking to modify the current report, or would you like to start a new one?',
+            options: ['Modify the current report', 'Start a new report'],
+          },
+        });
+        return;
+      }
+
+      // fusedResult.action === 'new_report' → fall through to normal flow
+    }
   }
 
   const start = Date.now();
 
-  // Build enriched query from original + clarification history (or follow-up modification)
+  // Build enriched query from clarification history if present
   const enrichedQuery = clarificationHistory.length > 0
     ? `${query}. Context: ${clarificationHistory.map(t => `${t.question} → ${t.answer}`).join('; ')}`
-    : isFollowUp
-      ? `MODIFICATION REQUEST: ${query}` // signal to LLM this is an update, not a new report
-      : query;
+    : query;
 
-  // Step 0+1 — single LLM call: decide clarify vs route
+  // Step 0+1 — decide clarify vs route (normal new-report flow)
   const forceGenerate = skipClarification || clarificationHistory.length >= 3;
   let tableOverride: string | undefined;
   let intent: { metric: string; dimension: string; intent: 'trend' | 'comparison' | 'metric_by_dimension' };
 
-  if (isFollowUp && activeTable) {
-    // Follow-up path — skip all routing, use the same table as the prior report
-    tableOverride = activeTable;
-    intent = { metric: activeTable, dimension: 'unknown', intent: 'metric_by_dimension' };
-  } else if (!forceGenerate) {
+  if (!forceGenerate) {
     send('status', { message: 'Understanding your query...' });
     const analysis = await analyzeQuery(query, clarificationHistory);
 

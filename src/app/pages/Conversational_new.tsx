@@ -2537,13 +2537,15 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
     return `I can answer questions about your reports, datasets, and performance trends in **Static mode**.\n\nTry asking: "Show my reports", "What's the churn rate?", or "Give me a sales summary".`;
   };
 
-  const getLastReportContext = (): string | undefined => {
+  const getLastReportContext = (): { priorContext: string | undefined; currentCards: any[] } => {
     const lastReport = [...messages].reverse().find(m => m.renderType === 'generative_ui' && m.data?.meta);
-    if (!lastReport) return undefined;
+    if (!lastReport) return { priorContext: undefined, currentCards: [] };
     const meta = lastReport.data?.meta;
     const title = meta?.title ?? '';
     const description = meta?.description ?? meta?.message ?? '';
-    return title ? `Title: "${title}". Summary: ${description}` : undefined;
+    const priorContext = title ? `Title: "${title}". Summary: ${description}` : undefined;
+    const currentCards = lastReport.data?.components ?? [];
+    return { priorContext, currentCards };
   };
 
   const sendToLLM = async (query: string, skipClarification = false, history: {question: string; answer: string}[] = [], includePriorContext = false) => {
@@ -2559,13 +2561,13 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
       timestamp: new Date(),
     }]);
 
-    const priorContext = includePriorContext ? getLastReportContext() : undefined;
+    const { priorContext, currentCards } = includePriorContext ? getLastReportContext() : { priorContext: undefined, currentCards: [] };
 
     try {
       const res = await fetch("http://localhost:3001/api/conversational/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, skipClarification, clarificationHistory: history, priorContext, activeTable: activeTableRef }),
+        body: JSON.stringify({ query, skipClarification, clarificationHistory: history, priorContext, currentCards: currentCards.length > 0 ? currentCards : undefined, activeTable: activeTableRef }),
       });
 
       if (!res.ok || !res.body) throw new Error(`Backend error: ${res.status}`);
@@ -2608,6 +2610,20 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
               console.log('Duration:', `${payload.durationMs}ms`);
               console.log('Intent  :', payload.intent, '| metric:', payload.metric, '| dimension:', payload.dimension);
               console.groupEnd();
+            } else if (event === 'acknowledgment') {
+              // Insert a text bubble above the updated report for the confirmation message
+              setMessages(prev => {
+                const ackMsg = {
+                  id: crypto.randomUUID(),
+                  type: 'assistant' as const,
+                  content: payload.message ?? '',
+                  renderType: 'text' as const,
+                  timestamp: new Date(),
+                };
+                const idx = prev.findIndex(m => m.id === streamMsgId);
+                if (idx === -1) return [...prev, ackMsg];
+                return [...prev.slice(0, idx), ackMsg, ...prev.slice(idx)];
+              });
             } else if (event === 'clarification') {
               patchMsg(m => ({ ...m, isStreaming: false, renderType: 'clarification', originalQuery: query, data: { opener: payload.opener, currentQuestion: payload.currentQuestion, isRecovery: payload.isRecovery ?? false } }));
             } else if (event === 'error') {
