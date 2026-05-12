@@ -7,6 +7,34 @@ import { loadCatalogContext } from './catalogRefresher';
 
 dotenv.config();
 
+// ── Table availability cache ──────────────────────────────────────────────────
+// Probed once at startup; filters out DATA_SOURCES whose BQ tables return no rows.
+// This ensures clarification options only include reports we can actually render.
+
+let availableTablesCache: Set<string> | null = null;
+
+export async function probeTableAvailability(): Promise<void> {
+  const uniqueTables = [...new Set(DATA_SOURCES.map(s => s.table))];
+  const results = await Promise.allSettled(
+    uniqueTables.map(async (table) => {
+      const rows = await runQueryWithMeta(`SELECT 1 FROM ${qualifiedTable(table)} LIMIT 1`);
+      return { table, available: rows.rows.length > 0 };
+    })
+  );
+  availableTablesCache = new Set(
+    results
+      .filter((r): r is PromiseFulfilledResult<{ table: string; available: boolean }> =>
+        r.status === 'fulfilled' && r.value.available)
+      .map(r => r.value.table)
+  );
+  console.log(`[TableProbe] Available tables: ${[...availableTablesCache].join(', ')}`);
+}
+
+export function getAvailableDataSources(): typeof DATA_SOURCES {
+  if (!availableTablesCache) return DATA_SOURCES; // fallback: assume all available before probe completes
+  return DATA_SOURCES.filter(s => availableTablesCache!.has(s.table));
+}
+
 // ── Data catalog cache ────────────────────────────────────────────────────────
 
 interface DataCatalog {
@@ -332,16 +360,18 @@ function extractContextFromText(texts: string[]): { domain?: string; source?: Re
 
 // Deterministic fallback used when LLM call fails.
 // Builds the correct next question from whatever context is already known.
+// Always uses available sources only — never suggests reports with no data.
 function deterministicFallback(query: string, history: ClarificationTurn[]): AnalyzeResult {
   const allTexts = [query, ...history.map(t => t.answer)];
   const { domain, source } = extractContextFromText(allTexts);
+  const availableSources = getAvailableDataSources();
 
-  if (source) {
+  if (source && availableSources.some(s => s.table === source.table)) {
     return { action: 'route', table: source.table, intent: 'metric_by_dimension' };
   }
 
   if (domain) {
-    const sources = getSourcesByDomain(domain);
+    const sources = availableSources.filter(s => s.domain.toLowerCase() === domain.toLowerCase());
     return {
       action: 'clarify',
       opener: `I can help with ${domain} reports.`,
@@ -350,11 +380,12 @@ function deterministicFallback(query: string, history: ClarificationTurn[]): Ana
     };
   }
 
+  const availableDomains = [...new Set(availableSources.map(s => s.domain))];
   return {
     action: 'clarify',
-    opener: 'I can help you create a report.',
+    opener: "Happy to help you create a report! We have data across several business domains.",
     question: 'Which domain would you like to report on?',
-    options: ALL_DOMAINS,
+    options: availableDomains,
   };
 }
 
@@ -371,41 +402,45 @@ async function buildAnalyzePrompt(query: string, history: ClarificationTurn[]): 
     ? `\nCONVERSATION SO FAR:\n${history.map(t => `Q: ${t.question}\nA: ${t.answer}`).join('\n')}`
     : '';
 
-  const catalogText = DATA_SOURCES.map(s =>
+  // Only include sources backed by tables that actually have data
+  const availableSources = getAvailableDataSources();
+  const catalogText = availableSources.map(s =>
     `- domain="${s.domain}" report="${s.reportName}" table="${s.table}"`
   ).join('\n');
 
   // Inject pre-built catalog context (real BQ column names, descriptions, KPIs).
-  // This gives the LLM field-level knowledge so clarification questions are
-  // grounded in what the data actually contains rather than high-level guesses.
   const catalogContext = await loadCatalogContext();
   const catalogContextSection = catalogContext
     ? `\n\nDATASET FIELD REFERENCE (pre-built from BigQuery — use for smarter clarification):\n${catalogContext}`
     : '';
 
-  const system = `You are a business intelligence assistant that decides if a user query has enough context to generate a report.
+  const isFollowUp = history.length > 0;
 
-AVAILABLE DATA (only suggest options from this list):
+  const system = `You are a friendly, conversational business intelligence assistant. Your job is to understand what the user needs and guide them to the right report.
+
+AVAILABLE DATA (only suggest options from this list — these are the only reports with real data):
 ${catalogText}
 ${catalogContextSection}
 
 RULES:
 1. If the query + history clearly specifies a domain AND a report name → action="route", set table to the exact table string from the list above.
-2. If domain is unclear → action="clarify". Set question="Which domain would you like to report on?"
-3. If domain is clear but report is unclear → action="clarify". Set question="Which report would you like to see?"
-4. opener MUST acknowledge what the user asked. Reference their specific words.
-5. Never invent table names. Only use tables from the list above.
-6. Use the DATASET FIELD REFERENCE to ask specific, field-aware clarification questions when relevant (e.g. "Do you want to filter by territory_name or market?").
+2. If domain is unclear → action="clarify". ${isFollowUp ? 'This is a follow-up turn — do NOT repeat greetings or say "I\'m doing great". Just acknowledge the user\'s answer and move forward naturally.' : 'Write a natural, conversational opener that responds to exactly what the user said (greet back if they greeted, acknowledge their goal).'} Set options to the domain names from the AVAILABLE DATA list above.
+3. If domain is clear but report is unclear → action="clarify". Acknowledge the chosen domain briefly. Set options to ONLY the report names for that domain from AVAILABLE DATA above.
+4. ${isFollowUp ? 'opener must be brief and move the conversation forward. No greetings, no "I\'m doing great". Example: "Great, since you\'re interested in Sales..."' : 'opener MUST be conversational and natural. If the user says "hey how are you", respond to that first, THEN transition to the business question.'}
+5. Never invent table names, domain names, or report names. Only use values from the AVAILABLE DATA list above.
+6. options array MUST come ONLY from the AVAILABLE DATA catalog above — domain names when domain unknown, report names when domain is known. Never include options that are not in AVAILABLE DATA.
+7. Use the DATASET FIELD REFERENCE to ask specific, field-aware clarification questions when relevant.
 
 Respond with valid JSON only. No markdown. No code fences.
 {
   "action": "route" | "clarify",
   "opener": "...",
   "question": "...",
+  "options": ["...", "..."],
   "table": "...",
   "intent": "trend" | "comparison" | "metric_by_dimension"
 }
-(omit "question" if action=route; omit "table"/"intent" if action=clarify)`;
+(omit "question"/"options" if action=route; omit "table"/"intent" if action=clarify)`;
 
   const user = `USER QUERY: "${query}"${historyText}
 
@@ -436,7 +471,7 @@ export async function analyzeQuery(
       model: MODEL,
       config: {
         temperature: 0.2,
-        maxOutputTokens: 512,
+        maxOutputTokens: 768,
         responseMimeType: 'application/json',
         systemInstruction: system,
       },
@@ -449,8 +484,9 @@ export async function analyzeQuery(
     const parsed = JSON.parse(jsonStr);
 
     if (parsed.action === 'route' && parsed.table) {
-      // Validate: table must exist in DATA_SOURCES
-      const validSource = DATA_SOURCES.find(s => s.table === parsed.table);
+      // Validate: table must exist in available sources (has real data)
+      const availableSources = getAvailableDataSources();
+      const validSource = availableSources.find(s => s.table === parsed.table);
       if (validSource) {
         console.log(`[analyzeQuery] LLM route → table: ${parsed.table}`);
         return {
@@ -459,20 +495,38 @@ export async function analyzeQuery(
           intent: parsed.intent ?? 'metric_by_dimension',
         };
       }
-      console.warn(`[analyzeQuery] LLM returned unknown table "${parsed.table}" — falling back`);
+      console.warn(`[analyzeQuery] LLM returned unavailable table "${parsed.table}" — falling back`);
     }
 
     if (parsed.action === 'clarify') {
-      // LLM determines what to ask; we supply the options from DATA_SOURCES (not LLM)
+      // Use LLM-provided options if valid; validate against available sources only
       const allTextsForDomain = [query, ...history.map(t => t.answer)];
       const { domain } = extractContextFromText(allTextsForDomain);
-      const options = domain
-        ? getSourcesByDomain(domain).map(s => s.reportName)
-        : ALL_DOMAINS;
+      const availableSources = getAvailableDataSources();
+      const availableDomains = [...new Set(availableSources.map(s => s.domain))];
+      const availableReportNames = new Set(availableSources.map(s => s.reportName));
+
+      let options: string[];
+      if (Array.isArray(parsed.options) && parsed.options.length > 0) {
+        const validOptions = parsed.options.filter((o: string) =>
+          availableDomains.includes(o) || availableReportNames.has(o)
+        );
+        if (validOptions.length > 0) {
+          options = validOptions;
+        } else {
+          options = domain
+            ? availableSources.filter(s => s.domain.toLowerCase() === domain.toLowerCase()).map(s => s.reportName)
+            : availableDomains;
+        }
+      } else {
+        options = domain
+          ? availableSources.filter(s => s.domain.toLowerCase() === domain.toLowerCase()).map(s => s.reportName)
+          : availableDomains;
+      }
 
       return {
         action: 'clarify',
-        opener: parsed.opener ?? 'I can help you create a report.',
+        opener: parsed.opener ?? (domain ? `I can help with ${domain} reports.` : 'Happy to help you create a report!'),
         question: parsed.question ?? (domain ? 'Which report would you like to see?' : 'Which domain would you like to report on?'),
         options,
       };
@@ -545,8 +599,9 @@ Respond with valid JSON only. No markdown.
 
 export type FusedIntentResult =
   | { action: 'new_report' }
-  | { action: 'edit_data_change' }
+  | { action: 'edit_data_change'; sqlOverride?: string }
   | { action: 'clarify_intent' }
+  | { action: 'qa_answer'; message: string; followUp: Array<{ label: string; intent: string }> }
   | {
       action: 'edit_structural';
       acknowledgment: string;
@@ -556,49 +611,87 @@ export type FusedIntentResult =
       followUp: Array<{ label: string; intent: string }>;
     };
 
+export interface ConversationTurn {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export async function classifyAndEditReport(
   query: string,
   currentCards: ReportCard[],
   priorContext: string,
+  dataContext = '',
+  conversationHistory: ConversationTurn[] = [],
 ): Promise<FusedIntentResult> {
   const ai = getAI();
   const strippedCards = stripCardData(currentCards);
 
-  const system = `You are a BI dashboard assistant. The user has an existing report open.
+  // Detect requested output format so the LLM can honor it
+  const wantsBullets = /\b(point|pointer|bullet|list|itemize|enumerate)\b/i.test(query);
+  const formatHint = wantsBullets
+    ? 'User wants bullet-point format — use markdown bullets (- item) in the message field.'
+    : 'Use flowing prose paragraphs unless the user explicitly asks for bullets.';
 
-EXISTING REPORT: ${priorContext}
+  // Recent conversation context: last 3 turns, most recent last (recency weighting).
+  // Only include if there are prior turns — avoids empty section noise.
+  const recentHistory = conversationHistory.slice(-6); // up to 3 pairs
+  const historySection = recentHistory.length > 0
+    ? `\n── RECENT CONVERSATION (most recent last — use only if relevant to current request) ──\n${recentHistory.map(t => `${t.role === 'user' ? 'User' : 'Assistant'}: ${t.content.slice(0, 300)}`).join('\n')}\n`
+    : '';
 
-CURRENT REPORT CARDS (structure only — data arrays omitted):
-${JSON.stringify(strippedCards, null, 2)}
+  const system = `You are a BI dashboard assistant. The user has an open report and sends a follow-up message.
+Your job: read the CURRENT REQUEST first, decide the best action, then use report context only to support that decision.
 
-Read the user's message and respond with JSON only. Choose exactly one action:
+FORMAT RULE: ${formatHint}
 
-── STRUCTURAL EDIT (hide/remove a section, change chart type, rename title, reorder cards — NO new database query needed):
+Choose exactly one action and respond with JSON only. No markdown, no code fences.
+
+── QA / ANSWER (user wants text — a summary, explanation, insight, analysis, or answer to a question):
+Applies when the user asks for: summary, give summary, pointers, bullets, explain, what does this mean,
+  what factors, why is, insights, tell me, describe, what drives, what is contributing, analyze,
+  break down, how many, which territory, what is the, any direct question about the data.
+IMPORTANT: "give the summary", "summarize this", "explain", "in pointers", "in bullets" → ALWAYS qa_answer.
+{ "action": "qa_answer", "message": "Substantive answer using actual data values from REPORT DATA. ${formatHint} Include specific numbers.", "followUp": [ { "label": "...", "intent": "..." } ] }
+
+── STRUCTURAL EDIT (change the report layout/visuals — hide, remove, rename, reorder, change chart type):
+Applies when: "show only KPI", "remove the chart", "hide the table", "change to line chart", "just show KPI section".
 {
   "action": "edit_structural",
   "acknowledgment": "One sentence confirming what you changed.",
   "title": "Report title (keep existing unless user asked to rename)",
   "message": "2–3 sentence updated narrative.",
-  "cards": [ ...full modified card tree... ],
+  "cards": [ ...ONLY surviving cards after the edit... ],
   "followUp": [ { "label": "...", "intent": "..." } ]
 }
+KPI renderTypes: KPICard, KPIGrid, StatDelta
+Chart renderTypes: BarChart, LineChart, AreaChart, PieChart, RankedList
+Data renderTypes: Table, GenerativeTable
+- "show only KPI" → KEEP KPI renderTypes only, REMOVE everything else.
+- "remove chart/table" → REMOVE those renderTypes.
+- Return ALL surviving cards. Never invent column names.
 
-── DATA CHANGE EDIT (needs fresh filtered data — top N, different grouping, time filter, drill-down):
-{ "action": "edit_data_change" }
+── DATA CHANGE (needs fresh filtered/sorted database rows — top N, filter by value, date range):
+Applies when: "top 5 territories", "filter by T-017", "show only last 3 months".
+{ "action": "edit_data_change", "sqlOverride": "ORDER BY SUG_REVENUE DESC LIMIT 5" }
 
-── NEW REPORT (completely different topic, domain, or dataset):
+── NEW REPORT (completely different topic unrelated to current report):
 { "action": "new_report" }
 
-── AMBIGUOUS (cannot tell if edit or new):
-{ "action": "clarify_intent" }
+── AMBIGUOUS:
+{ "action": "clarify_intent" }`;
 
-STRUCTURAL EDIT RULES:
-- "hide"/"remove" → delete that card from the cards array entirely.
-- "change X to line chart" / "show X as Y" → swap renderType, keep all prop keys identical.
-- "add a KPI" → append KPICard using only column names already present in the card tree.
-- Never invent column names. Only use keys already in the current card tree.
-- Return ALL surviving cards, not just the changed one.
-- followUp: 3–4 natural follow-up questions.`;
+  // User message: REQUEST first, then data context, then history (most recent last).
+  const userMessage = `CURRENT REQUEST: "${query}"
+
+── REPORT DATA (actual metric values — use these to answer qa_answer questions) ──
+${dataContext || '(no data available)'}
+
+── REPORT CONTEXT ──
+${priorContext}
+
+── CARD STRUCTURE (layout only) ──
+${JSON.stringify(strippedCards, null, 2)}
+${historySection}`;
 
   return withRetry(async () => {
     const response = await ai.models.generateContent({
@@ -609,7 +702,7 @@ STRUCTURAL EDIT RULES:
         responseMimeType: 'application/json',
         systemInstruction: system,
       },
-      contents: [{ role: 'user', parts: [{ text: `USER MESSAGE: "${query}"` }] }],
+      contents: [{ role: 'user', parts: [{ text: userMessage }] }],
     });
 
     const raw = response.text ?? '';
@@ -628,7 +721,19 @@ STRUCTURAL EDIT RULES:
         followUp: Array.isArray(parsed.followUp) ? parsed.followUp : [],
       };
     }
-    if (parsed.action === 'edit_data_change') return { action: 'edit_data_change' };
+    if (parsed.action === 'edit_data_change') {
+      return {
+        action: 'edit_data_change',
+        sqlOverride: typeof parsed.sqlOverride === 'string' ? parsed.sqlOverride : undefined,
+      };
+    }
+    if (parsed.action === 'qa_answer') {
+      return {
+        action: 'qa_answer',
+        message: typeof parsed.message === 'string' ? parsed.message : 'Here is a summary of the report.',
+        followUp: Array.isArray(parsed.followUp) ? parsed.followUp : [],
+      };
+    }
     if (parsed.action === 'clarify_intent') return { action: 'clarify_intent' };
     return { action: 'new_report' };
   });
@@ -652,8 +757,9 @@ export async function clarifyOrGenerate(
 
 // ── Report system prompt (used as context for design_report tool) ─────────────
 
-const REPORT_SYSTEM_PROMPT = `You are an expert business intelligence analyst and UI architect.
-You receive a user query and real BigQuery data.
+const REPORT_SYSTEM_PROMPT = `You are an expert business intelligence analyst. You receive a user query and real BigQuery data.
+Your first job: understand WHAT the user is actually asking for, then pick ONLY the components that directly answer it.
+Do NOT default to a standard dashboard layout. Choose components intentionally based on user intent.
 Respond with valid JSON only — no markdown, no code fences, no explanation.
 
 OUTPUT FORMAT:
@@ -670,49 +776,138 @@ The EXACT_COLUMNS list in the user message contains the exact column names as th
 You MUST copy these names character-for-character into xKey, yKey, nameKey, valueKey, labelKey, and columns[].
 NEVER lowercase, rename, or invent column names. If unsure, check EXACT_COLUMNS.
 
-TEMPLATES:
-- "summary"        → High-level overview. Lead with KPIGrid + 1-2 charts.
-- "deep_dive"      → Full analysis. Use metrics + charts + table + insights.
-- "trend_analysis" → Time-based. Lead with LineChart or AreaChart.
-- "comparison"     → Side-by-side. Use TwoColumn layout.
-- "qa_answer"      → Direct question. Lead with InsightCard + SummaryText.
+── STEP 1: CLASSIFY THE QUERY INTENT ─────────────────────────────────────────
+Read the USER QUERY and classify it as one of:
 
-COMPONENTS:
-Metric (embed real values from sample): KPICard, KPIGrid, StatDelta
-Charts (pipeline attaches data — you only set keys): BarChart, LineChart, AreaChart, PieChart, RankedList
-Data: Table — set columns[] to EXACT column names you want shown
-Narrative (embed content): InsightCard, AlertBanner, SummaryText
-Layout: TwoColumn (exactly 2 children), Section (1–4 children)
+A) TEXT / SUMMARY / ANSWER — user wants an explanation, summary, insight, or direct answer.
+   Signals: "summary", "summarize", "explain", "what is", "why", "how", "in text", "in points",
+            "tell me", "describe", "what drives", "insights", "analyze", "what does this mean".
+   → Use template "qa_answer". Cards: 1-2 KPICards (most relevant metric only) + 1 InsightCard or SummaryText with the full answer. NO charts. NO tables.
+
+B) SPECIFIC METRIC / KPI — user wants to see one or a few numbers.
+   Signals: "show me the", "what is the revenue", "give me the rate", "what's the value of".
+   → Use template "summary". Cards: KPIGrid or 1-3 KPICards only. Add 1 chart only if it directly shows the metric asked. NO table unless explicitly asked.
+
+C) TREND / TIME-BASED — user wants to see how something changes over time.
+   Signals: "trend", "over time", "monthly", "by month", "how has X changed".
+   → Use template "trend_analysis". Cards: 1 LineChart or AreaChart + 1 KPICard for current value. Optional Table if detail is needed.
+
+D) COMPARISON / BREAKDOWN — user wants to compare across territories, teams, products, etc.
+   Signals: "by territory", "compare", "top N", "which territory", "breakdown", "ranking".
+   → Use template "comparison". Cards: 1 BarChart or RankedList + KPIGrid with averages. Optional Table.
+
+E) FULL DASHBOARD — user explicitly asks for a full report/dashboard with everything.
+   Signals: "show me the full report", "dashboard", "give me everything", "deep dive".
+   → Use template "deep_dive". Cards: KPIGrid + 1-2 charts + Table. Max 5 cards.
+
+── STEP 2: SELECT ONLY THE CARDS THAT ANSWER THE QUERY ──────────────────────
+Intent A (text/summary): NEVER add charts or tables. InsightCard body = direct answer with specific numbers from data.
+Intent B (metric): 1-3 KPIs max. Chart only if it shows the exact metric asked.
+Intent C (trend): Lead with chart. 1 supporting KPI only.
+Intent D (comparison): Lead with chart/ranking. Supporting KPIs for context.
+Intent E (dashboard): Full set — but still max 5 top-level cards.
+
+AVAILABLE COMPONENTS:
+Metrics (embed real values from data sample): KPICard { title, value, trend? }, KPIGrid { metrics: [{title,value,trend?}] }, StatDelta { title, value, delta, trend }
+Charts (pipeline attaches data — set keys only): BarChart { title, xKey, yKey }, LineChart { title, xKey, yKey }, AreaChart { title, xKey, yKey }, PieChart { title, nameKey, valueKey }, RankedList { title, labelKey, valueKey, limit? }
+Data: Table { title, columns[] } — columns[] = EXACT column names
+Narrative (embed content directly): InsightCard { title, body }, SummaryText { content }, AlertBanner { title, message }
+Layout: TwoColumn { children: [exactly 2] }, Section { title?, children: [1-4] }
 
 RULES:
 - xKey/yKey/nameKey/valueKey/labelKey: MUST be from EXACT_COLUMNS list.
-- KPICard/KPIGrid/StatDelta: compute real numeric values from data sample.
+- KPICard/KPIGrid/StatDelta: compute real numeric values from data sample. Never use placeholder "—".
+- InsightCard/SummaryText body: write the actual answer using specific numbers from the data sample.
 - trend: "+4.2%" or "-1.5%". Only include if clearly calculable from data.
-- TwoColumn: exactly 2 children only.
-- BarChart, LineChart, AreaChart, PieChart, RankedList, Table are FULL-WIDTH — never nest alone in TwoColumn.
-- followUp: 3–4 natural follow-up questions the user might ask.
-- Max 6 top-level cards. Must produce at least 2 cards.`;
+- TwoColumn: exactly 2 children only. BarChart/LineChart/Table are FULL-WIDTH — never alone in TwoColumn.
+- followUp: 3–4 natural follow-up questions.
+- Minimum 1 card. Maximum 5 top-level cards. Do not pad with redundant components.
+
+── ENTITY SPECIFICITY (critical) ────────────────────────────────────────────
+If the query mentions specific entities (e.g. T-007, T-001, a named territory, team, or product):
+- The QUERY-RELEVANT ROWS section in the user message shows the data for those exact entities.
+- KPI values MUST come from those specific entity rows — NEVER show network/global averages.
+- Title and message MUST name the entities explicitly.
+- Example: query = "show T-007 return rate" → KPICard title="T-007 Return Rate", value=4.66% (from T-007's row).
+
+── COMPARISON SPECIFICITY ───────────────────────────────────────────────────
+If the query compares two or more entities (e.g. "compare T-007 and T-001"):
+- message MUST describe the comparison result: "T-007 has X vs T-001's Y — a Z% difference."
+- KPIs must show each entity's value, not a global average. Use one KPICard per entity, or a TwoColumn with one KPICard per side.
+- NEVER write a generic message like "analysis across territories" when two specific ones were asked about.
+
+── NARRATIVE ACCURACY ───────────────────────────────────────────────────────
+The "message" field must directly and specifically answer the user query.
+- Query asks "which territory has highest X?" → message must name that territory and its value.
+- Query compares A and B → message must compare A and B with their values.
+- NEVER recycle a prior report description. NEVER use generic phrases that don't answer the specific question.`;
 
 // ── generateReport ────────────────────────────────────────────────────────────
 
-// Compact sample rows for the LLM prompt.
-// Keeps only measure + dimension columns (drops ID cols already excluded by dataShapeAnalyzer),
-// caps at MAX_SAMPLE_ROWS rows, and serializes as compact JSON (no indentation).
-// This keeps the prompt well under Gemma's context window on wide tables.
-const MAX_SAMPLE_ROWS = 8;
+const MAX_SAMPLE_ROWS = 10;
 const MAX_SAMPLE_COLS = 10;
 
-function buildCompactSample(rows: any[], shape: ShapeSignature): string {
+// Extract entity tokens mentioned in the query (territory IDs, names, identifiers).
+// Finds any dimension value that appears verbatim in the query string.
+function extractQueryEntities(query: string, rows: any[], dimensionCols: string[]): string[] {
+  if (!rows.length || !dimensionCols.length) return [];
+  const queryUpper = query.toUpperCase();
+  const seen = new Set<string>();
+  for (const row of rows) {
+    for (const col of dimensionCols) {
+      const val = String(row[col] ?? '').trim();
+      if (val.length > 1 && queryUpper.includes(val.toUpperCase()) && !seen.has(val)) {
+        seen.add(val);
+      }
+    }
+  }
+  return [...seen];
+}
+
+// Build a sample that puts query-relevant entity rows first, then fills with others.
+// This ensures the LLM sees the specific entities the user asked about and computes
+// correct KPI values for them rather than global averages.
+function buildCompactSample(rows: any[], shape: ShapeSignature, query = ''): string {
   const keepCols = [
     ...(shape.timeColumn ? [shape.timeColumn] : []),
     ...shape.dimensionColumns,
     ...shape.measureColumns,
   ].slice(0, MAX_SAMPLE_COLS);
 
-  const sliced = rows.slice(0, MAX_SAMPLE_ROWS).map(row =>
+  const entities = extractQueryEntities(query, rows, shape.dimensionColumns);
+
+  let ordered: any[];
+  if (entities.length > 0) {
+    const relevant = rows.filter(row =>
+      shape.dimensionColumns.some(col => entities.includes(String(row[col] ?? '').trim()))
+    );
+    const others = rows.filter(row =>
+      !shape.dimensionColumns.some(col => entities.includes(String(row[col] ?? '').trim()))
+    );
+    ordered = [...relevant, ...others];
+  } else {
+    ordered = rows;
+  }
+
+  const sliced = ordered.slice(0, MAX_SAMPLE_ROWS).map(row =>
     Object.fromEntries(keepCols.filter(c => c in row).map(c => [c, row[c]]))
   );
   return JSON.stringify(sliced);
+}
+
+// Build a human-readable block of the query-relevant entity rows for the prompt.
+// Shown separately as "QUERY-RELEVANT ROWS" so the LLM knows exactly what to use for KPIs.
+function buildEntityHighlight(rows: any[], shape: ShapeSignature, entities: string[]): string {
+  if (!entities.length) return '';
+  const keepCols = [...shape.dimensionColumns, ...shape.measureColumns].slice(0, MAX_SAMPLE_COLS);
+  const relevant = rows.filter(row =>
+    shape.dimensionColumns.some(col => entities.includes(String(row[col] ?? '').trim()))
+  );
+  if (!relevant.length) return '';
+  const formatted = relevant.map(row =>
+    keepCols.filter(c => c in row).map(c => `${c}=${row[c]}`).join(', ')
+  ).join('\n');
+  return `\nQUERY-RELEVANT ROWS (use these for KPI values — NOT global averages):\n${formatted}\n`;
 }
 
 export async function generateReport(
@@ -724,28 +919,23 @@ export async function generateReport(
   const ai = getAI();
 
   const allColumns = Object.keys(shape.columnTypes);
-  const priorSection = priorContext
-    ? `\nPRIOR REPORT CONTEXT:\n${priorContext}\n`
-    : '';
 
-  const compactSample = buildCompactSample(sampleRows, shape);
+  const entities = extractQueryEntities(query, sampleRows, shape.dimensionColumns);
+  const entityHighlight = buildEntityHighlight(sampleRows, shape, entities);
+  const compactSample = buildCompactSample(sampleRows, shape, query);
 
   const userMessage = `USER QUERY: "${query}"
-${priorSection}
+
 EXACT_COLUMNS (copy these character-for-character into all key fields):
   Dimension columns: ${shape.dimensionColumns.join(', ') || 'none'}
   Measure columns:   ${shape.measureColumns.join(', ') || 'none'}
   ${shape.isTimeSeries ? `Time column:       ${shape.timeColumn}` : 'Not a time series'}
   All columns:       ${allColumns.join(', ')}
-
-DATA SUMMARY:
-- Total rows in BigQuery: ${shape.rowCount}
-- Time series: ${shape.isTimeSeries ? `yes (${shape.timeColumn})` : 'no'}
-
-DATA SAMPLE (${Math.min(sampleRows.length, MAX_SAMPLE_ROWS)} rows, key columns only — column names are EXACT):
+${entityHighlight}
+DATA SAMPLE (${Math.min(sampleRows.length, MAX_SAMPLE_ROWS)} rows, query-relevant entities first):
 ${compactSample}
 
-Design the best dashboard to answer this query. Use EXACT_COLUMNS for all key fields. Respond with JSON only.`;
+Design the best response to this query. Use EXACT_COLUMNS for all key fields. Respond with JSON only.`;
 
   try {
     const response = await withRetry(() => ai.models.generateContent({

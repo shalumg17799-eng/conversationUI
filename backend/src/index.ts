@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import { runPipeline } from './pipeline/runPipeline';
 import { runStreamingPipeline } from './pipeline/runStreamingPipeline';
 import { BigQueryService } from './services/bigqueryService';
-import { callLLM } from './services/llmHandler';
+import { callLLM, probeTableAvailability } from './services/llmHandler';
 import { refreshCatalog } from './services/catalogRefresher';
 
 dotenv.config();
@@ -27,7 +27,7 @@ app.get('/', (_req: Request, res: Response) => {
 
 // SSE streaming endpoint — preferred for Generative UI
 app.post('/api/conversational/stream', async (req: Request, res: Response) => {
-  const { query, skipClarification, clarificationHistory, priorContext, activeTable, currentCards } = req.body;
+  const { query, skipClarification, clarificationHistory, priorContext, activeTable, currentCards, conversationHistory } = req.body;
   if (!query) return res.status(400).json({ error: 'Query is required' });
 
   res.writeHead(200, {
@@ -42,7 +42,7 @@ app.post('/api/conversational/stream', async (req: Request, res: Response) => {
   };
 
   try {
-    await runStreamingPipeline(query, send, !!skipClarification, clarificationHistory ?? [], priorContext, activeTable, currentCards);
+    await runStreamingPipeline(query, send, !!skipClarification, clarificationHistory ?? [], priorContext, activeTable, currentCards, conversationHistory ?? []);
     send('done', { success: true });
   } catch (error: any) {
     send('error', { message: error.message || 'Internal Server Error' });
@@ -160,8 +160,9 @@ app.post('/api/catalog/refresh', async (_req: Request, res: Response) => {
 app.listen(port, () => {
   console.log(`Backend listening at http://localhost:${port}`);
 
-  // Refresh catalog on startup, then every 24 hours
+  // Refresh catalog and probe table availability on startup
   refreshCatalog().catch(err => console.error('[Startup] Catalog refresh failed:', err));
+  probeTableAvailability().catch(err => console.error('[Startup] Table availability probe failed:', err));
   setInterval(() => {
     refreshCatalog().catch(err => console.error('[Scheduler] Catalog refresh failed:', err));
   }, 24 * 60 * 60 * 1000);

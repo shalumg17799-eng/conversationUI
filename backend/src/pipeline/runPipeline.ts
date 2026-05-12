@@ -1,7 +1,6 @@
-import { classifyIntent } from '../services/intentClassifier';
 import { executeQuery } from '../services/queryEngine';
 import { analyzeDataShape } from '../services/dataShapeAnalyzer';
-import { generateReport } from '../services/llmHandler';
+import { generateReport, analyzeQuery } from '../services/llmHandler';
 import { UITypeTree } from '../types';
 import { cacheService, generateKey } from '../services/cacheService';
 
@@ -20,8 +19,10 @@ export async function runPipeline(query: string): Promise<PipelineResult> {
 
   const start = Date.now();
 
-  const intent = await classifyIntent(query);
-  const allRows = await executeQuery(intent);
+  const analysis = await analyzeQuery(query);
+  const tableOverride = analysis.action === 'route' ? analysis.table : undefined;
+  const intent = { metric: tableOverride ?? 'unknown', dimension: 'unknown', intent: 'metric_by_dimension' as const };
+  const allRows = await executeQuery(intent, undefined, tableOverride);
   const dataShape = await analyzeDataShape(allRows);
   const sampleRows = allRows.slice(0, SAMPLE_SIZE);
 

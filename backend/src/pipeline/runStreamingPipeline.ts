@@ -4,8 +4,10 @@ import { analyzeDataShape } from '../services/dataShapeAnalyzer';
 import {
   generateReport, analyzeQuery,
   classifyAndEditReport, buildHydrationMap, rehydrateEditedCards,
-  ReportCard,
+  ReportCard, ConversationTurn,
+  getAvailableDataSources,
 } from '../services/llmHandler';
+import { runQueryWithMeta, qualifiedTable } from '../lib/bigqueryClient';
 import { DATA_SOURCES, ALL_DOMAINS, getSourcesByDomain } from '../services/dataSourceMap';
 import { UITypeTree, ShapeSignature } from '../types';
 import { cacheService, generateKey } from '../services/cacheService';
@@ -199,6 +201,55 @@ export interface ClarificationTurn {
   answer: string;
 }
 
+// Extract a compact, human-readable data summary from hydrated cards.
+// Used to give the LLM actual metric values so it can answer analytical questions
+// without re-querying BigQuery.
+function buildCompactDataContext(cards: ReportCard[], maxRows = 10): string {
+  const lines: string[] = [];
+
+  const extract = (card: ReportCard) => {
+    const p = card.props as any;
+    switch (card.renderType) {
+      case 'KPICard':
+      case 'StatDelta':
+        if (p.title && p.value !== undefined) {
+          lines.push(`${p.title}: ${p.value}${p.trend ? ` (${p.trend})` : ''}`);
+        }
+        break;
+      case 'KPIGrid':
+        if (Array.isArray(p.metrics)) {
+          p.metrics.forEach((m: any) => {
+            if (m.title) lines.push(`${m.title}: ${m.value ?? '—'}${m.trend ? ` (${m.trend})` : ''}`);
+          });
+        }
+        break;
+      case 'RankedList':
+        if (Array.isArray(p.items) && p.title) {
+          lines.push(`${p.title}:`);
+          p.items.slice(0, maxRows).forEach((item: any) =>
+            lines.push(`  #${item.rank} ${item.label}: ${item.value}`)
+          );
+        }
+        break;
+      case 'Table':
+      case 'GenerativeTable': {
+        const rows: any[] = p.data ?? p.rows ?? [];
+        if (rows.length > 0 && p.title) {
+          lines.push(`${p.title} (sample rows):`);
+          rows.slice(0, maxRows).forEach((row: any) =>
+            lines.push('  ' + Object.entries(row).map(([k, v]) => `${k}=${v}`).join(', '))
+          );
+        }
+        break;
+      }
+    }
+    card.children?.forEach(extract);
+  };
+
+  cards.forEach(extract);
+  return lines.join('\n');
+}
+
 export async function runStreamingPipeline(
   query: string,
   send: SendFn,
@@ -207,6 +258,7 @@ export async function runStreamingPipeline(
   priorContext?: string,
   activeTable?: string,
   currentCards?: ReportCard[],
+  conversationHistory: ConversationTurn[] = [],
 ): Promise<void> {
   const cacheKey = generateKey({ query, stream: true, v: 2, history: clarificationHistory, prior: priorContext });
   const cached = cacheService.get<{ components: UITypeTree[]; title: string; message: string; activeTable?: string }>(cacheKey);
@@ -226,14 +278,24 @@ export async function runStreamingPipeline(
   const hasExistingReport = !!priorContext && !!activeTable && currentCards && currentCards.length > 0;
   const inClarificationFlow = clarificationHistory.length > 0;
 
+  // Unambiguous text/summary/answer signals — these queries must never generate a new dashboard.
+  const TEXT_REQUEST_RE = /\b(summar(y|ize|ise)|explain|in\s+(text|points?|pointers?|bullets?)|tell\s+me|what\s+(is|are|does|drives|caused?)|why\s+(is|are|does)|how\s+(many|much|does)|insights?|describe|what\s+does\s+this\s+mean|give\s+(me\s+)?(the\s+)?summary|analyze\s+this)\b/i;
+  const isClearTextRequest = TEXT_REQUEST_RE.test(query);
+
   if (hasExistingReport && !inClarificationFlow && !skipClarification) {
     send('status', { message: 'Understanding your request...' });
 
+    const dataContext = buildCompactDataContext(currentCards!);
+
+    // For clear text/summary requests, prepend an instruction so the LLM cannot misclassify.
+    const classifyQuery = isClearTextRequest
+      ? `RESPOND IN TEXT FORMAT ONLY (qa_answer). Do not generate a new report or dashboard. ${query}`
+      : query;
+
     // Single fused LLM call: classifies intent AND applies structural edits in one shot.
-    // Replaces the previous two-call flow (classifyFollowUpIntent → editReport).
     let fusedResult: Awaited<ReturnType<typeof classifyAndEditReport>> | null = null;
     try {
-      fusedResult = await classifyAndEditReport(query, currentCards!, priorContext!);
+      fusedResult = await classifyAndEditReport(classifyQuery, currentCards!, priorContext!, dataContext, conversationHistory);
     } catch (err) {
       console.error('[Pipeline] classifyAndEditReport failed after retries:', err);
       // Fall through to new-report flow as safe default
@@ -260,13 +322,40 @@ export async function runStreamingPipeline(
         return;
       }
 
-      // ── Data-change edit: re-query BQ, then regenerate with edit context ──
+      // ── QA / summary: answer from context, no BQ re-query ────────────────
+      if (fusedResult.action === 'qa_answer') {
+        send('qa_answer', { message: fusedResult.message, followUp: fusedResult.followUp });
+        return;
+      }
+
+      // ── Data-change edit: re-query BQ with optional SQL filter ────────────
       if (fusedResult.action === 'edit_data_change') {
         send('status', { message: 'Fetching updated data...' });
 
-        const { classifyIntent: classifyTable } = await import('../services/intentClassifier');
-        const tableIntent = await classifyTable(query);
-        const allRows = await executeQuery(tableIntent, (meta) => send('bq_debug', meta), activeTable);
+        let allRows: any[] = [];
+        const sqlOverride = fusedResult.sqlOverride;
+
+        if (sqlOverride && activeTable) {
+          // Apply LLM-suggested filter/sort directly against the active table
+          try {
+            const sql = `SELECT * FROM ${qualifiedTable(activeTable)} ${sqlOverride}`;
+            console.log(`[Pipeline] edit_data_change sqlOverride: ${sql}`);
+            const result = await runQueryWithMeta(sql);
+            allRows = result.rows;
+          } catch (sqlErr: any) {
+            console.warn('[Pipeline] sqlOverride failed, falling back to full table:', sqlErr.message);
+          }
+        }
+
+        if (allRows.length === 0 && activeTable) {
+          // Fallback: fetch full active table without filter
+          try {
+            const result = await runQueryWithMeta(`SELECT * FROM ${qualifiedTable(activeTable)} LIMIT 50`);
+            allRows = result.rows;
+          } catch (fallbackErr: any) {
+            console.warn('[Pipeline] edit_data_change full-table fallback failed:', fallbackErr.message);
+          }
+        }
 
         if (allRows.length === 0) {
           send('acknowledgment', { message: "I couldn't find data matching that filter. The original report is unchanged." });
@@ -309,6 +398,26 @@ export async function runStreamingPipeline(
         return;
       }
 
+      // Safety net: if LLM returned new_report for a clear text request, force qa_answer
+      // using the data context we already have (avoids unnecessary BQ re-query).
+      if (fusedResult.action === 'new_report' && isClearTextRequest && dataContext) {
+        try {
+          const forced = await classifyAndEditReport(
+            `You MUST respond with action="qa_answer". Answer this question directly using the report data: ${query}`,
+            currentCards!,
+            priorContext!,
+            dataContext,
+            conversationHistory,
+          );
+          if (forced.action === 'qa_answer') {
+            send('qa_answer', { message: forced.message, followUp: forced.followUp });
+            return;
+          }
+        } catch (e) {
+          console.error('[Pipeline] forced qa_answer failed:', e);
+        }
+      }
+
       // fusedResult.action === 'new_report' → fall through to normal flow
     }
   }
@@ -321,27 +430,37 @@ export async function runStreamingPipeline(
     : query;
 
   // Step 0+1 — decide clarify vs route (normal new-report flow)
+  // Always use the LLM-driven analyzeQuery — never keyword classification.
+  // forceGenerate (skipClarification or long history) suppresses further clarification
+  // but still uses the LLM to pick the right table.
   const forceGenerate = skipClarification || clarificationHistory.length >= 3;
   let tableOverride: string | undefined;
-  let intent: { metric: string; dimension: string; intent: 'trend' | 'comparison' | 'metric_by_dimension' };
+  const intent = { metric: 'unknown', dimension: 'unknown', intent: 'metric_by_dimension' as const };
 
-  if (!forceGenerate) {
-    send('status', { message: 'Understanding your query...' });
-    const analysis = await analyzeQuery(query, clarificationHistory);
+  send('status', { message: 'Understanding your query...' });
+  const analysis = await analyzeQuery(query, clarificationHistory);
 
-    if (analysis.action === 'clarify') {
-      send('clarification', {
-        opener: analysis.opener,
-        currentQuestion: { question: analysis.question, options: analysis.options },
-      });
-      return;
-    }
+  if (analysis.action === 'clarify' && !forceGenerate) {
+    send('clarification', {
+      opener: analysis.opener,
+      currentQuestion: { question: analysis.question, options: analysis.options },
+    });
+    return;
+  }
 
+  if (analysis.action === 'route') {
     tableOverride = analysis.table;
-    intent = { metric: analysis.table, dimension: 'unknown', intent: analysis.intent };
   } else {
-    const { classifyIntent } = await import('../services/intentClassifier');
-    intent = await classifyIntent(enrichedQuery);
+    // forceGenerate or LLM couldn't route — derive table from history/query text
+    // using the same catalog-aware extractor used in analyzeQuery's fast-path
+    const allTexts = [query, ...clarificationHistory.map(t => t.answer)];
+    const availableSources = getAvailableDataSources();
+    const matched = availableSources.find(s =>
+      allTexts.some(t => t.toLowerCase().includes(s.reportName.toLowerCase()))
+    ) ?? availableSources.find(s =>
+      allTexts.some(t => t.toLowerCase().includes(s.domain.toLowerCase()))
+    );
+    tableOverride = matched?.table ?? availableSources[0]?.table;
   }
 
   // Step 2 — fetch real BigQuery data
@@ -352,25 +471,36 @@ export async function runStreamingPipeline(
   const resolvedTable = tableOverride ?? activeTable;
 
   if (allRows.length === 0) {
-    // Recovery — derive options from DATA_SOURCES (guaranteed real data), grouped by domain
+    // Recovery — only show options from tables that actually have data,
+    // and exclude the table that just failed to avoid showing the same dead-end again.
+    const availableSources = getAvailableDataSources();
+    const failedTable = tableOverride;
+
     const answeredDomain = clarificationHistory
       .map(t => t.answer)
-      .find(a => ALL_DOMAINS.some(d => d.toLowerCase() === a.toLowerCase()));
+      .find(a => [...new Set(availableSources.map(s => s.domain))].some(d => d.toLowerCase() === a.toLowerCase()));
 
     let recoveryOptions: string[];
     let recoveryQuestion: string;
 
     if (answeredDomain) {
-      const sources = getSourcesByDomain(answeredDomain);
+      const sources = availableSources
+        .filter(s => s.domain.toLowerCase() === answeredDomain.toLowerCase() && s.table !== failedTable);
       recoveryOptions = sources.map(s => s.reportName);
-      recoveryQuestion = `Which ${answeredDomain} report would you like to explore?`;
+      recoveryQuestion = recoveryOptions.length > 0
+        ? `Which ${answeredDomain} report would you like to explore?`
+        : 'Which domain would you like to explore?';
+      if (recoveryOptions.length === 0) {
+        // All reports in this domain are unavailable — fall back to domains
+        recoveryOptions = [...new Set(availableSources.map(s => s.domain))];
+      }
     } else {
-      recoveryOptions = ALL_DOMAINS;
+      recoveryOptions = [...new Set(availableSources.map(s => s.domain))];
       recoveryQuestion = 'Which domain would you like to explore?';
     }
 
     send('clarification', {
-      opener: `I couldn't retrieve data for that selection. Here are reports I have data for:`,
+      opener: `I don't have data available for that report right now. Here's what I can show you instead:`,
       currentQuestion: { question: recoveryQuestion, options: recoveryOptions },
       isRecovery: true,
     });

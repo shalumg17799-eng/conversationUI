@@ -18,13 +18,11 @@ export const executeQuery = async (
   onMeta?: (meta: BQQueryMeta) => void,
   tableOverride?: string,
 ): Promise<any[]> => {
-  const { metric, dimension, intent: intentType } = intent;
-  const m = metric.toLowerCase();
-  const d = dimension.toLowerCase();
+  const { intent: intentType } = intent;
 
-  console.log(`BQ Query — table: ${tableOverride ?? 'auto'}, intent: ${intentType}, metric: ${m}, dimension: ${d}`);
+  console.log(`BQ Query — table: ${tableOverride ?? 'none'}, intent: ${intentType}`);
 
-  const runTable = async (_table: string, sql: string): Promise<any[]> => {
+  const runTable = async (table: string, sql: string): Promise<any[]> => {
     const result = await runQueryWithMeta(sql);
     onMeta?.({
       project: result.project,
@@ -33,55 +31,31 @@ export const executeQuery = async (
       rowCount: result.rows.length,
       durationMs: result.durationMs,
       intent: intentType,
-      metric: m,
-      dimension: d,
+      metric: table,
+      dimension: 'unknown',
     });
     return result.rows;
   };
 
   try {
-    // Direct table routing — used when analyzeQuery returns a specific table
+    // Primary: use the table the LLM selected — always preferred over any fallback.
     if (tableOverride) {
       const source = DATA_SOURCES.find(ds => ds.table === tableOverride);
       if (source) {
         const sql = buildQuerySQL(source, qualifiedTable);
         return await runTable(tableOverride, sql);
       }
+      // tableOverride set but not in DATA_SOURCES — run as bare SELECT
+      return await runTable(tableOverride,
+        `SELECT * FROM ${qualifiedTable(tableOverride)} LIMIT 50`);
     }
 
-    // Keyword fallback — used when forceGenerate skips LLM routing
-    if (m === 'revenue' || m === 'sales' || m === 'take_rate' || intentType === 'trend') {
-      return await runTable('fact_sug_monthly_rollup',
-        `SELECT * FROM ${qualifiedTable('fact_sug_monthly_rollup')} ORDER BY month_id DESC LIMIT 50`);
-    }
-    if (m === 'churn' || m === 'retention') {
-      return await runTable('fact_sug_monthly_rollup',
-        `SELECT * FROM ${qualifiedTable('fact_sug_monthly_rollup')} ORDER BY month_id DESC LIMIT 50`);
-    }
-    if (m === 'contact' || m === 'agent' || m === 'employee' || d === 'employee') {
-      return await runTable('fact_contact_center_metrics',
-        `SELECT * FROM ${qualifiedTable('fact_contact_center_metrics')} ORDER BY status`);
-    }
-    if (m === 'rank' || m === 'score' || m === 'dynamic') {
-      return await runTable('fact_dynamic_scores',
-        `SELECT * FROM ${qualifiedTable('fact_dynamic_scores')} ORDER BY rank`);
-    }
-    if (m === 'network' || m === 'kpi') {
-      return await runTable('fact_network_kpi_points',
-        `SELECT * FROM ${qualifiedTable('fact_network_kpi_points')} ORDER BY timestamp DESC LIMIT 100`);
-    }
-    if (d === 'territory' || m === 'performance' || m === 'territory') {
-      return await runTable('v_monthly_territory_performance',
-        `SELECT * FROM ${qualifiedTable('v_monthly_territory_performance')} ORDER BY month_id DESC, territory_name LIMIT 50`);
-    }
-    if (intentType === 'comparison' || d === 'outlet') {
-      return await runTable('v_daily_sales_detail',
-        `SELECT * FROM ${qualifiedTable('v_daily_sales_detail')} ORDER BY date DESC, outlet_name LIMIT 100`);
-    }
-
-    // Default — most populated table
-    return await runTable('v_monthly_territory_performance',
-      `SELECT * FROM ${qualifiedTable('v_monthly_territory_performance')} ORDER BY month_id DESC, territory_name LIMIT 50`);
+    // Last resort: use the first available source from the catalog.
+    // This path should rarely be hit now that the pipeline always sets tableOverride
+    // via analyzeQuery (LLM) or history-derived catalog lookup.
+    const fallbackSource = DATA_SOURCES[0];
+    console.warn(`[executeQuery] No tableOverride — falling back to catalog default: ${fallbackSource.table}`);
+    return await runTable(fallbackSource.table, buildQuerySQL(fallbackSource, qualifiedTable));
 
   } catch (err: any) {
     console.error('BigQuery executeQuery error:', err.message);

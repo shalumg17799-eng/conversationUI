@@ -2543,7 +2543,11 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
     const meta = lastReport.data?.meta;
     const title = meta?.title ?? '';
     const description = meta?.description ?? meta?.message ?? '';
-    const priorContext = title ? `Title: "${title}". Summary: ${description}` : undefined;
+    const rowCount = meta?.rowCount;
+    const template = meta?.template ?? '';
+    const priorContext = title
+      ? `Title: "${title}". Template: ${template}. Summary: ${description}${rowCount ? `. Data: ${rowCount} rows from BigQuery.` : ''}`
+      : undefined;
     const currentCards = lastReport.data?.components ?? [];
     return { priorContext, currentCards };
   };
@@ -2563,11 +2567,18 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
 
     const { priorContext, currentCards } = includePriorContext ? getLastReportContext() : { priorContext: undefined, currentCards: [] };
 
+    // Build recent conversation history (last 3 exchange pairs, most recent last).
+    // Only include settled messages (not streaming placeholders), trim to ~300 chars each.
+    const conversationHistory = messages
+      .filter(m => !m.isStreaming && (m.type === 'user' || m.type === 'assistant') && m.content)
+      .slice(-6)
+      .map(m => ({ role: m.type as 'user' | 'assistant', content: (m.content ?? '').slice(0, 300) }));
+
     try {
       const res = await fetch("http://localhost:3001/api/conversational/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, skipClarification, clarificationHistory: history, priorContext, currentCards: currentCards.length > 0 ? currentCards : undefined, activeTable: activeTableRef }),
+        body: JSON.stringify({ query, skipClarification, clarificationHistory: history, priorContext, currentCards: currentCards.length > 0 ? currentCards : undefined, activeTable: activeTableRef, conversationHistory }),
       });
 
       if (!res.ok || !res.body) throw new Error(`Backend error: ${res.status}`);
@@ -2624,6 +2635,12 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                 if (idx === -1) return [...prev, ackMsg];
                 return [...prev.slice(0, idx), ackMsg, ...prev.slice(idx)];
               });
+            } else if (event === 'qa_answer') {
+              // Text-only response (summary, explanation) — replace streaming placeholder with text bubble
+              patchMsg(m => ({ ...m, isStreaming: false, renderType: 'text', content: payload.message ?? '' }));
+              if (payload.followUp?.length) {
+                patchMsg(m => ({ ...m, data: { ...m.data, followUp: payload.followUp } }));
+              }
             } else if (event === 'clarification') {
               patchMsg(m => ({ ...m, isStreaming: false, renderType: 'clarification', originalQuery: query, data: { opener: payload.opener, currentQuestion: payload.currentQuestion, isRecovery: payload.isRecovery ?? false } }));
             } else if (event === 'error') {
@@ -3424,10 +3441,25 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
           <div className="flex-1">
             {message.content && (
               <p className="text-[14px] text-[#1C1917] leading-relaxed whitespace-pre-line mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
-                {message.content.split('**').map((part, i) => 
+                {message.content.split('**').map((part, i) =>
                   i % 2 === 0 ? part : <strong key={i}>{part}</strong>
                 )}
               </p>
+            )}
+
+            {/* Follow-up chips for text/qa_answer messages */}
+            {!message.isStreaming && message.data?.followUp?.length > 0 && message.renderType === 'text' && (
+              <div className="flex flex-wrap gap-2 pt-1 pb-2">
+                {message.data.followUp.map((fu: { label: string; intent: string }, i: number) => (
+                  <button
+                    key={i}
+                    onClick={() => { setInputValue(fu.intent); }}
+                    className="px-3 py-1.5 text-[12px] font-medium bg-white border border-[#E5E7EB] rounded-full text-[#374151] hover:bg-gray-50 hover:border-gray-300 transition-all"
+                  >
+                    {fu.label}
+                  </button>
+                ))}
+              </div>
             )}
 
             {/* Structured Q&A Cards */}
