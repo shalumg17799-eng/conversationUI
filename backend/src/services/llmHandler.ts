@@ -912,6 +912,66 @@ Apply the edit and return the full modified card tree as JSON.`;
   }
 }
 
+/**
+ * Phase 1: Generates a narrative-only response (summary, analysis, explanation)
+ * using the existing report context without modifying visualizations or querying BQ.
+ */
+export async function generateNarrativeResponse(
+  query: string,
+  currentCards: ReportCard[],
+  priorContext: string,
+): Promise<{ message: string; followUp: { label: string; intent: string }[] }> {
+  const ai = getAI();
+  
+  // Strip data arrays to save tokens, but keep keys and props for context
+  const strippedCards = stripCardData(currentCards);
+
+  const system = `You are a business intelligence assistant. The user is asking a question about an existing report.
+  
+EXISTING REPORT CONTEXT:
+${priorContext}
+
+CURRENT REPORT STRUCTURE (data omitted):
+${JSON.stringify(strippedCards, null, 2)}
+
+Your task:
+1. Provide a concise, professional narrative response based ONLY on the context provided.
+2. If the user asks for a summary, provide a high-level executive summary.
+3. If they ask for bullet points, use bullet points.
+4. If they ask "why" or for insights, provide data-driven explanations based on the report structure and context.
+5. Do NOT suggest new charts or changes to the report.
+6. Do NOT mention technical details like BigQuery or SQL.
+
+Respond with valid JSON only. No markdown. No code fences.
+{
+  "message": "your narrative response here",
+  "followUp": [ { "label": "Short label", "intent": "full question" } ]
+}`;
+
+  return withRetry(async () => {
+    const response = await ai.models.generateContent({
+      model: MODEL,
+      config: {
+        temperature: 0.3,
+        maxOutputTokens: 2048,
+        responseMimeType: 'application/json',
+        systemInstruction: system,
+      },
+      contents: [{ role: 'user', parts: [{ text: `USER QUESTION: "${query}"` }] }],
+    });
+
+    const raw = response.text ?? '';
+    const cleaned = stripThinkTags(raw);
+    const jsonStr = extractJSON(cleaned);
+    const parsed = JSON.parse(jsonStr);
+
+    return {
+      message: parsed.message ?? '',
+      followUp: Array.isArray(parsed.followUp) ? parsed.followUp : [],
+    };
+  });
+}
+
 // ── Generic chat (used by /api/chat route) ────────────────────────────────────
 
 const CHAT_JSON_SCHEMA = `

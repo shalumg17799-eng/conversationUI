@@ -39,3 +39,20 @@ export interface ValidationResult {
   isValid: boolean;
   errors?: string[];
 }
+
+export interface AnalyticalPlan {
+  intent: "ranking" | "trend" | "comparison" | "metric_by_dimension" | "raw";
+  operation?: {
+    type: "top_n" | "bottom_n";
+    limit: number;
+    sort: "asc" | "desc";
+  };
+  measure?: {
+    field: string;
+    logicalField?: string;
+    aggregation: "SUM" | "AVG" | "COUNT" | "MAX" | "MIN" | "NONE";
+  };
+  groupBy?: string[];
+  filters?: { field: string; operator: string; value: any }[];
+  confidenceScore: number;
+}

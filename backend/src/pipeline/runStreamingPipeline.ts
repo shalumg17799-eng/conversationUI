@@ -9,6 +9,8 @@ import {
 import { DATA_SOURCES, ALL_DOMAINS, getSourcesByDomain } from '../services/dataSourceMap';
 import { UITypeTree, ShapeSignature } from '../types';
 import { cacheService, generateKey } from '../services/cacheService';
+import { classifyInteraction } from '../services/interactionClassifier';
+import { generateNarrativeResponse } from '../services/llmHandler';
 
 // Fixes column name casing in LLM-generated cards.
 // BQ returns columns in their original case (e.g. TEAM, CSAT_SCORE) but the LLM
@@ -219,14 +221,57 @@ export async function runStreamingPipeline(
     return;
   }
 
-  // ── LLM intent classification ─────────────────────────────────────────────
-  // When an existing report is open and the user sends a follow-up (no active
-  // clarification in progress), ask the LLM to classify intent before routing.
-  // This replaces keyword matching entirely.
-  const hasExistingReport = !!priorContext && !!activeTable && currentCards && currentCards.length > 0;
+  // ── Orchestration State ──────────────────────────────────────────────────
+  const start = Date.now();
+  const hasContext = !!priorContext && !!currentCards && currentCards.length > 0;
   const inClarificationFlow = clarificationHistory.length > 0;
+  
+  // Deterministic Orchestration Decision
+  const interactionType = await classifyInteraction(query, hasContext);
+  let routingLayer: 'NARRATIVE' | 'ANALYTICAL_DIRECT' | 'WORKSPACE_TRANSFORM' | 'GUIDED_ASSISTANT' | 'NEW_REPORT_FALLBACK' = 'NEW_REPORT_FALLBACK';
+  let bypassedAssistant = false;
 
-  if (hasExistingReport && !inClarificationFlow && !skipClarification) {
+  const logOrchestration = () => {
+    console.log(`[Orchestration] interactionType=${interactionType} routingLayer=${routingLayer} bypassedAssistant=${bypassedAssistant} usedExistingContext=${hasContext}`);
+  };
+
+  // 1. Layer: Narrative Interaction (High Priority Bypass)
+  if (interactionType === 'summarize_report' || interactionType === 'analyze_report') {
+    routingLayer = 'NARRATIVE';
+    logOrchestration();
+    send('status', { message: interactionType === 'summarize_report' ? 'Summarizing report...' : 'Analyzing report context...' });
+    
+    try {
+      const narrative = await generateNarrativeResponse(query, currentCards!, priorContext!);
+      send('meta', { 
+        title: 'Report Analysis', 
+        description: narrative.message,
+        rowCount: null,
+        template: 'qa_answer',
+        activeTable,
+        skippedAnalyticalPipeline: true
+      });
+      if (narrative.followUp.length > 0) send('followUp', narrative.followUp);
+      return;
+    } catch (err) {
+      console.error('[Pipeline] Narrative generation failed, falling back:', err);
+    }
+  }
+
+  // 2. Layer: Analytical Direct Bypass
+  // If the query matches high-confidence analytical keywords, skip guided assistant flow entirely.
+  if (interactionType === 'analytical_intent' && !inClarificationFlow) {
+    routingLayer = 'ANALYTICAL_DIRECT';
+    bypassedAssistant = true;
+    // We fall through to Step 2, but we will set skipClarification = true for this turn.
+    skipClarification = true;
+  }
+
+  // 3. Layer: Workspace Transformation (Follow-ups on existing report)
+  const hasExistingReport = !!priorContext && !!activeTable && hasContext;
+  if (hasExistingReport && !inClarificationFlow && !skipClarification && interactionType !== 'analytical_intent') {
+    routingLayer = 'WORKSPACE_TRANSFORM';
+    logOrchestration();
     send('status', { message: 'Understanding your request...' });
 
     // Single fused LLM call: classifies intent AND applies structural edits in one shot.
@@ -313,40 +358,176 @@ export async function runStreamingPipeline(
     }
   }
 
-  const start = Date.now();
+  // Final check for log consistency
+  if (routingLayer === 'NEW_REPORT_FALLBACK' && interactionType === 'assistant_intent') {
+    routingLayer = 'GUIDED_ASSISTANT';
+  }
+  logOrchestration();
 
   // Build enriched query from clarification history if present
   const enrichedQuery = clarificationHistory.length > 0
-    ? `${query}. Context: ${clarificationHistory.map(t => `${t.question} → ${t.answer}`).join('; ')}`
+    ? `${query}. Context: ${clarificationHistory.map(t => `${t.question} \u2192 ${t.answer}`).join('; ')}`
     : query;
 
-  // Step 0+1 — decide clarify vs route (normal new-report flow)
+  // \u2500\u2500 Step 0 \u2014 Conversational State Management & Semantic Merge \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  const { getConversationState, updateConversationState, incrementClarificationDepth, clearClarificationState } = await import('../services/conversationStateManager');
+  const { checkAmbiguity } = await import('../services/ambiguityGuard');
+  const sessionId = 'default_session';
+  let state = getConversationState(sessionId);
+
+  // If clarification depth > 2, fail gracefully
+  if (state.clarificationDepth! > 2) {
+     clearClarificationState(sessionId);
+     send('clarification', {
+        opener: 'I need a bit more detail to determine the analytical metric.',
+        currentQuestion: { question: 'Could you rephrase your request entirely?', options: ['Yes', 'No'] },
+     });
+     return;
+  }
+
+  // Explicit Semantic Extraction (from pure query to avoid history bleed)
+  const { resolveSemantics } = await import('../services/semanticResolver');
+  const explicitSemantics = resolveSemantics(query);
+  
+  // Comparative Intent Detection
+  const qLower = query.toLowerCase();
+  const isCompare = qLower.includes('compare') || qLower.includes(' vs ') || qLower.includes('against') || qLower.includes('with ');
+  if (isCompare) {
+     console.log(`[CompareIntentDetected] query=${query}`);
+  }
+
+  // Field-level context merge
+  let explicitMetric = explicitSemantics.metric?.logical;
+  let explicitDimension = explicitSemantics.dimension?.logical;
+  
+  // Awaiting field logic
+  if (state.awaitingField === 'metric' && explicitMetric) {
+     // User is answering a clarification
+     // Keep explicit metric
+  } else if (state.awaitingField === 'metric') {
+     // Try to see if intent classifier caught it (fallback)
+     const { classifyIntent } = await import('../services/intentClassifier');
+     const rawIntent = await classifyIntent(enrichedQuery);
+     if (rawIntent.metric !== 'unknown') explicitMetric = rawIntent.metric;
+  }
+
+  const resolvedMetric = explicitMetric ?? state.resolvedContext?.metric;
+  const resolvedDimension = explicitDimension ?? state.resolvedContext?.dimension;
+  // Domain/Report is usually maintained unless explicitly changed by a major route
+  const resolvedDomain = state.resolvedContext?.domain || state.resolvedContext?.report;
+
+  if (explicitMetric && explicitMetric !== state.resolvedContext?.metric) {
+      console.log(`[ExplicitMetricOverride] metric=${explicitMetric}`);
+  }
+  if (explicitDimension && explicitDimension !== state.resolvedContext?.dimension) {
+      console.log(`[ExplicitDimensionOverride] dimension=${explicitDimension}`);
+  }
+
+  console.log(`[ContextMergeResult] metric=${resolvedMetric} dimension=${resolvedDimension} domain=${resolvedDomain}`);
+
+  // Update State with the completely merged context
+  state = updateConversationState(sessionId, {
+     resolvedContext: {
+        metric: resolvedMetric,
+        dimension: resolvedDimension,
+        report: state.resolvedContext?.report,
+        domain: state.resolvedContext?.domain
+     }
+  });
+
+  // Prepare intent object for downstream (planner and bigquery)
+  let intent = { 
+     metric: resolvedMetric || 'unknown', 
+     dimension: resolvedDimension || 'unknown', 
+     intent: isCompare ? 'comparison' : 'metric_by_dimension' 
+  } as { metric: string; dimension: string; intent: 'trend' | 'comparison' | 'metric_by_dimension' };
+
+  // For ranking intents, the planner will correctly override the base intent type
+
+
+  // \u2500\u2500 Step 1 \u2014 decide clarify vs route \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   const forceGenerate = skipClarification || clarificationHistory.length >= 3;
   let tableOverride: string | undefined;
-  let intent: { metric: string; dimension: string; intent: 'trend' | 'comparison' | 'metric_by_dimension' };
+
+  // Context Completeness Validation
+  const hasResolvedDomain = !!resolvedDomain;
+  const isContextComplete = hasResolvedDomain && !!resolvedMetric;
 
   if (!forceGenerate) {
-    send('status', { message: 'Understanding your query...' });
-    const analysis = await analyzeQuery(query, clarificationHistory);
+    if (isContextComplete) {
+       // Skip onboarding/report clarification entirely because context is already complete
+       tableOverride = state.resolvedContext?.report;
+    } else {
+       send('status', { message: 'Understanding your query...' });
+       const analysis = await analyzeQuery(query, clarificationHistory);
 
-    if (analysis.action === 'clarify') {
-      send('clarification', {
-        opener: analysis.opener,
-        currentQuestion: { question: analysis.question, options: analysis.options },
-      });
-      return;
+       if (analysis.action === 'clarify') {
+         send('clarification', {
+           opener: analysis.opener,
+           currentQuestion: { question: analysis.question, options: analysis.options },
+         });
+         return;
+       }
+       tableOverride = analysis.table;
+       intent.metric = analysis.table;
+       state = updateConversationState(sessionId, { resolvedContext: { report: analysis.table } });
     }
-
-    tableOverride = analysis.table;
-    intent = { metric: analysis.table, dimension: 'unknown', intent: analysis.intent };
-  } else {
-    const { classifyIntent } = await import('../services/intentClassifier');
-    intent = await classifyIntent(enrichedQuery);
   }
+
+  const { generateAnalyticalPlan } = await import('../services/queryPlanner');
+  const analyticalPlan = generateAnalyticalPlan(enrichedQuery, intent);
+  console.log(`[Orchestration] AnalyticalPlan: `, JSON.stringify(analyticalPlan));
+
+  // Check ambiguity guard deterministically
+  const ambiguity = checkAmbiguity(enrichedQuery, analyticalPlan, state);
+  if (ambiguity.isAmbiguous) {
+     incrementClarificationDepth(sessionId);
+     updateConversationState(sessionId, {
+        awaitingClarification: true,
+        awaitingField: ambiguity.missingField || null
+     });
+     send('clarification', {
+        opener: 'I want to make sure I get this right.',
+        currentQuestion: { 
+           question: ambiguity.clarificationMessage || 'What would you like to analyze?', 
+           options: ambiguity.clarificationOptions || ['Revenue', 'Other'] 
+        },
+     });
+     return;
+  }
+
+  const { validateAnalyticalPlan } = await import('../services/validateAnalyticalPlan');
+  const validation = validateAnalyticalPlan(analyticalPlan);
+
+  if (!validation.isValid && analyticalPlan.intent !== 'raw') {
+    send('meta', {
+      title: 'Validation Error',
+      description: 'I could not confidently identify the requested analytical metric.',
+      template: 'summary',
+      rowCount: 0
+    });
+    send('clarification', {
+      opener: 'I could not confidently identify the requested analytical metric.',
+      currentQuestion: { question: 'Could you please rephrase your request?', options: ['Yes', 'No'] },
+    });
+    return;
+  }
+
+  if (analyticalPlan.confidenceScore < 0.5 && !forceGenerate && analyticalPlan.intent !== 'raw') {
+    incrementClarificationDepth(sessionId);
+    send('clarification', {
+      opener: 'I understand you want an analysis, but I need more details.',
+      currentQuestion: { question: 'Could you specify which metric (like revenue, sales) you want to use?', options: ['Revenue', 'Units', 'Other'] },
+    });
+    return;
+  }
+  
+  // If we made it here, clear any pending clarification state
+  clearClarificationState(sessionId);
 
   // Step 2 — fetch real BigQuery data
   send('status', { message: 'Querying BigQuery...' });
-  const allRows = await executeQuery(intent, (meta) => send('bq_debug', meta), tableOverride);
+  const allRows = await executeQuery(intent, (meta) => send('bq_debug', meta), tableOverride, analyticalPlan);
 
   // Track which table ultimately produced data (for follow-up routing)
   const resolvedTable = tableOverride ?? activeTable;

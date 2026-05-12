@@ -57,7 +57,8 @@ app.post('/api/conversational', async (req: Request, res: Response) => {
   if (!query) return res.status(400).json({ success: false, error: 'Query is required' });
 
   try {
-    const result = await runPipeline(query);
+    const { priorContext, currentCards } = req.body;
+    const result = await runPipeline(query, priorContext, currentCards);
     res.json({ success: true, uiTree: result.uiTree });
   } catch (error: any) {
     res.status(500).json({
