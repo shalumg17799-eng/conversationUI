@@ -99,6 +99,12 @@ export const executeQuery = async (
 
   } catch (err: any) {
     console.error('BigQuery executeQuery error:', err.message);
-    return [];
+    console.log(`[ExecutionFailure] ${err.message}`);
+    console.log(`[DatasourceUnavailable]`);
+    // Re-throw so the pipeline can distinguish a hard execution failure
+    // from a legitimate empty result set. Swallowing here caused the
+    // pipeline to treat auth/network errors as "no rows" and re-enter
+    // the onboarding clarification loop.
+    throw err;
   }
 };

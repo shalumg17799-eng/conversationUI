@@ -221,6 +221,27 @@ export async function runStreamingPipeline(
     return;
   }
 
+  // ── GLOBAL DATASOURCE GATE ──────────────────────────────────────────────
+  console.log(`[GlobalDatasourceGate]`);
+  const { validateDatasourceHealth } = await import('../services/datasourceHealthValidator');
+  const datasourceHealth = await validateDatasourceHealth();
+  if (!datasourceHealth.isHealthy) {
+    console.log(`[DatasourceGateBlocked]`);
+    console.log(`[InteractionRoutingSkipped]`);
+    console.log(`[ModificationFlowSkipped]`);
+    console.log(`[ConversationFlowBlocked]`);
+    console.log(`[ClarificationSkipped]`);
+    console.log(`[PlannerSkipped]`);
+    console.log(`[PipelineShortCircuited]`);
+    send('meta', {
+      title: 'Datasource Unavailable',
+      description: datasourceHealth.message!,
+      template: 'summary',
+      rowCount: 0,
+    });
+    return;
+  }
+
   // ── Orchestration State ──────────────────────────────────────────────────
   const start = Date.now();
   const hasContext = !!priorContext && !!currentCards && currentCards.length > 0;
@@ -311,7 +332,20 @@ export async function runStreamingPipeline(
 
         const { classifyIntent: classifyTable } = await import('../services/intentClassifier');
         const tableIntent = await classifyTable(query);
-        const allRows = await executeQuery(tableIntent, (meta) => send('bq_debug', meta), activeTable);
+        let allRows: any[];
+        try {
+          allRows = await executeQuery(tableIntent, (meta) => send('bq_debug', meta), activeTable);
+        } catch (execErr: any) {
+          console.log(`[ExecutionFailureTerminal] ${execErr.message}`);
+          console.log(`[PipelineTerminated]`);
+          send('meta', {
+            title: 'Datasource Unavailable',
+            description: 'Unable to retrieve data because the analytical datasource is currently unavailable.',
+            template: 'summary',
+            rowCount: 0,
+          });
+          return;
+        }
 
         if (allRows.length === 0) {
           send('acknowledgment', { message: "I couldn't find data matching that filter. The original report is unchanged." });
@@ -474,6 +508,19 @@ export async function runStreamingPipeline(
     }
   }
 
+  // ── Capability Validation — MUST run before planner, SQL generation, or rendering ──
+  const { validateCapability } = await import('../services/capabilityValidator');
+  const capability = validateCapability(resolvedDimension, resolvedMetric, query);
+  if (!capability.supported) {
+    send('meta', {
+      title: 'Analysis Unavailable',
+      description: capability.message,
+      template: 'summary',
+      rowCount: 0,
+    });
+    return;
+  }
+
   const { generateAnalyticalPlan } = await import('../services/queryPlanner');
   const analyticalPlan = generateAnalyticalPlan(enrichedQuery, intent);
   console.log(`[Orchestration] AnalyticalPlan: `, JSON.stringify(analyticalPlan));
@@ -527,7 +574,20 @@ export async function runStreamingPipeline(
 
   // Step 2 — fetch real BigQuery data
   send('status', { message: 'Querying BigQuery...' });
-  const allRows = await executeQuery(intent, (meta) => send('bq_debug', meta), tableOverride, analyticalPlan);
+  let allRows: any[];
+  try {
+    allRows = await executeQuery(intent, (meta) => send('bq_debug', meta), tableOverride, analyticalPlan);
+  } catch (execErr: any) {
+    console.log(`[ExecutionFailureTerminal] ${execErr.message}`);
+    console.log(`[PipelineTerminated]`);
+    send('meta', {
+      title: 'Datasource Unavailable',
+      description: 'Unable to retrieve data because the analytical datasource is currently unavailable.',
+      template: 'summary',
+      rowCount: 0,
+    });
+    return;
+  }
 
   // Track which table ultimately produced data (for follow-up routing)
   const resolvedTable = tableOverride ?? activeTable;
@@ -572,6 +632,7 @@ export async function runStreamingPipeline(
 
   if (report.cards.length === 0) {
     console.warn('generateReport returned empty cards — using deterministic fallback');
+    console.log(`[RenderingFallback] LLM returned empty cards, datasource was available and query succeeded`);
     report.cards = generateFallbackCards(dataShape);
     if (report.cards.length === 0) {
       send('error', { message: 'No data could be rendered. Try a more specific query.' });
