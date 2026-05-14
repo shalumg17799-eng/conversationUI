@@ -21,7 +21,7 @@ function fixColumnCasing(cards: ReportCard[], actualColumns: string[]): ReportCa
 
   const fixProps = (props: Record<string, any>): Record<string, any> => {
     const out = { ...props };
-    for (const key of ['xKey', 'yKey', 'nameKey', 'valueKey', 'labelKey', 'timeColumn']) {
+    for (const key of ['xKey', 'yKey', 'nameKey', 'valueKey', 'labelKey', 'timeColumn', 'barKey', 'lineKey', 'zKey', 'rowKey', 'colKey']) {
       if (typeof out[key] === 'string') {
         out[key] = caseMap.get(out[key].toLowerCase()) ?? out[key];
       }
@@ -112,6 +112,34 @@ type SendFn = (event: string, data: unknown) => void;
 // How many sample rows Gemma sees (keeps tokens low while giving enough context)
 const SAMPLE_SIZE = 20;
 
+// Pre-aggregate raw BQ rows into one row per unique dimension combination.
+// Measure columns are averaged. This ensures the LLM embeds the same values
+// that hydrateTree will compute — both derive from real BQ data.
+function preaggregateRows(rows: any[], shape: ShapeSignature): any[] {
+  if (!shape.dimensionColumns.length || !shape.measureColumns.length) return rows;
+
+  const grouped = new Map<string, { sums: Record<string, number>; counts: Record<string, number>; sample: any }>();
+
+  for (const row of rows) {
+    const key = shape.dimensionColumns.map(c => String(row[c] ?? '')).join('|');
+    const entry = grouped.get(key) ?? { sums: {}, counts: {}, sample: row };
+    for (const col of shape.measureColumns) {
+      const val = Number(row[col]) || 0;
+      entry.sums[col] = (entry.sums[col] ?? 0) + val;
+      entry.counts[col] = (entry.counts[col] ?? 0) + 1;
+    }
+    grouped.set(key, entry);
+  }
+
+  return Array.from(grouped.values()).map(({ sums, counts, sample }) => {
+    const row = { ...sample };
+    for (const col of shape.measureColumns) {
+      row[col] = counts[col] > 0 ? Math.round((sums[col] / counts[col]) * 100) / 100 : 0;
+    }
+    return row;
+  });
+}
+
 // Recursively attach real BigQuery data to components that need it.
 // Layout wrappers (TwoColumn, Section) are hydrated by recursing into their children.
 // Narrative components (InsightCard, AlertBanner, SummaryText, StatDelta) have
@@ -150,13 +178,84 @@ function hydrateTree(card: ReportCard, allRows: any[]): UITypeTree {
       return { renderType, props: { ...props, data: allRows }, children: hydratedChildren };
     }
 
-    case 'BarChart':
-    case 'PieChart':
+    case 'BarChart': {
+      const { xKey, yKey, filterValues } = props;
+      if (xKey && yKey) {
+        // Aggregate: group by xKey, average yKey — one bar per entity
+        const grouped = new Map<string, { sum: number; count: number }>();
+        for (const row of allRows) {
+          const x = String(row[xKey] ?? '');
+          if (!x) continue;
+          const y = Number(row[yKey]) || 0;
+          const entry = grouped.get(x) ?? { sum: 0, count: 0 };
+          entry.sum += y;
+          entry.count += 1;
+          grouped.set(x, entry);
+        }
+        // Filter to specific entities if LLM specified them
+        const allowed = Array.isArray(filterValues) && filterValues.length > 0
+          ? new Set(filterValues.map(String))
+          : null;
+
+        let data: Record<string, any>[] = Array.from(grouped.entries())
+          .filter(([x]) => !allowed || allowed.has(x))
+          .map(([x, { sum, count }]) => ({
+            ...Object.fromEntries(Object.entries(allRows.find((r: any) => String(r[xKey]) === x) ?? {})),
+            [xKey]: x,
+            [yKey]: Math.round((sum / count) * 100) / 100,
+          }));
+
+        // Sort by xKey naturally (T-001 < T-002 < T-010 etc.)
+        data.sort((a, b) =>
+          String(a[xKey]).localeCompare(String(b[xKey]), undefined, { numeric: true, sensitivity: 'base' })
+        );
+
+        return { renderType, props: { ...props, data }, children: hydratedChildren };
+      }
       return { renderType, props: { ...props, data: allRows }, children: hydratedChildren };
+    }
+
+    case 'PieChart':
+    case 'ScatterPlot':
+    case 'HeatMap':
+    case 'FunnelChart':
+    case 'PivotTable':
+      return { renderType, props: { ...props, data: allRows }, children: hydratedChildren };
+
+    case 'ComboChart': {
+      const { xKey, barKey, lineKey } = props;
+      if (xKey && (barKey || lineKey)) {
+        const grouped = new Map<string, { barSum: number; lineSum: number; count: number }>();
+        for (const row of allRows) {
+          const x = String(row[xKey] ?? '');
+          const entry = grouped.get(x) ?? { barSum: 0, lineSum: 0, count: 0 };
+          entry.barSum += Number(row[barKey]) || 0;
+          entry.lineSum += Number(row[lineKey]) || 0;
+          entry.count += 1;
+          grouped.set(x, entry);
+        }
+        const data = Array.from(grouped.entries()).map(([x, { barSum, lineSum, count }]) => ({
+          [xKey]: x,
+          ...(barKey ? { [barKey]: Math.round((barSum / count) * 100) / 100 } : {}),
+          ...(lineKey ? { [lineKey]: Math.round((lineSum / count) * 100) / 100 } : {}),
+        }));
+        return { renderType, props: { ...props, data }, children: hydratedChildren };
+      }
+      return { renderType, props: { ...props, data: allRows }, children: hydratedChildren };
+    }
+
+    case 'Sparkline': {
+      const { xKey, yKey } = props;
+      if (xKey && yKey) {
+        const data = allRows.map(row => ({ [xKey]: row[xKey], [yKey]: Number(row[yKey]) || 0 }));
+        return { renderType, props: { ...props, data }, children: hydratedChildren };
+      }
+      return { renderType, props: { ...props, data: allRows }, children: hydratedChildren };
+    }
 
     // ── RankedList — deduplicate by labelKey, aggregate valueKey ─────────────
     case 'RankedList': {
-      const { labelKey, valueKey, limit = 10 } = props;
+      const { labelKey, valueKey, limit = 10, sort = 'desc' } = props;
       const grouped = new Map<string, { sum: number; count: number }>();
       for (const row of allRows) {
         const label = String(row[labelKey] ?? '');
@@ -168,7 +267,7 @@ function hydrateTree(card: ReportCard, allRows: any[]): UITypeTree {
       }
       const items = Array.from(grouped.entries())
         .map(([label, { sum, count }]) => ({ label, value: Math.round((sum / count) * 100) / 100 }))
-        .sort((a, b) => b.value - a.value)
+        .sort((a, b) => sort === 'asc' ? a.value - b.value : b.value - a.value)
         .slice(0, limit)
         .map((item, i) => ({ rank: i + 1, label: item.label, value: item.value }));
       return { renderType, props: { ...props, items }, children: hydratedChildren };
@@ -364,7 +463,8 @@ export async function runStreamingPipeline(
         }
 
         const dataShape = await analyzeDataShape(allRows);
-        const sampleRows = allRows.slice(0, SAMPLE_SIZE);
+        const aggregatedRows = preaggregateRows(allRows, dataShape);
+        const sampleRows = aggregatedRows.slice(0, SAMPLE_SIZE);
         const editEnrichedQuery = `EDIT REQUEST: ${query}. Prior report: ${priorContext}`;
 
         send('status', { message: 'Updating report...' });
@@ -509,7 +609,11 @@ export async function runStreamingPipeline(
 
   // Step 3 — shape analysis (gives Gemma column types)
   const dataShape = await analyzeDataShape(allRows);
-  const sampleRows = allRows.slice(0, SAMPLE_SIZE);
+
+  // Pre-aggregate so the LLM sees one row per entity with correct averaged values —
+  // the same values that hydrateTree will compute from the full dataset.
+  const aggregatedRows = preaggregateRows(allRows, dataShape);
+  const sampleRows = aggregatedRows.slice(0, SAMPLE_SIZE);
 
   // Step 4 — single Gemma call: decides everything (enriched query gives Gemma full context)
   send('status', { message: `Analysing ${allRows.length} rows with Gemma...` });

@@ -3454,9 +3454,9 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                   <button
                     key={i}
                     onClick={() => { setInputValue(fu.intent); }}
-                    className="px-3 py-1.5 text-[12px] font-medium bg-white border border-[#E5E7EB] rounded-full text-[#374151] hover:bg-gray-50 hover:border-gray-300 transition-all"
+                    className="px-3 py-1.5 text-[12px] font-medium bg-white border border-[#E5E7EB] rounded-full text-[#374151] hover:bg-gray-50 hover:border-gray-300 transition-all text-left"
                   >
-                    {fu.label}
+                    {fu.intent}
                   </button>
                 ))}
               </div>
@@ -5484,9 +5484,9 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                       <button
                         key={i}
                         onClick={() => { setInputValue(fu.intent); }}
-                        className="px-3 py-1.5 text-[12px] font-medium bg-white border border-[#E5E7EB] rounded-full text-[#374151] hover:bg-gray-50 hover:border-gray-300 transition-all"
+                        className="px-3 py-1.5 text-[12px] font-medium bg-white border border-[#E5E7EB] rounded-full text-[#374151] hover:bg-gray-50 hover:border-gray-300 transition-all text-left"
                       >
-                        {fu.label}
+                        {fu.intent}
                       </button>
                     ))}
                   </div>
