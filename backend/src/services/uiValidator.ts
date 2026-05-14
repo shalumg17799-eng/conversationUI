@@ -1,39 +1,73 @@
 import { UITypeTree, ValidationResult } from '../types';
-import registry from '../registry/componentRegistry.json';
 
-export const validateUITypeTree = async (uiTree: UITypeTree): Promise<ValidationResult> => {
-  // Layer 4: Validator (Deterministic validation using Component Registry)
-  console.log('Layer 4 - Validating UI Type Tree');
+// Full component registry — includes all renderTypes the LLM can produce.
+// Kept inline to avoid JSON import issues and to stay in sync with UITreeRenderer.
+const COMPONENT_REGISTRY: Record<string, { requiredProps: string[] }> = {
+  KPICard:          { requiredProps: ['title', 'value'] },
+  KPI:              { requiredProps: ['title', 'value'] },
+  KPIGrid:          { requiredProps: ['metrics'] },
+  StatDelta:        { requiredProps: ['title', 'current', 'previous'] },
+  BarChart:         { requiredProps: ['xKey', 'yKey'] },
+  LineChart:        { requiredProps: ['xKey', 'yKey'] },
+  AreaChart:        { requiredProps: ['xKey', 'yKey'] },
+  PieChart:         { requiredProps: ['nameKey', 'valueKey'] },
+  RankedList:       { requiredProps: ['labelKey', 'valueKey'] },
+  Table:            { requiredProps: ['columns'] },
+  GenerativeTable:  { requiredProps: ['columns'] },
+  InsightCard:      { requiredProps: ['title', 'body'] },
+  SummaryText:      { requiredProps: ['text'] },
+  AlertBanner:      { requiredProps: ['message'] },
+  TwoColumn:        { requiredProps: [] },
+  Section:          { requiredProps: [] },
+  Report:           { requiredProps: ['title'] },
+  ReportSkeleton:   { requiredProps: [] },
+  BigQueryDashboard:{ requiredProps: [] },
+};
 
+/**
+ * Validates a UITypeTree node against the component registry.
+ * Returns isValid=false with errors if required props are missing.
+ * Used after fixColumnCasing and before hydrateTree.
+ */
+export const validateUITypeTree = (uiTree: UITypeTree): ValidationResult => {
   const errors: string[] = [];
+  const entry = COMPONENT_REGISTRY[uiTree.renderType];
 
-  // 1. Check if component exists in registry
-  const component = registry.components.find(c => c.type === uiTree.renderType);
-  
-  if (!component) {
+  if (!entry) {
     return {
       isValid: false,
-      errors: [`Component "${uiTree.renderType}" is not registered.`]
+      errors: [`Component "${uiTree.renderType}" is not in the registry.`],
     };
   }
 
-  // 2. Validate required props
-  component.requiredProps.forEach(prop => {
-    if (!(prop in uiTree.props)) {
-      errors.push(`Missing required prop: "${prop}" for component "${uiTree.renderType}".`);
+  for (const prop of entry.requiredProps) {
+    if (!(prop in uiTree.props) || uiTree.props[prop] === undefined || uiTree.props[prop] === null) {
+      errors.push(`Missing required prop "${prop}" on ${uiTree.renderType}`);
     }
-  });
+  }
 
-  // 3. Validate optional allowed props (preventing extra noise)
-  Object.keys(uiTree.props).forEach(prop => {
-    if (!component.allowedProps.includes(prop) && !component.requiredProps.includes(prop)) {
-      // Just a warning or soft error? Let's treat it as invalid for strictness.
-      // errors.push(`Property "${prop}" is not allowed for component "${uiTree.renderType}".`);
+  return { isValid: errors.length === 0, errors: errors.length > 0 ? errors : undefined };
+};
+
+/**
+ * Validates all cards in a report and filters out invalid ones.
+ * Logs each failure for observability.
+ */
+export const validateAndFilterCards = (cards: any[]): { valid: any[]; invalid: string[] } => {
+  const valid: any[] = [];
+  const invalid: string[] = [];
+
+  const check = (card: any) => {
+    const result = validateUITypeTree(card as UITypeTree);
+    if (result.isValid) {
+      valid.push(card);
+    } else {
+      const msg = `${card.renderType}: ${result.errors?.join(', ')}`;
+      invalid.push(msg);
+      console.warn(`[UIValidator] Dropping invalid card — ${msg}`);
     }
-  });
-
-  return {
-    isValid: errors.length === 0,
-    errors: errors.length > 0 ? errors : undefined
   };
+
+  cards.forEach(check);
+  return { valid, invalid };
 };

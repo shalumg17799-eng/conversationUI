@@ -8,13 +8,33 @@ import {
   getAvailableDataSources,
 } from '../services/llmHandler';
 import { runQueryWithMeta, qualifiedTable } from '../lib/bigqueryClient';
-import { DATA_SOURCES, ALL_DOMAINS, getSourcesByDomain } from '../services/dataSourceMap';
+import { DATA_SOURCES, buildFilteredSQL, extractQueryFilters } from '../services/dataSourceMap';
+import { validateAndFilterCards } from '../services/uiValidator';
+import { composeReport } from '../services/reportComposer';
+import {
+  detectAnalyticalIntent,
+  lockTemplate,
+  enforceComponentConstraints,
+  buildScopedDataset,
+  selectRowsForCard,
+  buildGovernanceHint,
+  buildAnalyticalContext,
+  shouldInheritContext,
+  buildDeterministicCards,
+  AnalyticalContext,
+  AnalyticalIntent,
+  TemplateId,
+} from '../lib/renderGovernance';
 import { UITypeTree, ShapeSignature } from '../types';
 import { cacheService, generateKey } from '../services/cacheService';
 
-// Fixes column name casing in LLM-generated cards.
-// BQ returns columns in their original case (e.g. TEAM, CSAT_SCORE) but the LLM
-// often lowercases them (team, csat_score), causing Recharts to find nothing.
+dotenv.config();
+
+type SendFn = (event: string, data: unknown) => void;
+
+const SAMPLE_SIZE = 20;
+
+// ── Column casing fix ─────────────────────────────────────────────────────────
 function fixColumnCasing(cards: ReportCard[], actualColumns: string[]): ReportCard[] {
   const caseMap = new Map<string, string>();
   actualColumns.forEach(col => caseMap.set(col.toLowerCase(), col));
@@ -22,15 +42,10 @@ function fixColumnCasing(cards: ReportCard[], actualColumns: string[]): ReportCa
   const fixProps = (props: Record<string, any>): Record<string, any> => {
     const out = { ...props };
     for (const key of ['xKey', 'yKey', 'nameKey', 'valueKey', 'labelKey', 'timeColumn']) {
-      if (typeof out[key] === 'string') {
-        out[key] = caseMap.get(out[key].toLowerCase()) ?? out[key];
-      }
+      if (typeof out[key] === 'string') out[key] = caseMap.get(out[key].toLowerCase()) ?? out[key];
     }
     if (Array.isArray(out.columns)) {
       out.columns = out.columns.map((c: string) => caseMap.get(c.toLowerCase()) ?? c);
-    }
-    if (Array.isArray(out.metrics)) {
-      out.metrics = out.metrics.map((m: any) => typeof m === 'object' ? m : m);
     }
     return out;
   };
@@ -44,16 +59,10 @@ function fixColumnCasing(cards: ReportCard[], actualColumns: string[]): ReportCa
   return cards.map(fixCard);
 }
 
-// Guaranteed fallback: always produces at least one renderable card from the data shape.
-// Used when the LLM returns cards:[] for any reason.
+// ── Fallback cards ────────────────────────────────────────────────────────────
 function generateFallbackCards(shape: ShapeSignature): ReportCard[] {
   const cards: ReportCard[] = [];
-
-  // Pick best dimension: prefer short string columns (territory, name) over numeric IDs
-  const bestDimension = shape.dimensionColumns.find(c => !/(_id|_key|_code|_num)$/i.test(c))
-    ?? shape.dimensionColumns[0];
-
-  // Pick best measures: up to 4, prefer revenue/rate/score columns
+  const bestDimension = shape.dimensionColumns.find(c => !/(_id|_key|_code|_num)$/i.test(c)) ?? shape.dimensionColumns[0];
   const preferredOrder = ['revenue', 'rate', 'score', 'pct', 'percent', 'count', 'total', 'avg'];
   const sortedMeasures = [...shape.measureColumns].sort((a, b) => {
     const aScore = preferredOrder.findIndex(p => a.toLowerCase().includes(p));
@@ -63,107 +72,72 @@ function generateFallbackCards(shape: ShapeSignature): ReportCard[] {
   const topMeasures = sortedMeasures.slice(0, 4);
 
   if (topMeasures.length > 0) {
-    cards.push({
-      renderType: 'KPIGrid',
-      props: {
-        metrics: topMeasures.map(col => ({ title: col, value: '—' })),
-        explanation: 'Key metrics from the dataset.',
-      },
-    });
+    cards.push({ renderType: 'KPIGrid', props: { metrics: topMeasures.map(col => ({ title: col, value: '—' })) } });
   }
-
   if (shape.isTimeSeries && shape.timeColumn && topMeasures.length > 0) {
-    cards.push({
-      renderType: 'LineChart',
-      props: {
-        title: `${topMeasures[0]} Over Time`,
-        xKey: shape.timeColumn,
-        yKey: topMeasures[0],
-        explanation: `Trend of ${topMeasures[0]} over time.`,
-      },
-    });
+    cards.push({ renderType: 'LineChart', props: { title: `${topMeasures[0]} Over Time`, xKey: shape.timeColumn, yKey: topMeasures[0] } });
   } else if (bestDimension && topMeasures.length > 0) {
-    cards.push({
-      renderType: 'BarChart',
-      props: {
-        title: `${topMeasures[0]} by ${bestDimension}`,
-        xKey: bestDimension,
-        yKey: topMeasures[0],
-        explanation: `${topMeasures[0]} broken down by ${bestDimension}.`,
-      },
-    });
+    cards.push({ renderType: 'BarChart', props: { title: `${topMeasures[0]} by ${bestDimension}`, xKey: bestDimension, yKey: topMeasures[0] } });
   }
-
   const columns = [bestDimension, ...topMeasures].filter(Boolean).slice(0, 8) as string[];
   if (columns.length > 0) {
-    cards.push({
-      renderType: 'Table',
-      props: { title: 'Data Detail', columns, explanation: 'Full dataset view.' },
-    });
+    cards.push({ renderType: 'Table', props: { title: 'Data Detail', columns } });
   }
-
   return cards;
 }
 
-dotenv.config();
-
-type SendFn = (event: string, data: unknown) => void;
-
-// How many sample rows Gemma sees (keeps tokens low while giving enough context)
-const SAMPLE_SIZE = 20;
-
-// Recursively attach real BigQuery data to components that need it.
-// Layout wrappers (TwoColumn, Section) are hydrated by recursing into their children.
-// Narrative components (InsightCard, AlertBanner, SummaryText, StatDelta) have
-// values embedded by the LLM and need no hydration.
-function hydrateTree(card: ReportCard, allRows: any[]): UITypeTree {
+// ── Scoped hydrateTree ────────────────────────────────────────────────────────
+// Each card receives only the rows appropriate for its renderType and intent.
+// This replaces the old hydrateTree(card, allRows) which leaked full datasets.
+function hydrateTree(
+  card: ReportCard,
+  intent: AnalyticalIntent,
+  scoped: ReturnType<typeof buildScopedDataset>,
+): UITypeTree {
   const { renderType, props } = card;
 
-  // Recurse into children first (handles TwoColumn, Section, etc.)
   const hydratedChildren: UITypeTree[] = (card.children ?? []).map(child =>
-    hydrateTree(child, allRows)
+    hydrateTree(child, intent, scoped)
   );
 
+  // Select the correct scoped row set for this card type + intent
+  const rows = selectRowsForCard(renderType, intent, scoped);
+
   switch (renderType) {
-    // ── Charts — attach dataset; aggregate time-series charts by xKey ────────
     case 'LineChart':
     case 'AreaChart': {
       const { xKey, yKey } = props;
       if (xKey && yKey) {
-        // Aggregate: group by xKey, average yKey — prevents duplicate x-axis labels
         const grouped = new Map<string, { sum: number; count: number }>();
-        for (const row of allRows) {
+        for (const row of rows) {
           const x = String(row[xKey] ?? '');
           const y = Number(row[yKey]) || 0;
           const entry = grouped.get(x) ?? { sum: 0, count: 0 };
-          entry.sum += y;
-          entry.count += 1;
+          entry.sum += y; entry.count += 1;
           grouped.set(x, entry);
         }
         const aggregated = Array.from(grouped.entries()).map(([x, { sum, count }]) => ({
-          ...Object.fromEntries(Object.entries(allRows.find(r => String(r[xKey]) === x) ?? {})),
+          ...Object.fromEntries(Object.entries(rows.find(r => String(r[xKey]) === x) ?? {})),
           [xKey]: x,
           [yKey]: Math.round((sum / count) * 100) / 100,
         }));
         return { renderType, props: { ...props, data: aggregated }, children: hydratedChildren };
       }
-      return { renderType, props: { ...props, data: allRows }, children: hydratedChildren };
+      return { renderType, props: { ...props, data: rows }, children: hydratedChildren };
     }
 
     case 'BarChart':
     case 'PieChart':
-      return { renderType, props: { ...props, data: allRows }, children: hydratedChildren };
+      return { renderType, props: { ...props, data: rows }, children: hydratedChildren };
 
-    // ── RankedList — deduplicate by labelKey, aggregate valueKey ─────────────
     case 'RankedList': {
       const { labelKey, valueKey, limit = 10 } = props;
       const grouped = new Map<string, { sum: number; count: number }>();
-      for (const row of allRows) {
+      for (const row of rows) {
         const label = String(row[labelKey] ?? '');
         const val = Number(row[valueKey]) || 0;
         const entry = grouped.get(label) ?? { sum: 0, count: 0 };
-        entry.sum += val;
-        entry.count += 1;
+        entry.sum += val; entry.count += 1;
         grouped.set(label, entry);
       }
       const items = Array.from(grouped.entries())
@@ -174,82 +148,63 @@ function hydrateTree(card: ReportCard, allRows: any[]): UITypeTree {
       return { renderType, props: { ...props, items }, children: hydratedChildren };
     }
 
-    // ── Tables — attach full dataset ─────────────────────────────────────────
     case 'Table':
     case 'GenerativeTable': {
-      const columns = props.columns ?? (allRows[0] ? Object.keys(allRows[0]) : []);
-      return {
-        renderType,
-        props: { ...props, columns, data: allRows, rows: allRows },
-        children: hydratedChildren,
-      };
+      const columns = props.columns ?? (rows[0] ? Object.keys(rows[0]) : []);
+      return { renderType, props: { ...props, columns, data: rows, rows }, children: hydratedChildren };
     }
 
-    // ── Layout wrappers — pass through with hydrated children ─────────────────
     case 'TwoColumn':
     case 'Section':
       return { renderType, props, children: hydratedChildren };
 
-    // ── Metric / Narrative — LLM already embedded values, no hydration needed ─
     default:
       return { renderType, props, children: hydratedChildren };
   }
 }
 
-export interface ClarificationTurn {
-  question: string;
-  answer: string;
-}
-
-// Extract a compact, human-readable data summary from hydrated cards.
-// Used to give the LLM actual metric values so it can answer analytical questions
-// without re-querying BigQuery.
+// ── Compact data context for follow-up QA ────────────────────────────────────
 function buildCompactDataContext(cards: ReportCard[], maxRows = 10): string {
   const lines: string[] = [];
-
   const extract = (card: ReportCard) => {
     const p = card.props as any;
     switch (card.renderType) {
-      case 'KPICard':
-      case 'StatDelta':
-        if (p.title && p.value !== undefined) {
-          lines.push(`${p.title}: ${p.value}${p.trend ? ` (${p.trend})` : ''}`);
-        }
+      case 'KPICard': case 'StatDelta':
+        if (p.title && p.value !== undefined) lines.push(`${p.title}: ${p.value}${p.trend ? ` (${p.trend})` : ''}`);
         break;
       case 'KPIGrid':
-        if (Array.isArray(p.metrics)) {
-          p.metrics.forEach((m: any) => {
-            if (m.title) lines.push(`${m.title}: ${m.value ?? '—'}${m.trend ? ` (${m.trend})` : ''}`);
-          });
-        }
+        if (Array.isArray(p.metrics)) p.metrics.forEach((m: any) => { if (m.title) lines.push(`${m.title}: ${m.value ?? '—'}`); });
         break;
       case 'RankedList':
         if (Array.isArray(p.items) && p.title) {
           lines.push(`${p.title}:`);
-          p.items.slice(0, maxRows).forEach((item: any) =>
-            lines.push(`  #${item.rank} ${item.label}: ${item.value}`)
-          );
+          p.items.slice(0, maxRows).forEach((item: any) => lines.push(`  #${item.rank} ${item.label}: ${item.value}`));
         }
         break;
-      case 'Table':
-      case 'GenerativeTable': {
+      case 'Table': case 'GenerativeTable': {
         const rows: any[] = p.data ?? p.rows ?? [];
         if (rows.length > 0 && p.title) {
           lines.push(`${p.title} (sample rows):`);
-          rows.slice(0, maxRows).forEach((row: any) =>
-            lines.push('  ' + Object.entries(row).map(([k, v]) => `${k}=${v}`).join(', '))
-          );
+          rows.slice(0, maxRows).forEach((row: any) => lines.push('  ' + Object.entries(row).map(([k, v]) => `${k}=${v}`).join(', ')));
         }
         break;
       }
     }
     card.children?.forEach(extract);
   };
-
   cards.forEach(extract);
   return lines.join('\n');
 }
 
+// ── Extract entities from query using dataSourceMap filters ──────────────────
+function extractEntities(query: string, table: string): string[] {
+  const filters = extractQueryFilters(query, table);
+  return filters.flatMap(f => f.values);
+}
+
+export interface ClarificationTurn { question: string; answer: string; }
+
+// ── Main pipeline ─────────────────────────────────────────────────────────────
 export async function runStreamingPipeline(
   query: string,
   send: SendFn,
@@ -259,298 +214,327 @@ export async function runStreamingPipeline(
   activeTable?: string,
   currentCards?: ReportCard[],
   conversationHistory: ConversationTurn[] = [],
+  analyticalContext?: AnalyticalContext,
 ): Promise<void> {
-  const cacheKey = generateKey({ query, stream: true, v: 2, history: clarificationHistory, prior: priorContext });
-  const cached = cacheService.get<{ components: UITypeTree[]; title: string; message: string; activeTable?: string }>(cacheKey);
+  const cacheKey = generateKey({ query, stream: true, v: 3, history: clarificationHistory, prior: priorContext });
+  const cached = cacheService.get<{ components: UITypeTree[]; title: string; message: string; activeTable?: string; analyticalContext?: AnalyticalContext }>(cacheKey);
 
-  console.log(`[Pipeline] query="${query}" skipClarification=${skipClarification} history=${clarificationHistory.length} activeTable=${activeTable ?? 'none'} cacheHit=${!!cached}`);
+  console.log(`[Pipeline] query="${query}" activeTable=${activeTable ?? 'none'} cacheHit=${!!cached}`);
 
   if (cached) {
-    send('meta', { title: cached.title, description: cached.message, cached: true, activeTable: cached.activeTable });
+    send('meta', { title: cached.title, description: cached.message, cached: true, activeTable: cached.activeTable, analyticalContext: cached.analyticalContext });
     for (const component of cached.components) send('component', component);
     return;
   }
 
-  // ── LLM intent classification ─────────────────────────────────────────────
-  // When an existing report is open and the user sends a follow-up (no active
-  // clarification in progress), ask the LLM to classify intent before routing.
-  // This replaces keyword matching entirely.
+  // ── [ContextContinuity] Determine if this is a follow-up ─────────────────
   const hasExistingReport = !!priorContext && !!activeTable && currentCards && currentCards.length > 0;
   const inClarificationFlow = clarificationHistory.length > 0;
+  const isFollowUp = hasExistingReport && shouldInheritContext(query, analyticalContext ?? null);
 
-  // Unambiguous text/summary/answer signals — these queries must never generate a new dashboard.
+  console.log(`[ContextContinuity] hasExistingReport=${hasExistingReport} isFollowUp=${isFollowUp} analyticalContext=${analyticalContext?.activeTemplate ?? 'none'}`);
+
   const TEXT_REQUEST_RE = /\b(summar(y|ize|ise)|explain|in\s+(text|points?|pointers?|bullets?)|tell\s+me|what\s+(is|are|does|drives|caused?)|why\s+(is|are|does)|how\s+(many|much|does)|insights?|describe|what\s+does\s+this\s+mean|give\s+(me\s+)?(the\s+)?summary|analyze\s+this)\b/i;
   const isClearTextRequest = TEXT_REQUEST_RE.test(query);
 
+  // ── Follow-up / edit path ─────────────────────────────────────────────────
   if (hasExistingReport && !inClarificationFlow && !skipClarification) {
     send('status', { message: 'Understanding your request...' });
-
     const dataContext = buildCompactDataContext(currentCards!);
-
-    // For clear text/summary requests, prepend an instruction so the LLM cannot misclassify.
     const classifyQuery = isClearTextRequest
       ? `RESPOND IN TEXT FORMAT ONLY (qa_answer). Do not generate a new report or dashboard. ${query}`
       : query;
 
-    // Single fused LLM call: classifies intent AND applies structural edits in one shot.
     let fusedResult: Awaited<ReturnType<typeof classifyAndEditReport>> | null = null;
     try {
       fusedResult = await classifyAndEditReport(classifyQuery, currentCards!, priorContext!, dataContext, conversationHistory);
     } catch (err) {
-      console.error('[Pipeline] classifyAndEditReport failed after retries:', err);
-      // Fall through to new-report flow as safe default
+      console.error('[Pipeline] classifyAndEditReport failed:', err);
     }
 
     if (fusedResult) {
       console.log(`[Pipeline] Fused intent: ${fusedResult.action}`);
 
-      // ── Structural edit: LLM already returned modified cards ──────────────
       if (fusedResult.action === 'edit_structural') {
         const hydrationMap = buildHydrationMap(currentCards!);
         const rehydrated = rehydrateEditedCards(fusedResult.cards, hydrationMap);
-
         send('acknowledgment', { message: fusedResult.acknowledgment });
         send('meta', {
           title: fusedResult.title || (priorContext!.match(/Title: "([^"]+)"/)?.[1] ?? 'Updated Report'),
           description: fusedResult.message,
           rowCount: null,
-          template: 'summary',
+          template: analyticalContext?.activeTemplate ?? 'summary',
           activeTable,
+          analyticalContext,
         });
         for (const card of rehydrated) send('component', card);
         if (fusedResult.followUp.length > 0) send('followUp', fusedResult.followUp);
         return;
       }
 
-      // ── QA / summary: answer from context, no BQ re-query ────────────────
       if (fusedResult.action === 'qa_answer') {
         send('qa_answer', { message: fusedResult.message, followUp: fusedResult.followUp });
         return;
       }
 
-      // ── Data-change edit: re-query BQ with optional SQL filter ────────────
       if (fusedResult.action === 'edit_data_change') {
         send('status', { message: 'Fetching updated data...' });
-
         let allRows: any[] = [];
         const sqlOverride = fusedResult.sqlOverride;
 
         if (sqlOverride && activeTable) {
-          // Apply LLM-suggested filter/sort directly against the active table
           try {
             const sql = `SELECT * FROM ${qualifiedTable(activeTable)} ${sqlOverride}`;
-            console.log(`[Pipeline] edit_data_change sqlOverride: ${sql}`);
+            console.log(`[Pipeline] edit_data_change sql: ${sql}`);
             const result = await runQueryWithMeta(sql);
             allRows = result.rows;
           } catch (sqlErr: any) {
-            console.warn('[Pipeline] sqlOverride failed, falling back to full table:', sqlErr.message);
+            console.warn('[Pipeline] sqlOverride failed, falling back:', sqlErr.message);
           }
         }
-
         if (allRows.length === 0 && activeTable) {
-          // Fallback: fetch full active table without filter
           try {
             const result = await runQueryWithMeta(`SELECT * FROM ${qualifiedTable(activeTable)} LIMIT 50`);
             allRows = result.rows;
-          } catch (fallbackErr: any) {
-            console.warn('[Pipeline] edit_data_change full-table fallback failed:', fallbackErr.message);
+          } catch (e: any) {
+            console.warn('[Pipeline] edit_data_change fallback failed:', e.message);
           }
         }
-
         if (allRows.length === 0) {
           send('acknowledgment', { message: "I couldn't find data matching that filter. The original report is unchanged." });
           for (const card of currentCards!) send('component', card);
           return;
         }
 
-        const dataShape = await analyzeDataShape(allRows);
-        const sampleRows = allRows.slice(0, SAMPLE_SIZE);
-        const editEnrichedQuery = `EDIT REQUEST: ${query}. Prior report: ${priorContext}`;
+        // Re-run governance for the edit query
+        const editIntent = detectAnalyticalIntent(query);
+        const editShape = await analyzeDataShape(allRows);
+        const editEntities = extractEntities(query, activeTable ?? '');
+        const editTemplate = lockTemplate(editIntent, editShape);
+        const { allowedComponents: editAllowed } = composeReport(editIntent, editShape, query);
+        const editScoped = buildScopedDataset(allRows, editIntent, editShape, editEntities, null, 'none');
+        const editSample = editIntent === 'comparison' ? editScoped.comparisonRows.slice(0, SAMPLE_SIZE)
+          : editIntent === 'ranking' ? editScoped.rankingRows.slice(0, SAMPLE_SIZE)
+          : allRows.slice(0, SAMPLE_SIZE);
+        const editHint = buildGovernanceHint(editIntent, editTemplate, editAllowed, editEntities, false, analyticalContext ?? null);
+        const editQuery = `EDIT REQUEST: ${query}. ${editHint}. Prior report: ${priorContext}`;
 
         send('status', { message: 'Updating report...' });
-        const report = await generateReport(editEnrichedQuery, dataShape, sampleRows, priorContext);
-        const actualColumns = Object.keys(dataShape.columnTypes);
-        report.cards = fixColumnCasing(report.cards, actualColumns);
-        if (report.cards.length === 0) report.cards = generateFallbackCards(dataShape);
+        const report = await generateReport(editQuery, editShape, editSample, priorContext);
+        report.cards = fixColumnCasing(report.cards, Object.keys(editShape.columnTypes));
+        const { cards: constrained } = enforceComponentConstraints(report.cards.length > 0 ? report.cards : generateFallbackCards(editShape), editTemplate);
+        const { valid } = validateAndFilterCards(constrained);
+        const finalCards = valid.length > 0 ? valid : generateFallbackCards(editShape);
 
+        const newContext = buildAnalyticalContext(query, editIntent, editTemplate, editEntities, editShape, activeTable ?? null, report.title, report.message);
         send('acknowledgment', { message: "Here's the updated report with your changes applied." });
-        send('meta', { title: report.title, description: report.message, rowCount: allRows.length, template: report.template, activeTable });
+        send('meta', { title: report.title, description: report.message, rowCount: allRows.length, template: editTemplate, activeTable, analyticalContext: newContext });
         const validComponents: UITypeTree[] = [];
-        for (const card of report.cards) {
-          const node = hydrateTree(card, allRows);
+        for (const card of finalCards) {
+          const node = hydrateTree(card as ReportCard, editIntent, editScoped);
           send('component', node);
           validComponents.push(node);
         }
         if (report.followUp.length > 0) send('followUp', report.followUp);
-        cacheService.set(cacheKey, { components: validComponents, title: report.title, message: report.message, activeTable }, 5 * 60 * 1000);
+        cacheService.set(cacheKey, { components: validComponents, title: report.title, message: report.message, activeTable, analyticalContext: newContext }, 5 * 60 * 1000);
         return;
       }
 
-      // ── Ambiguous: ask user to clarify ────────────────────────────────────
       if (fusedResult.action === 'clarify_intent') {
         send('clarification', {
           opener: 'I want to make sure I understand what you need.',
-          currentQuestion: {
-            question: 'Are you looking to modify the current report, or would you like to start a new one?',
-            options: ['Modify the current report', 'Start a new report'],
-          },
+          currentQuestion: { question: 'Are you looking to modify the current report, or would you like to start a new one?', options: ['Modify the current report', 'Start a new report'] },
         });
         return;
       }
 
-      // Safety net: if LLM returned new_report for a clear text request, force qa_answer
-      // using the data context we already have (avoids unnecessary BQ re-query).
       if (fusedResult.action === 'new_report' && isClearTextRequest && dataContext) {
         try {
           const forced = await classifyAndEditReport(
             `You MUST respond with action="qa_answer". Answer this question directly using the report data: ${query}`,
-            currentCards!,
-            priorContext!,
-            dataContext,
-            conversationHistory,
+            currentCards!, priorContext!, dataContext, conversationHistory,
           );
           if (forced.action === 'qa_answer') {
             send('qa_answer', { message: forced.message, followUp: forced.followUp });
             return;
           }
-        } catch (e) {
-          console.error('[Pipeline] forced qa_answer failed:', e);
-        }
+        } catch (e) { console.error('[Pipeline] forced qa_answer failed:', e); }
       }
-
-      // fusedResult.action === 'new_report' → fall through to normal flow
+      // new_report → fall through to full pipeline
     }
   }
 
   const start = Date.now();
 
-  // Build enriched query from clarification history if present
   const enrichedQuery = clarificationHistory.length > 0
     ? `${query}. Context: ${clarificationHistory.map(t => `${t.question} → ${t.answer}`).join('; ')}`
     : query;
 
-  // Step 0+1 — decide clarify vs route (normal new-report flow)
-  // Always use the LLM-driven analyzeQuery — never keyword classification.
-  // forceGenerate (skipClarification or long history) suppresses further clarification
-  // but still uses the LLM to pick the right table.
+  // ── [IntentClassification] Detect analytical intent deterministically ─────
+  const analyticalIntent: AnalyticalIntent = detectAnalyticalIntent(enrichedQuery);
+  console.log(`[IntentClassification] intent=${analyticalIntent} query="${query}"`);
+
+  // ── Route to table ────────────────────────────────────────────────────────
   const forceGenerate = skipClarification || clarificationHistory.length >= 3;
   let tableOverride: string | undefined;
-  const intent = { metric: 'unknown', dimension: 'unknown', intent: 'metric_by_dimension' as const };
+  const intentStub = { metric: 'unknown', dimension: 'unknown', intent: 'metric_by_dimension' as const };
 
   send('status', { message: 'Understanding your query...' });
   const analysis = await analyzeQuery(query, clarificationHistory);
 
   if (analysis.action === 'clarify' && !forceGenerate) {
-    send('clarification', {
-      opener: analysis.opener,
-      currentQuestion: { question: analysis.question, options: analysis.options },
-    });
+    send('clarification', { opener: analysis.opener, currentQuestion: { question: analysis.question, options: analysis.options } });
     return;
   }
 
   if (analysis.action === 'route') {
     tableOverride = analysis.table;
   } else {
-    // forceGenerate or LLM couldn't route — derive table from history/query text
-    // using the same catalog-aware extractor used in analyzeQuery's fast-path
     const allTexts = [query, ...clarificationHistory.map(t => t.answer)];
     const availableSources = getAvailableDataSources();
-    const matched = availableSources.find(s =>
-      allTexts.some(t => t.toLowerCase().includes(s.reportName.toLowerCase()))
-    ) ?? availableSources.find(s =>
-      allTexts.some(t => t.toLowerCase().includes(s.domain.toLowerCase()))
-    );
+    const matched = availableSources.find(s => allTexts.some(t => t.toLowerCase().includes(s.reportName.toLowerCase())))
+      ?? availableSources.find(s => allTexts.some(t => t.toLowerCase().includes(s.domain.toLowerCase())));
     tableOverride = matched?.table ?? availableSources[0]?.table;
   }
 
-  // Step 2 — fetch real BigQuery data
+  // ── [DatasetFiltering] Build filtered SQL ─────────────────────────────────
   send('status', { message: 'Querying BigQuery...' });
-  const allRows = await executeQuery(intent, (meta) => send('bq_debug', meta), tableOverride);
+  let filteredSQL: string | undefined;
+  let isFiltered = false;
 
-  // Track which table ultimately produced data (for follow-up routing)
+  if (tableOverride) {
+    const source = DATA_SOURCES.find(ds => ds.table === tableOverride);
+    if (source) {
+      const built = buildFilteredSQL(source, qualifiedTable, enrichedQuery);
+      if (built.isFiltered) {
+        filteredSQL = built.sql;
+        isFiltered = true;
+        console.log(`[DatasetFiltering] Filtered SQL: ${filteredSQL}`);
+      }
+    }
+  }
+
+  let allRows = await executeQuery(intentStub, (meta) => send('bq_debug', meta), tableOverride, filteredSQL);
+
+  if (isFiltered && allRows.length === 0) {
+    console.warn('[DatasetFiltering] Filtered query returned 0 rows — falling back to full table');
+    allRows = await executeQuery(intentStub, (meta) => send('bq_debug', meta), tableOverride);
+    isFiltered = false;
+  }
+
   const resolvedTable = tableOverride ?? activeTable;
 
   if (allRows.length === 0) {
-    // Recovery — only show options from tables that actually have data,
-    // and exclude the table that just failed to avoid showing the same dead-end again.
     const availableSources = getAvailableDataSources();
     const failedTable = tableOverride;
-
-    const answeredDomain = clarificationHistory
-      .map(t => t.answer)
+    const answeredDomain = clarificationHistory.map(t => t.answer)
       .find(a => [...new Set(availableSources.map(s => s.domain))].some(d => d.toLowerCase() === a.toLowerCase()));
-
     let recoveryOptions: string[];
     let recoveryQuestion: string;
-
     if (answeredDomain) {
-      const sources = availableSources
-        .filter(s => s.domain.toLowerCase() === answeredDomain.toLowerCase() && s.table !== failedTable);
-      recoveryOptions = sources.map(s => s.reportName);
-      recoveryQuestion = recoveryOptions.length > 0
-        ? `Which ${answeredDomain} report would you like to explore?`
-        : 'Which domain would you like to explore?';
-      if (recoveryOptions.length === 0) {
-        // All reports in this domain are unavailable — fall back to domains
-        recoveryOptions = [...new Set(availableSources.map(s => s.domain))];
-      }
+      const sources = availableSources.filter(s => s.domain.toLowerCase() === answeredDomain.toLowerCase() && s.table !== failedTable);
+      recoveryOptions = sources.length > 0 ? sources.map(s => s.reportName) : [...new Set(availableSources.map(s => s.domain))];
+      recoveryQuestion = sources.length > 0 ? `Which ${answeredDomain} report would you like to explore?` : 'Which domain would you like to explore?';
     } else {
       recoveryOptions = [...new Set(availableSources.map(s => s.domain))];
       recoveryQuestion = 'Which domain would you like to explore?';
     }
-
-    send('clarification', {
-      opener: `I don't have data available for that report right now. Here's what I can show you instead:`,
-      currentQuestion: { question: recoveryQuestion, options: recoveryOptions },
-      isRecovery: true,
-    });
+    send('clarification', { opener: `I don't have data available for that report right now. Here's what I can show you instead:`, currentQuestion: { question: recoveryQuestion, options: recoveryOptions }, isRecovery: true });
     return;
   }
 
-  // Step 3 — shape analysis (gives Gemma column types)
+  // ── [DatasetShapeAnalysis] ────────────────────────────────────────────────
   const dataShape = await analyzeDataShape(allRows);
-  const sampleRows = allRows.slice(0, SAMPLE_SIZE);
+  console.log(`[DatasetShapeAnalysis] rows=${allRows.length} measures=[${dataShape.measureColumns.join(',')}] dims=[${dataShape.dimensionColumns.join(',')}] timeSeries=${dataShape.isTimeSeries}`);
 
-  // Step 4 — single Gemma call: decides everything (enriched query gives Gemma full context)
-  send('status', { message: `Analysing ${allRows.length} rows with Gemma...` });
-  const report = await generateReport(enrichedQuery, dataShape, sampleRows, priorContext);
+  // ── [TemplateLocked] Lock template from intent + shape ────────────────────
+  const lockedTemplate: TemplateId = lockTemplate(analyticalIntent, dataShape);
+  const { allowedComponents } = composeReport(analyticalIntent, dataShape, enrichedQuery);
+  console.log(`[TemplateLocked] template=${lockedTemplate} allowed=[${allowedComponents.join(', ')}]`);
 
-  // Fix column casing: LLM often lowercases BQ column names which breaks charts
+  // ── [DatasetScopeEnforced] Build scoped datasets ──────────────────────────
+  const entities = extractEntities(enrichedQuery, tableOverride ?? '');
+  const rankingMatch = enrichedQuery.match(/\b(top|bottom)\s+(\d+)\b/i);
+  const rankingN = rankingMatch ? parseInt(rankingMatch[2], 10) : null;
+  const rankingMode = rankingMatch?.[1]?.toLowerCase() === 'bottom' ? 'bottom_n' as const
+    : rankingMatch?.[1]?.toLowerCase() === 'top' ? 'top_n' as const : 'none' as const;
+
+  const scoped = buildScopedDataset(allRows, analyticalIntent, dataShape, entities, rankingN, rankingMode);
+  console.log(`[DatasetScopeEnforced] entities=[${entities.join(',')}] comparisonRows=${scoped.comparisonRows.length} rankingRows=${scoped.rankingRows.length} trendRows=${scoped.trendRows.length}`);
+
+  // ── [RenderGovernance] Build governance hint for LLM narrative ─────────
+  const governanceHint = buildGovernanceHint(analyticalIntent, lockedTemplate, allowedComponents, entities, isFiltered, analyticalContext ?? null);
+
+  // Sample rows: use intent-appropriate scoped set so LLM sees relevant data
+  const sampleRows = analyticalIntent === 'comparison' ? scoped.comparisonRows.slice(0, SAMPLE_SIZE)
+    : analyticalIntent === 'ranking' ? scoped.rankingRows.slice(0, SAMPLE_SIZE)
+    : analyticalIntent === 'trend' ? scoped.trendRows.slice(0, SAMPLE_SIZE)
+    : allRows.slice(0, SAMPLE_SIZE);
+
+  // ── [DeterministicComponentSelection] Build render tree deterministically ─
+  // Component selection, layout, and prop mapping are now fully deterministic.
+  // The LLM is called ONLY for title, message, followUp, and narrative cards.
+  const deterministicCards = buildDeterministicCards(
+    analyticalIntent, lockedTemplate, dataShape, scoped, entities, rankingN,
+  );
+
+  // ── [PlannerGeneration] LLM provides narrative enrichment only ────────────
+  // The LLM receives the governance hint and scoped sample.
+  // It must NOT choose components — only write title, message, followUp.
+  send('status', { message: `Generating narrative with Gemma...` });
+  const narrativeQuery = `${enrichedQuery} ${governanceHint} IMPORTANT: The component layout is already determined. You MUST only provide: title (5-8 words), message (2-3 sentence narrative), and followUp questions. Do NOT output cards array — it will be ignored.`;
+  const report = await generateReport(narrativeQuery, dataShape, sampleRows, priorContext);
+
+  // ── [TemplateComposition] Merge: deterministic cards + LLM narrative cards ─
+  // LLM narrative cards (InsightCard, SummaryText) are allowed through if valid.
+  // All chart/table/KPI cards from LLM are discarded — deterministic ones are used.
+  const NARRATIVE_TYPES = new Set(['InsightCard', 'SummaryText', 'AlertBanner']);
+  const llmNarrativeCards = (report.cards ?? []).filter(c => NARRATIVE_TYPES.has(c.renderType));
+
+  // Combine: deterministic structural cards first, then LLM narrative enrichment
+  const mergedCards: ReportCard[] = [
+    ...deterministicCards as ReportCard[],
+    ...llmNarrativeCards,
+  ];
+
+  // ── [ComponentConstraintApplied] Enforce template constraints ────────────
   const actualColumns = Object.keys(dataShape.columnTypes);
-  report.cards = fixColumnCasing(report.cards, actualColumns);
+  const casingFixed = fixColumnCasing(mergedCards, actualColumns);
+  const { cards: constrainedCards, stripped } = enforceComponentConstraints(casingFixed, lockedTemplate);
+  if (stripped.length > 0) console.log(`[ComponentConstraintApplied] Stripped: [${stripped.join(', ')}]`);
 
-  if (report.cards.length === 0) {
-    console.warn('generateReport returned empty cards — using deterministic fallback');
-    report.cards = generateFallbackCards(dataShape);
-    if (report.cards.length === 0) {
-      send('error', { message: 'No data could be rendered. Try a more specific query.' });
-      return;
-    }
-  }
+  // ── [UIValidation] Drop cards with missing required props ─────────────────
+  const { valid: validCards, invalid } = validateAndFilterCards(constrainedCards);
+  if (invalid.length > 0) console.log(`[UIValidation] Dropped invalid: ${invalid.join(' | ')}`);
 
-  // Step 5 — stream report metadata (includes template so frontend can adapt layout)
+  const finalCards = validCards.length > 0 ? validCards : generateFallbackCards(dataShape);
+
+  // ── Build structured analytical context for follow-up continuity ──────────
+  const newAnalyticalContext = buildAnalyticalContext(
+    enrichedQuery, analyticalIntent, lockedTemplate, entities,
+    dataShape, resolvedTable ?? null, report.title, report.message,
+  );
+  console.log(`[ContextContinuity] Built context: template=${newAnalyticalContext.activeTemplate} entities=[${newAnalyticalContext.entities.join(',')}] metric=${newAnalyticalContext.metric}`);
+
+  // ── Stream metadata ───────────────────────────────────────────────────────
   send('meta', {
     title: report.title,
     description: report.message,
     rowCount: allRows.length,
-    template: report.template,
+    template: lockedTemplate,
     activeTable: resolvedTable,
+    analyticalContext: newAnalyticalContext,
   });
 
-  // Step 6 — hydrate + stream each card (recursive for layout wrappers)
+  // ── [ScopedHydration] Hydrate each card with intent-scoped rows ───────────
   const validComponents: UITypeTree[] = [];
-
-  for (const card of report.cards) {
-    const node = hydrateTree(card, allRows);
+  for (const card of finalCards) {
+    const node = hydrateTree(card as ReportCard, analyticalIntent, scoped);
     send('component', node);
     validComponents.push(node);
   }
 
-  // Step 7 — stream follow-up suggestions
-  if (report.followUp.length > 0) {
-    send('followUp', report.followUp);
-  }
-
+  if (report.followUp.length > 0) send('followUp', report.followUp);
   send('status', { message: `Done in ${Date.now() - start}ms` });
 
   cacheService.set(cacheKey, {
@@ -558,5 +542,6 @@ export async function runStreamingPipeline(
     title: report.title,
     message: report.message,
     activeTable: resolvedTable,
+    analyticalContext: newAnalyticalContext,
   }, 5 * 60 * 1000);
 }

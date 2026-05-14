@@ -292,6 +292,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
   const [clarificationContext, setClarificationContext] = useState<string | null>(null);
   const [clarificationHistory, setClarificationHistory] = useState<{question: string; answer: string}[]>([]);
   const [activeTableRef, setActiveTableRef] = useState<string | undefined>(undefined);
+  const [analyticalContextRef, setAnalyticalContextRef] = useState<any>(undefined);
   const [hoveredConvId, setHoveredConvId] = useState<string | null>(null);
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [isReportPanelOpen, setIsReportPanelOpen] = useState(false);
@@ -2568,7 +2569,6 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
     const { priorContext, currentCards } = includePriorContext ? getLastReportContext() : { priorContext: undefined, currentCards: [] };
 
     // Build recent conversation history (last 3 exchange pairs, most recent last).
-    // Only include settled messages (not streaming placeholders), trim to ~300 chars each.
     const conversationHistory = messages
       .filter(m => !m.isStreaming && (m.type === 'user' || m.type === 'assistant') && m.content)
       .slice(-6)
@@ -2578,7 +2578,16 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
       const res = await fetch("http://localhost:3001/api/conversational/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, skipClarification, clarificationHistory: history, priorContext, currentCards: currentCards.length > 0 ? currentCards : undefined, activeTable: activeTableRef, conversationHistory }),
+        body: JSON.stringify({
+          query,
+          skipClarification,
+          clarificationHistory: history,
+          priorContext,
+          currentCards: currentCards.length > 0 ? currentCards : undefined,
+          activeTable: activeTableRef,
+          conversationHistory,
+          analyticalContext: analyticalContextRef,
+        }),
       });
 
       if (!res.ok || !res.body) throw new Error(`Backend error: ${res.status}`);
@@ -2608,6 +2617,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
             if (event === 'meta') {
               patchMsg(m => ({ ...m, content: payload.description || payload.message || '', data: { ...m.data, meta: payload } }));
               if (payload.activeTable) setActiveTableRef(payload.activeTable);
+              if (payload.analyticalContext) setAnalyticalContextRef(payload.analyticalContext);
             } else if (event === 'component') {
               patchMsg(m => ({ ...m, data: { ...m.data, components: [...(m.data?.components || []), payload] } }));
             } else if (event === 'followUp') {
@@ -2683,9 +2693,17 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
       historyToSend = newHistory;
       queryToSend = activeContext;
     } else {
-      // Fresh query — clear history and active table context
-      setClarificationHistory([]);
-      setActiveTableRef(undefined);
+      // Fresh query — only reset table/context if this is genuinely a new domain,
+      // not a follow-up. Keep activeTableRef alive so the backend can detect follow-ups.
+      const NEW_DOMAIN_SIGNALS = /\b(new report|different report|switch to|start over|reset)\b/i;
+      if (NEW_DOMAIN_SIGNALS.test(userQuestion)) {
+        setClarificationHistory([]);
+        setActiveTableRef(undefined);
+        setAnalyticalContextRef(undefined);
+      } else {
+        setClarificationHistory([]);
+        // activeTableRef and analyticalContextRef intentionally preserved
+      }
       historyToSend = [];
       queryToSend = userQuestion;
     }
