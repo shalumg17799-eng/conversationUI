@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Azure Deployment Plan — Conversational UI</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; color: #1a1a2e; font-size: 12px; line-height: 1.55; }
+  h1 { font-size: 24px; margin: 0 0 4px; color: #0b3d91; }
+  h2 { font-size: 16px; margin: 22px 0 8px; color: #0b3d91; border-bottom: 2px solid #0b3d91; padding-bottom: 4px; }
+  h3 { font-size: 13px; margin: 14px 0 4px; color: #16213e; }
+  .sub { color: #555; font-size: 11px; margin: 0 0 2px; }
+  .meta { color: #777; font-size: 10.5px; margin-bottom: 14px; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0 4px; font-size: 11px; }
+  th, td { border: 1px solid #cfd6e4; padding: 5px 7px; text-align: left; vertical-align: top; }
+  th { background: #eef2f9; color: #0b3d91; font-weight: 600; }
+  code { background: #f0f2f7; padding: 1px 4px; border-radius: 3px; font-family: "SF Mono", Consolas, monospace; font-size: 10.5px; color: #b5004a; }
+  pre { background: #1e1e2e; color: #e6e6e6; padding: 10px 12px; border-radius: 6px; font-size: 10px; line-height: 1.45; overflow-x: auto; font-family: "SF Mono", Consolas, monospace; }
+  pre .c { color: #6a9955; }
+  pre .r { color: #f48fb1; }
+  pre .g { color: #9cdcfe; }
+  ul, ol { margin: 4px 0 8px; padding-left: 20px; }
+  li { margin: 2px 0; }
+  .box { border: 1px solid #cfd6e4; border-radius: 6px; padding: 10px 12px; margin: 8px 0; background: #fafbfd; }
+  .warn { border-left: 4px solid #d9534f; background: #fdf3f3; }
+  .ok { border-left: 4px solid #2e7d32; background: #f3faf4; }
+  .info { border-left: 4px solid #0b3d91; background: #f2f6fd; }
+  .tag { display: inline-block; font-size: 9.5px; font-weight: 700; padding: 1px 7px; border-radius: 10px; color: #fff; }
+  .t-must { background: #d9534f; }
+  .t-should { background: #e08e0b; }
+  .t-nice { background: #2e7d32; }
+  .small { font-size: 10.5px; color: #555; }
+  .pb { page-break-before: always; }
+  .center { text-align: center; }
+  .lead { font-size: 12.5px; background: #f2f6fd; border-radius: 6px; padding: 10px 12px; }
+</style>
+</head>
+<body>
+
+<h1>Azure Deployment Plan</h1>
+<p class="sub">Conversational UI — Generative BI Report Hub (React frontend + Node/Express backend + Google BigQuery)</p>
+<p class="meta">Prepared 11 June 2026 &nbsp;•&nbsp; Branch: vk4 &nbsp;•&nbsp; Audience: deployment / engineering</p>
+
+<div class="lead">
+<strong>Summary.</strong> The app is a static React frontend plus a lightweight Node/Express backend that proxies to Claude/Gemini and queries Google BigQuery. It is <strong>I/O-bound, not CPU-heavy</strong>. Recommended VM: <strong>Azure A2&nbsp;v2 (2 vCPU, 4&nbsp;GB RAM)</strong>, or — better — <strong>Azure App Service</strong> (no VM to manage). The database (<strong>BigQuery</strong>) <strong>stays on Google</strong> and is reached over its API; <strong>no DB migration is required</strong>. The single most important code change is removing a <strong>hardcoded <code>http://localhost:3001</code></strong> backend URL in the frontend.
+</div>
+
+<h2>1. What we are deploying</h2>
+<table>
+<tr><th>Piece</th><th>Stack</th><th>Build output</th><th>Runtime need</th></tr>
+<tr><td><strong>Frontend</strong></td><td>React + Vite + MUI/Radix</td><td><code>vite build</code> → <code>/dist</code> (static HTML/JS/CSS)</td><td>Any static host / CDN. No server CPU.</td></tr>
+<tr><td><strong>Backend</strong></td><td>Node 18+ / Express / TypeScript</td><td><code>tsc</code> → <code>backend/dist</code>, run <code>node dist/index.js</code></td><td>Always-on Node process, port 3001 (configurable).</td></tr>
+<tr><td><strong>Database</strong></td><td>Google BigQuery (serverless)</td><td>—</td><td>API access only. Lives on Google. No migration.</td></tr>
+<tr><td><strong>AI</strong></td><td>Anthropic Claude + Google Gemini</td><td>—</td><td>External APIs. Need keys.</td></tr>
+</table>
+
+<h2>2. Hosting choice</h2>
+<table>
+<tr><th>Option</th><th>Best for</th><th>Effort</th><th>Notes</th></tr>
+<tr><td><strong>Azure App Service</strong> (recommended)</td><td>Backend Node app</td><td>Low</td><td>No OS to patch. Auto HTTPS, easy scale, env vars in portal. <strong>Must enable WebSockets / disable response buffering for SSE streaming.</strong></td></tr>
+<tr><td><strong>Azure Static Web Apps</strong> (recommended)</td><td>Frontend</td><td>Low</td><td>Free/cheap, global CDN, built-in SPA fallback to <code>index.html</code>.</td></tr>
+<tr><td>Azure VM <strong>A2 v2</strong></td><td>Both on one box</td><td>Medium</td><td>You manage OS, Node, Nginx, HTTPS, restarts. Pick only if you need full control.</td></tr>
+</table>
+<div class="box info"><strong>Recommendation:</strong> Frontend → Azure Static Web Apps. Backend → Azure App Service (Linux, Node 18/20). Simpler and cheaper than a raw VM, and it handles HTTPS + scaling for you. If policy mandates a VM, use <strong>A2 v2</strong> (see sizing in §6).</div>
+
+<h2>3. Code changes required <span class="small">(before deploy)</span></h2>
+
+<h3><span class="tag t-must">MUST</span> 3.1 — Remove hardcoded backend URL in frontend</h3>
+<p class="small">The streaming call points at localhost. In production this fails (browser tries to reach the user's own machine).</p>
+<p class="small"><strong>File:</strong> <code>src/app/pages/Conversational_new.tsx</code> — line ~2578 (and error text line ~2658).</p>
+<pre><span class="c">// BEFORE — hardcoded, breaks in production</span>
+const res = await fetch(<span class="r">"http://localhost:3001/api/conversational/stream"</span>, {
+
+<span class="c">// AFTER — use env var, same pattern already used in BigQueryDashboard.tsx</span>
+const API_BASE = import.meta.env.<span class="g">VITE_API_URL</span> || "http://localhost:3001";
+const res = await fetch(<span class="r">`${API_BASE}/api/conversational/stream`</span>, {</pre>
+<p class="small">Then set <code>VITE_API_URL=https://&lt;your-backend&gt;.azurewebsites.net</code> at frontend build time. Note: <code>src/app/components/BigQueryDashboard.tsx</code> already does this correctly — copy that pattern.</p>
+
+<h3><span class="tag t-should">SHOULD</span> 3.2 — Lock down CORS on backend</h3>
+<p class="small">Backend currently allows <code>Access-Control-Allow-Origin: *</code> (any site). For production, restrict to your frontend domain.</p>
+<p class="small"><strong>File:</strong> <code>backend/src/index.ts</code> — line ~16.</p>
+<pre><span class="c">// Replace the wildcard "*" with your real frontend origin</span>
+const ALLOWED = process.env.<span class="g">FRONTEND_ORIGIN</span> || "*";
+res.header("Access-Control-Allow-Origin", ALLOWED);
+<span class="c">// also update the same header inside the SSE res.writeHead(...) block (~line 33)</span></pre>
+
+<h3><span class="tag t-nice">GOOD</span> 3.3 — Confirm port + start command</h3>
+<p class="small">Backend already reads <code>process.env.PORT</code> (good — Azure App Service injects its own PORT). Ensure start command is <code>npm run build &amp;&amp; npm start</code> (runs <code>tsc</code> then <code>node dist/index.js</code>).</p>
+
+<h2 class="pb">4. Environment variables / secrets</h2>
+<p class="small">Currently in a local <code>.env</code> file. <strong>Do NOT commit secrets.</strong> Set these in Azure App Service → Configuration → Application settings (and as build-time vars for the frontend host).</p>
+
+<h3>Backend (Azure App Service settings)</h3>
+<table>
+<tr><th>Variable</th><th>Purpose</th><th>Source</th></tr>
+<tr><td><code>ANTHROPIC_API_KEY</code></td><td>Claude AI calls</td><td>Anthropic console</td></tr>
+<tr><td><code>PORT</code></td><td>Listen port</td><td>Auto-set by Azure (leave unset)</td></tr>
+<tr><td><code>BQ_PROJECT_ID</code></td><td>BigQuery project (<code>data-practice-472314</code>)</td><td>GCP console</td></tr>
+<tr><td><code>BQ_DATASET</code></td><td>Dataset (<code>report_hub_demo</code>)</td><td>GCP console</td></tr>
+<tr><td><code>BQ_CLIENT_EMAIL</code></td><td>Service-account email</td><td>GCP service-account JSON</td></tr>
+<tr><td><code>BQ_PRIVATE_KEY</code></td><td>Service-account private key</td><td>GCP service-account JSON</td></tr>
+<tr><td class="small" colspan="3"><em>Gemini key if used (<code>@google/genai</code>) — add the relevant <code>GOOGLE_API_KEY</code> / <code>GEMINI_API_KEY</code> as the code expects.</em></td></tr>
+</table>
+
+<h3>Frontend (build-time)</h3>
+<table>
+<tr><th>Variable</th><th>Value</th></tr>
+<tr><td><code>VITE_API_URL</code></td><td><code>https://&lt;backend&gt;.azurewebsites.net</code></td></tr>
+</table>
+
+<div class="box info"><strong>BigQuery access from Azure.</strong> Because the backend now runs <em>outside</em> Google, it can no longer rely on implicit GCP credentials. It must authenticate with a <strong>service-account key</strong> (<code>BQ_CLIENT_EMAIL</code> + <code>BQ_PRIVATE_KEY</code>) — the code already supports this path in <code>backend/src/lib/bigqueryClient.ts</code>. Create/download a service-account JSON in GCP with <em>BigQuery Data Viewer + Job User</em> roles, then paste the two values into Azure settings. When pasting the private key, keep the <code>\n</code> escaping (the code already converts <code>\\n</code> back to real newlines).</div>
+
+<h2>5. The database question (answered)</h2>
+<div class="box ok">
+<strong>Stays on Google. No migration needed.</strong> BigQuery is serverless and API-only by design — even when the backend ran on Google it talked to BigQuery over the network. Moving the backend to Azure changes nothing except that you now authenticate with a service-account key (§4).
+<ul>
+<li><strong>Adding more datasets later</strong> = just more queries. No effect on the Azure VM/app size — BigQuery does the heavy lifting on Google's side.</li>
+<li><strong>Watch cost:</strong> BigQuery bills per data scanned, plus small network egress for results leaving Google. Not the VM.</li>
+<li><strong>Only migrate if</strong> you later want everything in one cloud for latency/billing simplicity — optional, not required.</li>
+</ul>
+</div>
+
+<h2 class="pb">6. VM sizing (if using a VM)</h2>
+<table>
+<tr><th>Instance</th><th>vCPU / RAM</th><th>Temp storage</th><th>~ Price</th><th>Verdict</th></tr>
+<tr><td><strong>A2 v2</strong></td><td>2 / 4 GB</td><td>20 GB</td><td>~$0.090/hr (~$66/mo)</td><td><strong>Pick this</strong> — newer, more RAM, cheaper</td></tr>
+<tr><td>A2</td><td>2 / 3.5 GB</td><td>135 GB</td><td>~$0.120/hr (~$88/mo)</td><td>Old gen, less RAM, costs more — skip</td></tr>
+</table>
+<p class="small"><strong>Temp storage doesn't matter here.</strong> It is ephemeral scratch space (wiped on reboot), not where your app or data lives. Your app stores almost nothing locally (static files + Node proxy; data is in BigQuery), so 20 GB is plenty.</p>
+
+<h3>Expected usage on A2 v2 today</h3>
+<table>
+<tr><th>Component</th><th>RAM</th><th>CPU</th></tr>
+<tr><td>Linux OS</td><td>~0.4–0.6 GB</td><td>idle</td></tr>
+<tr><td>Node backend (I/O-bound proxy)</td><td>~0.15–0.4 GB</td><td>~0% idle, brief spikes/request</td></tr>
+<tr><td>Static frontend serving</td><td>~0.05 GB</td><td>trivial</td></tr>
+<tr><td><strong>Typical total</strong></td><td><strong>~1–1.5 GB of 4 GB (≈30–40%)</strong></td><td><strong>&lt;20%</strong></td></tr>
+</table>
+<p class="small"><strong>Headroom:</strong> plenty for current use and growth in <em>data</em>. The thing that eventually forces a bigger box is <strong>many concurrent live users</strong> (Node is single-threaded; LLM streaming uses CPU+RAM). When RAM stays &gt;80% or CPU is pegged in normal use, resize to <strong>B4ms / D2 v2</strong> (4 vCPU, 8–16 GB) — a few minutes of downtime.</p>
+
+<h2>7. Step-by-step deployment</h2>
+<ol>
+<li><strong>Make code changes</strong> §3 (hardcoded URL → env var; lock CORS).</li>
+<li><strong>Create GCP service account</strong> with BigQuery Data Viewer + Job User; download JSON.</li>
+<li><strong>Backend → Azure App Service</strong> (Linux, Node 20). Set env vars §4. Deploy via GitHub Actions / Azure CLI / zip.
+  <ul><li>Enable <strong>WebSockets</strong> and ensure response buffering is off so the <code>/stream</code> SSE endpoint works.</li>
+  <li>Start command: <code>npm run build &amp;&amp; npm start</code> in <code>/backend</code>.</li></ul>
+</li>
+<li><strong>Frontend → Azure Static Web Apps.</strong> Set <code>VITE_API_URL</code> = backend URL. Build with <code>vite build</code>, serve <code>/dist</code>. SPA fallback to <code>index.html</code> (Static Web Apps does this automatically; the existing <code>vercel.json</code> rewrite is the equivalent).</li>
+<li><strong>Set CORS:</strong> <code>FRONTEND_ORIGIN</code> on backend = the Static Web App URL.</li>
+<li><strong>Smoke test:</strong> open the site, send a query, confirm streaming reply + a BigQuery-backed report render.</li>
+<li><strong>Monitor:</strong> Azure metrics (CPU/RAM) + BigQuery cost dashboard. Resize VM/plan only if usage stays high.</li>
+</ol>
+
+<h2>8. Anything missing? — Checklist of gaps to confirm</h2>
+<table>
+<tr><th>Item</th><th>Status / action</th></tr>
+<tr><td>Hardcoded <code>localhost:3001</code> in <code>Conversational_new.tsx</code></td><td><span class="tag t-must">MUST FIX</span> — §3.1</td></tr>
+<tr><td>Backend CORS wildcard <code>*</code></td><td><span class="tag t-should">TIGHTEN</span> — §3.2</td></tr>
+<tr><td>BigQuery service-account key for off-GCP auth</td><td><span class="tag t-must">CREATE</span> — §4</td></tr>
+<tr><td>SSE streaming through Azure (buffering/WebSockets)</td><td><span class="tag t-should">VERIFY</span> — §7 step 3</td></tr>
+<tr><td>Secrets out of <code>.env</code> → Azure settings; confirm <code>.env</code> is git-ignored</td><td><span class="tag t-should">CONFIRM</span></td></tr>
+<tr><td>Gemini / Google GenAI key (<code>@google/genai</code>) — is it used in prod path?</td><td><span class="tag t-nice">CONFIRM</span> which AI keys are actually required</td></tr>
+<tr><td>HTTPS / custom domain</td><td>Handled by App Service + Static Web Apps; add custom domain if needed</td></tr>
+<tr><td>Node version pin (engines field) + Node 18+ on host</td><td><span class="tag t-nice">RECOMMEND</span> pin in <code>package.json</code></td></tr>
+<tr><td>Logging / health endpoint</td><td><code>GET /</code> health check exists — wire Azure health probe to it</td></tr>
+<tr><td>No automated tests / CI gate before deploy</td><td><span class="tag t-nice">OPTIONAL</span> add a build check in CI</td></tr>
+</table>
+
+<div class="box info"><strong>Bottom line.</strong> This is a clean, low-risk deployment. One required code fix (the hardcoded URL), one new credential (BigQuery service account), and correct env-var wiring. The database stays on Google untouched. Use Azure App Service + Static Web Apps for the easiest path, or an A2 v2 VM if you need a single box.</div>
+
+<p class="meta center" style="margin-top:18px;">End of plan • Conversational UI Azure Deployment</p>
+
+</body>
+</html>
