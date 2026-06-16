@@ -11,10 +11,13 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3001;
 
+// Allowed CORS origin — set FRONTEND_ORIGIN in production to the frontend URL. Defaults to '*' for dev.
+const ALLOWED_ORIGIN = process.env.FRONTEND_ORIGIN || '*';
+
 app.use(express.json());
 
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
   res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   if (req.method === 'OPTIONS') return res.sendStatus(200);
@@ -23,6 +26,14 @@ app.use((req, res, next) => {
 
 app.get('/', (_req: Request, res: Response) => {
   res.json({ message: 'Generative UI Analytical Engine is running' });
+});
+
+// Access-gate verification — password lives only in backend env, never shipped to the client.
+app.post('/api/auth/verify', (req: Request, res: Response) => {
+  const { password } = req.body ?? {};
+  const expected = process.env.ACCESS_PASSWORD;
+  if (!expected) return res.status(500).json({ success: false, error: 'ACCESS_PASSWORD not configured' });
+  return res.json({ success: password === expected });
 });
 
 // SSE streaming endpoint — preferred for Generative UI
@@ -34,7 +45,7 @@ app.post('/api/conversational/stream', async (req: Request, res: Response) => {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
     'Connection': 'keep-alive',
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
   });
 
   const send = (event: string, data: unknown) => {

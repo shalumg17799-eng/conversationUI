@@ -1,6 +1,25 @@
 import React, { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+// Verify a password against the backend. Returns true on match. The password
+// is never compared client-side, so it is not present in the shipped bundle.
+async function verifyPassword(password: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    return data.success === true;
+  } catch {
+    return false;
+  }
+}
+
 export function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -10,8 +29,10 @@ export function LoginPage() {
 
   useEffect(() => {
     const token = searchParams.get('access');
-    if (token === 'rdvr@9705') {
-      navigate('/persona');
+    if (token) {
+      verifyPassword(token).then((ok) => {
+        if (ok) navigate('/persona');
+      });
     }
   }, []);
 
@@ -68,8 +89,9 @@ export function LoginPage() {
             </div>
           )}
           <button
-            onClick={() => {
-              if (password === 'rdvr@9705') {
+            onClick={async () => {
+              const ok = await verifyPassword(password);
+              if (ok) {
                 navigate('/persona');
               } else {
                 setError('Incorrect password. Please try again.');

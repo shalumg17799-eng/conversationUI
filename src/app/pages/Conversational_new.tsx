@@ -59,6 +59,9 @@ import {
 import MedallionIcon from '@/imports/Group5';
 import { usePersona } from '@/app/context/PersonaContext';
 
+// Backend base URL — set VITE_API_URL at build time for production. Falls back to localhost in dev.
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
 interface Message {
   id: string;
   type: 'system' | 'user' | 'assistant';
@@ -2575,7 +2578,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
       .map(m => ({ role: m.type as 'user' | 'assistant', content: (m.content ?? '').slice(0, 300) }));
 
     try {
-      const res = await fetch("http://localhost:3001/api/conversational/stream", {
+      const res = await fetch(`${API_BASE}/api/conversational/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query, skipClarification, clarificationHistory: history, priorContext, currentCards: currentCards.length > 0 ? currentCards : undefined, activeTable: activeTableRef, conversationHistory }),
@@ -5453,6 +5456,9 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
             )}
 
             {/* Generative UI — streaming components from backend pipeline */}
+            {message.renderType === 'generative_ui' && message.isStreaming && !message.data?.meta && (!message.data?.components || message.data.components.length === 0) && (
+              <ReportSkeleton />
+            )}
             {message.renderType === 'generative_ui' && (
               <div className="mt-4 space-y-4">
                 {message.data?.meta && (
@@ -5471,9 +5477,6 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                       <p className="text-[11px] text-[#9CA3AF] mt-0.5 ml-6">{message.data.meta.rowCount} rows from BigQuery</p>
                     )}
                   </div>
-                )}
-                {message.isStreaming && (!message.data?.components || message.data.components.length === 0) && (
-                  <ReportSkeleton />
                 )}
                 {(message.data?.components || []).map((node: UITreeNode, i: number) => (
                   <UITreeRenderer key={i} node={node} />
@@ -7540,21 +7543,6 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                     </div>
                   ))}
 
-                  {isGenerating && (
-                    <div className="flex flex-col gap-3">
-                      <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-full bg-[#FEF0EC] flex items-center justify-center flex-shrink-0">
-                          <Sparkles className="w-4 h-4 text-[#D4572A] animate-pulse" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-[13px] text-[#6B6965] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
-                            Analyzing data and composing your report...
-                          </p>
-                        </div>
-                      </div>
-                      <ReportSkeleton />
-                    </div>
-                  )}
 
                   <div ref={chatEndRef} />
                 </div>
