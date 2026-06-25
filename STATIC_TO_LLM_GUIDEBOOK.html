@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Static Chat → LLM Chat — Conversion Guidebook</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm 18mm; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; color: #1a1a2e; font-size: 12px; line-height: 1.55; }
+  h1 { font-size: 26px; margin: 0 0 4px; color: #0b3d91; }
+  h2 { font-size: 17px; margin: 26px 0 8px; color: #0b3d91; border-bottom: 2px solid #0b3d91; padding-bottom: 4px; }
+  h3 { font-size: 13.5px; margin: 16px 0 5px; color: #16213e; }
+  h4 { font-size: 12px; margin: 12px 0 3px; color: #16213e; text-transform: uppercase; letter-spacing: .04em; }
+  .sub { color: #555; font-size: 11.5px; margin: 0 0 2px; }
+  .meta { color: #777; font-size: 10.5px; margin-bottom: 14px; }
+  p { margin: 6px 0; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0 6px; font-size: 11px; }
+  th, td { border: 1px solid #cfd6e4; padding: 5px 7px; text-align: left; vertical-align: top; }
+  th { background: #eef2f9; color: #0b3d91; font-weight: 600; }
+  code { background: #f0f2f7; padding: 1px 4px; border-radius: 3px; font-family: "SF Mono", Consolas, monospace; font-size: 10.5px; color: #b5004a; }
+  pre { background: #1e1e2e; color: #e6e6e6; padding: 11px 13px; border-radius: 6px; font-size: 10px; line-height: 1.5; overflow-x: auto; font-family: "SF Mono", Consolas, monospace; white-space: pre-wrap; }
+  pre .c { color: #6a9955; }
+  pre .k { color: #569cd6; }
+  pre .s { color: #ce9178; }
+  pre .f { color: #dcdcaa; }
+  ul, ol { margin: 4px 0 8px; padding-left: 20px; }
+  li { margin: 3px 0; }
+  .box { border: 1px solid #cfd6e4; border-radius: 6px; padding: 10px 12px; margin: 10px 0; background: #fafbfd; }
+  .warn { border-left: 4px solid #d9534f; background: #fdf3f3; }
+  .ok { border-left: 4px solid #2e7d32; background: #f3faf4; }
+  .info { border-left: 4px solid #0b3d91; background: #f2f6fd; }
+  .tip { border-left: 4px solid #8e44ad; background: #f8f4fb; }
+  .tag { display: inline-block; font-size: 9.5px; font-weight: 700; padding: 1px 7px; border-radius: 10px; color: #fff; }
+  .t-must { background: #d9534f; }
+  .t-should { background: #e08e0b; }
+  .t-nice { background: #2e7d32; }
+  .small { font-size: 10.5px; color: #555; }
+  .pb { page-break-before: always; }
+  .center { text-align: center; }
+  .lead { font-size: 12.5px; background: #f2f6fd; border-radius: 6px; padding: 12px 14px; }
+  .ascii { background: #f7f9fc; border: 1px solid #d6deeb; border-radius: 6px; padding: 10px 12px; font-family: "SF Mono", Consolas, monospace; font-size: 10px; line-height: 1.35; white-space: pre; overflow-x: auto; color: #16213e; }
+  .toc { columns: 2; column-gap: 28px; font-size: 11.5px; }
+  .toc a { color: #0b3d91; text-decoration: none; }
+  .toc li { margin: 4px 0; }
+  .kpi { display: inline-block; border: 1px solid #cfd6e4; border-radius: 6px; padding: 8px 12px; margin: 4px 6px 4px 0; background: #fff; min-width: 120px; }
+  .kpi b { display: block; font-size: 18px; color: #0b3d91; }
+  .kpi span { font-size: 10px; color: #666; }
+  hr { border: none; border-top: 1px solid #d6deeb; margin: 18px 0; }
+  .analogy { background: #fff8ee; border-left: 4px solid #e08e0b; border-radius: 4px; padding: 9px 12px; margin: 8px 0; font-size: 11.5px; }
+  .footer { margin-top: 26px; padding-top: 8px; border-top: 1px solid #d6deeb; font-size: 10px; color: #888; }
+</style>
+</head>
+<body>
+
+<h1>Static Chat → LLM Chat</h1>
+<p class="sub">A Conversion Guidebook — Turning scripted, button-driven chat flows into an LLM-powered conversation engine using Google&nbsp;Gemma</p>
+<p class="meta">Prepared 23 June 2026 &nbsp;•&nbsp; Reference implementation: Conversational UI (Generative BI Report Hub) &nbsp;•&nbsp; Audience: engineers + product / non-technical stakeholders</p>
+
+<div class="lead">
+<strong>What this is.</strong> Our team took a prototype whose chat was <em>static</em> — every reply was hardcoded, every path scripted in advance — and rebuilt it as an <em>LLM-based</em> system where Google&nbsp;Gemma understands free-text questions, picks the right data, and assembles the answer live. This guidebook is the playbook for doing the same to <strong>any</strong> static-chat prototype in the company. It explains the idea in plain language, lays out the exact architecture and tools, gives copy-ready code patterns from our real implementation, and ends with a step-by-step migration checklist.
+<br><br>
+<strong>Read it two ways.</strong> Sections marked <span class="tag t-nice">PLAIN</span> are written for anyone. Sections marked <span class="tag t-should">BUILD</span> are for the engineer doing the wiring. Every reader should at least read Parts 1–3.
+</div>
+
+<h2 id="toc">Contents</h2>
+<div class="toc">
+<ol>
+<li><a href="#p1">Static vs. LLM — the core idea</a></li>
+<li><a href="#p2">What "good" looks like (our result)</a></li>
+<li><a href="#p3">The mental model &amp; architecture</a></li>
+<li><a href="#p4">Tools, accounts &amp; prerequisites</a></li>
+<li><a href="#p5">Meet Gemma — the model we use</a></li>
+<li><a href="#p6">The backend pipeline, step by step</a></li>
+<li><a href="#p7">Talking to Gemma (the API)</a></li>
+<li><a href="#p8">Prompt engineering — the real work</a></li>
+<li><a href="#p9">Streaming answers (SSE)</a></li>
+<li><a href="#p10">The frontend conversion</a></li>
+<li><a href="#p11">Your data layer</a></li>
+<li><a href="#p11b">No database? A Markdown context file</a></li>
+<li><a href="#p12">Clarification &amp; follow-up flows</a></li>
+<li><a href="#p13">Caching, retries &amp; safety nets</a></li>
+<li><a href="#p14">Security &amp; configuration</a></li>
+<li><a href="#p15">Testing &amp; evaluation</a></li>
+<li><a href="#p16">Cost &amp; performance</a></li>
+<li><a href="#p17">Migration checklist</a></li>
+<li><a href="#p18">Pitfalls &amp; FAQ</a></li>
+<li><a href="#p19">Glossary (plain English)</a></li>
+</ol>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="p1" class="pb">1. Static vs. LLM — the core idea <span class="tag t-nice">PLAIN</span></h2>
+
+<p>A <strong>static chat flow</strong> is a decision tree someone drew in advance. The user clicks "Sales", then "Monthly Revenue", then "Last 12 months", and the app shows a pre-built screen. Every word the bot says was typed by a developer. It cannot answer anything that wasn't anticipated. If the user types "why did the West region dip in March?", a static bot has no branch for that — it shrugs.</p>
+
+<p>An <strong>LLM-based chat flow</strong> replaces the decision tree with a <em>language model</em> — software that reads the user's actual words, figures out what they mean, and decides what to do next. Instead of "if button == X, show screen Y", it is "read the question, understand intent, fetch the right data, and compose a fresh answer."</p>
+
+<div class="analogy">
+<strong>Analogy.</strong> A static chat is a <em>vending machine</em>: fixed buttons, fixed slots, exact-change only. An LLM chat is a <em>knowledgeable shop assistant</em>: you describe what you want in your own words, they ask a clarifying question if needed, then they go find it. Our job in this conversion is to keep the same storefront (the UI) but swap the vending machine behind it for the assistant.
+</div>
+
+<h3>What actually changes</h3>
+<table>
+<tr><th>Aspect</th><th>Static chat (before)</th><th>LLM chat (after)</th></tr>
+<tr><td>Understanding input</td><td>Button clicks / keyword match</td><td>Gemma reads free-text and infers intent</td></tr>
+<tr><td>Deciding the response</td><td><code>if/else</code> rules hardcoded</td><td>Model chooses an action (route, clarify, answer, edit)</td></tr>
+<tr><td>The answer content</td><td>Pre-written templates</td><td>Generated live from real data</td></tr>
+<tr><td>Handling the unexpected</td><td>"I didn't understand that"</td><td>Asks a smart clarifying question, or answers anyway</td></tr>
+<tr><td>Adding a new topic</td><td>Code a new branch + screens</td><td>Add the data source; the model adapts</td></tr>
+<tr><td>Follow-ups ("now by region")</td><td>Usually impossible</td><td>Model edits the existing answer in place</td></tr>
+</table>
+
+<div class="box info"><strong>The one-sentence version.</strong> We stop writing the conversation and start writing the <em>rules of the conversation</em>, then let Gemma run it within those rules — always grounded in <strong>your real data</strong>, never free-floating.</div>
+
+<h3>A critical principle: "Deterministic-First"</h3>
+<p>The biggest mistake teams make is letting the LLM do <em>everything</em>. That is slow, expensive, and unpredictable. Our design uses the LLM only for the <strong>judgement calls a human would make</strong> — "what does this person want?", "which chart tells this story best?" — and uses plain, predictable code for everything else (fetching rows, formatting numbers, validating output). We call this <strong>Deterministic-First</strong>: the pipeline is the skeleton, the LLM is the brain. This keeps the system fast, cheap, and debuggable.</p>
+
+<!-- ============================================================ -->
+<h2 id="p2">2. What "good" looks like — our result <span class="tag t-nice">PLAIN</span></h2>
+
+<p>For context, here is what our converted system can now do that the static version could not:</p>
+<ul>
+<li>Accept a typed question like <em>"compare territory T-007 and T-001 return rate"</em> and produce a tailored comparison with the real numbers.</li>
+<li>Ask a clarifying question — <em>"Which domain: Sales, Network, Contact Center, or Customer Experience?"</em> — only when genuinely needed, never robotically.</li>
+<li>Stream the answer in as it builds (status → title → each chart appears one by one), so it feels alive instead of a long blank wait.</li>
+<li>Accept a follow-up — <em>"now show only the KPIs"</em> or <em>"summarize this in bullet points"</em> — and edit the answer it already produced, without re-running everything.</li>
+<li>Pick the <em>right</em> visualization for the data automatically: a trend over time becomes a line chart, a ranking becomes a ranked list, a single number becomes a KPI card.</li>
+</ul>
+
+<div class="box">
+<span class="kpi"><b>1</b><span>LLM call to classify <em>and</em> edit a follow-up (fused)</span></span>
+<span class="kpi"><b>20+</b><span>UI component types the model can choose from</span></span>
+<span class="kpi"><b>5 min</b><span>cache TTL — repeat questions are instant</span></span>
+<span class="kpi"><b>×3</b><span>auto-retries on a flaky model call</span></span>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="p3" class="pb">3. The mental model &amp; architecture <span class="tag t-should">BUILD</span></h2>
+
+<p>Picture four boxes. The browser shows the chat. A small backend server is the traffic controller. Gemma is the brain it consults. Your database is where the truth lives. The backend never lets the model touch the database directly — it fetches data itself, hands the model a small sample, and asks only for <em>decisions</em>.</p>
+
+<div class="ascii">┌──────────────────────────────────────────────────────────────────┐
+│                         BROWSER (your UI)                          │
+│   Chat page  →  Renderer  →  Charts / Tables / KPI cards / Text    │
+└───────────────────────────────┬──────────────────────────────────┘
+                                │  POST /api/conversational/stream
+                                │  (streams the answer back as it builds)
+┌───────────────────────────────▼──────────────────────────────────┐
+│                    BACKEND (Node + Express)                        │
+│   index.ts  →  runStreamingPipeline  →  [ a chain of services ]    │
+└──────────────┬─────────────────────────────────┬─────────────────┘
+              │                                 │
+   ┌──────────▼──────────┐            ┌──────────▼──────────┐
+   │   Google Gemma LLM   │            │   Your database      │
+   │   (the "brain":      │            │   (the "truth":      │
+   │    intent + design)  │            │    BigQuery for us)  │
+   └─────────────────────┘            └─────────────────────┘</div>
+
+<h3>The three jobs the model does for us</h3>
+<table>
+<tr><th>Job</th><th>Plain meaning</th><th>When it runs</th></tr>
+<tr><td><strong>Analyze / route</strong></td><td>"What is this person asking, and which data answers it? Or do I need to ask them something first?"</td><td>Every new message</td></tr>
+<tr><td><strong>Design report</strong></td><td>"Given this data, what's the best way to show the answer — which charts, which numbers, what title?"</td><td>After data is fetched</td></tr>
+<tr><td><strong>Classify &amp; edit</strong></td><td>"They have an answer on screen and said something new — do they want an edit, a fresh answer, or just a written reply? Apply it."</td><td>On a follow-up to an existing answer</td></tr>
+</table>
+
+<div class="box tip"><strong>Why a backend at all?</strong> Three reasons, all non-negotiable. (1) Your API keys must never ship to the browser — they live only on the server. (2) The browser can't safely hold database credentials. (3) The "fetch data → sample it → ask the model → validate → stream" pipeline is server work. The browser only renders.</div>
+
+<!-- ============================================================ -->
+<h2 id="p4">4. Tools, accounts &amp; prerequisites <span class="tag t-should">BUILD</span></h2>
+
+<p>Here is everything a team needs before writing a line of conversion code. Items are tagged <span class="tag t-must">MUST</span> (required), <span class="tag t-should">SHOULD</span> (strongly recommended), <span class="tag t-nice">NICE</span> (optional polish).</p>
+
+<table>
+<tr><th>Tool / account</th><th>What it's for</th><th>Tag</th></tr>
+<tr><td><strong>Google AI API key</strong> (<code>GOOGLE_AI_API_KEY</code>)</td><td>Access to Gemma. Get it from Google AI Studio. This is the single most important credential.</td><td><span class="tag t-must">MUST</span></td></tr>
+<tr><td><strong><code>@google/genai</code></strong> npm package</td><td>The official Google SDK to call Gemma from Node.</td><td><span class="tag t-must">MUST</span></td></tr>
+<tr><td><strong>Node.js 18+</strong></td><td>Runtime for the backend server.</td><td><span class="tag t-must">MUST</span></td></tr>
+<tr><td><strong>Express.js</strong></td><td>The web-server framework that exposes the chat endpoint.</td><td><span class="tag t-must">MUST</span></td></tr>
+<tr><td><strong>TypeScript</strong></td><td>Type-safe code — catches whole classes of bugs when wiring model output to UI.</td><td><span class="tag t-should">SHOULD</span></td></tr>
+<tr><td><strong>A data source</strong></td><td>Where your real answers come from. We use Google BigQuery; yours could be Postgres, an internal API, a CSV, anything.</td><td><span class="tag t-must">MUST</span></td></tr>
+<tr><td><strong>A frontend</strong> (React in our case)</td><td>Your existing UI. You keep it; you only rewire how it talks to the backend.</td><td><span class="tag t-must">MUST</span></td></tr>
+<tr><td><strong>A component renderer</strong></td><td>One function that turns <code>{ type, props, data }</code> from the model into actual UI widgets.</td><td><span class="tag t-must">MUST</span></td></tr>
+<tr><td><strong>Charting library</strong> (Recharts/amCharts)</td><td>Draws the charts the model asks for.</td><td><span class="tag t-should">SHOULD</span></td></tr>
+<tr><td><strong>An in-memory cache</strong></td><td>Avoids paying for the same question twice. Can be a simple Map with a timestamp.</td><td><span class="tag t-should">SHOULD</span></td></tr>
+<tr><td><strong>Evaluation test set</strong></td><td>A list of example questions + expected behaviour, to measure quality as you tune prompts.</td><td><span class="tag t-should">SHOULD</span></td></tr>
+<tr><td><strong>BigQuery service account</strong> (if using BQ off-GCP)</td><td>Roles: <em>BigQuery Data Viewer</em> + <em>Job User</em>. Only if your data lives in BigQuery.</td><td><span class="tag t-nice">NICE</span></td></tr>
+</table>
+
+<h4>Install, in one block</h4>
+<pre><span class="c"># backend</span>
+mkdir backend &amp;&amp; cd backend &amp;&amp; npm init -y
+npm install express dotenv @google/genai
+npm install -D typescript ts-node @types/express @types/node
+<span class="c"># if your data is in BigQuery:</span>
+npm install @google-cloud/bigquery</pre>
+
+<h4>The <code>.env</code> file (backend only — never commit, never ship to browser)</h4>
+<pre>PORT=3001
+GOOGLE_AI_API_KEY=your_key_here
+<span class="c"># data source creds — example for BigQuery:</span>
+BQ_PROJECT_ID=your-project
+BQ_DATASET=your_dataset
+BQ_CLIENT_EMAIL=service-account@your-project.iam.gserviceaccount.com
+BQ_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+<span class="c"># which frontend origin may call this backend (CORS):</span>
+FRONTEND_ORIGIN=http://localhost:5173</pre>
+
+<!-- ============================================================ -->
+<h2 id="p5" class="pb">5. Meet Gemma — the model we use <span class="tag t-nice">PLAIN</span></h2>
+
+<p><strong>Gemma</strong> is Google's family of open language models, served through the same Google AI API as Gemini. In our system the exact model id is <code>gemma-4-31b-it</code> (the instruction-tuned, ~31-billion-parameter Gemma). You call it over the network; you don't host it.</p>
+
+<div class="box info">
+<strong>Why Gemma for this job?</strong>
+<ul>
+<li><strong>Good enough, cheaper.</strong> Intent classification and chart selection don't need a frontier model. Gemma handles them at lower cost and latency.</li>
+<li><strong>JSON-reliable.</strong> With "JSON mode" on, Gemma returns structured data our code can parse directly — essential, because we feed its output straight into the UI.</li>
+<li><strong>One SDK.</strong> The same <code>@google/genai</code> client and the same API key reach both Gemma and Gemini, so swapping models later is a one-line change.</li>
+</ul>
+</div>
+
+<div class="box tip"><strong>Model choice is a dial, not a commitment.</strong> The model id lives in exactly one constant (<code>const MODEL = 'gemma-4-31b-it'</code>). If a task needs more reasoning power, point that constant at a larger model; if you need cheaper, point it lower. Nothing else changes. Start with Gemma; upgrade only the calls that demonstrably need it.</div>
+
+<h4>Three things to know about how Gemma behaves</h4>
+<ul>
+<li><strong>It can ramble or "think out loud."</strong> Some responses include <code>&lt;think&gt;...&lt;/think&gt;</code> blocks or prose around the JSON. We strip those before parsing (see <code>stripThinkTags</code> / <code>extractJSON</code> in Part 7).</li>
+<li><strong>It is non-deterministic.</strong> The same prompt can give slightly different wording. We pin <code>temperature</code> low (0.1–0.2) for decisions, a touch higher (0.4) for creative report design.</li>
+<li><strong>It occasionally fails.</strong> Network blips, rate limits (429), server errors (500). We wrap every call in a retry-with-backoff and always have a deterministic fallback.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="p6">6. The backend pipeline, step by step <span class="tag t-should">BUILD</span></h2>
+
+<p>This is the heart of the conversion. When a message arrives, it flows through an ordered pipeline. Each step is small, testable, and mostly plain code — the model is consulted at only three points. Below is the exact flow from our <code>runStreamingPipeline</code>.</p>
+
+<div class="ascii">USER MESSAGE arrives at  POST /api/conversational/stream
+   │
+[0] CACHE CHECK ........ same question recently? → replay saved answer, done.
+   │                     (key = hash of query + persona + history + context)
+   ▼
+[1] ANALYZE / ROUTE .... Gemma: enough info to answer, or must I ask first?
+   │                     ├─ "clarify" → send a question to the UI → STOP
+   │                     └─ "route"   → pick the exact data table → continue
+   ▼
+[2] FOLLOW-UP HANDLER .. only if an answer is already on screen:
+   │                     Gemma (1 fused call): edit layout? re-query? just
+   │                     reply in text? start fresh? → may STOP here
+   ▼
+[3] FETCH DATA ......... run the query against your database. 0 rows? →
+   │                     recover by suggesting alternative tables.
+   ▼
+[4] ANALYZE SHAPE ...... plain code: which columns are numbers, categories,
+   │                     dates? how many distinct values? is it a time series?
+   ▼
+[5] PRE-AGGREGATE ...... plain code: dedupe & summarise rows, push the rows
+   │                     the user actually asked about to the front.
+   ▼
+[6] DESIGN REPORT ...... Gemma: given this data shape + 10–20 sample rows,
+   │                     choose title, charts, KPIs, follow-up suggestions.
+   ▼
+[7] FIX COLUMN CASING .. plain code: the model may lowercase a column the DB
+   │                     spells UPPERCASE — map it back to the real name.
+   ▼
+[8] HYDRATE ............ plain code: attach the REAL data arrays to each chart
+   │                     the model designed. (The model never sees all rows.)
+   ▼
+[9] STREAM &amp; CACHE ..... send title, then each component, then suggestions,
+                         then "done". Save the result in cache.</div>
+
+<div class="box ok"><strong>Read the table of consult points.</strong> The model is called at <strong>[1]</strong>, <strong>[2]</strong>, and <strong>[6]</strong> only. Steps 0, 3, 4, 5, 7, 8, 9 are ordinary, predictable code. That ratio — three smart steps, six dumb ones — is what keeps the system fast and affordable.</div>
+
+<h3>Why each "dumb" step matters</h3>
+<table>
+<tr><th>Step</th><th>What goes wrong without it</th></tr>
+<tr><td>[0] Cache</td><td>You pay the model (and the wait) for identical repeat questions.</td></tr>
+<tr><td>[4] Shape analysis</td><td>The model guesses column types and picks a pie chart for a date column.</td></tr>
+<tr><td>[5] Pre-aggregate</td><td>The model sees 5,000 raw rows, blows the token budget, and averages the wrong thing.</td></tr>
+<tr><td>[7] Casing fix</td><td>The chart renders blank because <code>revenue</code> ≠ the DB's <code>REVENUE</code>.</td></tr>
+<tr><td>[8] Hydration</td><td>Charts show the 10 sample rows instead of the full dataset.</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="p7" class="pb">7. Talking to Gemma — the API <span class="tag t-should">BUILD</span></h2>
+
+<p>One client, created once and reused. Every call uses the same shape: a system instruction (the rules), the user content (the question + data), and a config block (model, temperature, JSON mode).</p>
+
+<h4>Setup</h4>
+<pre><span class="k">import</span> { GoogleGenAI, Type } <span class="k">from</span> <span class="s">'@google/genai'</span>;
+
+<span class="k">const</span> MODEL = <span class="s">'gemma-4-31b-it'</span>;
+
+<span class="k">let</span> _ai = <span class="k">null</span>;
+<span class="k">function</span> <span class="f">getAI</span>() {
+  <span class="k">if</span> (!_ai) _ai = <span class="k">new</span> <span class="f">GoogleGenAI</span>({ apiKey: process.env.GOOGLE_AI_API_KEY });
+  <span class="k">return</span> _ai;
+}</pre>
+
+<h4>A single call (JSON mode — the pattern we use everywhere)</h4>
+<pre><span class="k">const</span> response = <span class="k">await</span> ai.models.<span class="f">generateContent</span>({
+  model: MODEL,
+  config: {
+    temperature: <span class="s">0.2</span>,                 <span class="c">// low = consistent decisions</span>
+    maxOutputTokens: <span class="s">768</span>,
+    responseMimeType: <span class="s">'application/json'</span>, <span class="c">// ← forces structured output</span>
+    systemInstruction: system,        <span class="c">// the rules (see Part 8)</span>
+  },
+  contents: [{ role: <span class="s">'user'</span>, parts: [{ text: user }] }],
+});
+
+<span class="k">const</span> raw = response.text ?? <span class="s">''</span>;
+<span class="k">const</span> parsed = <span class="f">JSON</span>.<span class="f">parse</span>(<span class="f">extractJSON</span>(<span class="f">stripThinkTags</span>(raw)));</pre>
+
+<h4>The two cleaners you will always need</h4>
+<pre><span class="c">// remove the model's optional "thinking out loud" blocks</span>
+<span class="k">function</span> <span class="f">stripThinkTags</span>(t) {
+  <span class="k">return</span> t.<span class="f">replace</span>(<span class="s">/&lt;think&gt;[\s\S]*?&lt;\/think&gt;/gi</span>, <span class="s">''</span>).<span class="f">trim</span>();
+}
+<span class="c">// grab just the { ... } even if prose leaked around it</span>
+<span class="k">function</span> <span class="f">extractJSON</span>(t) {
+  <span class="k">const</span> s = t.<span class="f">indexOf</span>(<span class="s">'{'</span>), e = t.<span class="f">lastIndexOf</span>(<span class="s">'}'</span>);
+  <span class="k">return</span> (s !== -<span class="s">1</span> &amp;&amp; e &gt; s) ? t.<span class="f">slice</span>(s, e + <span class="s">1</span>) : t;
+}</pre>
+
+<h4>Retry with backoff — wrap every model call</h4>
+<pre><span class="k">async function</span> <span class="f">withRetry</span>(fn, maxAttempts = <span class="s">3</span>) {
+  <span class="k">let</span> lastErr;
+  <span class="k">for</span> (<span class="k">let</span> a = <span class="s">1</span>; a &lt;= maxAttempts; a++) {
+    <span class="k">try</span> { <span class="k">return await</span> <span class="f">fn</span>(); }
+    <span class="k">catch</span> (err) {
+      lastErr = err;
+      <span class="k">const</span> code = err?.error?.code ?? err?.status ?? <span class="s">0</span>;
+      <span class="k">if</span> (code !== <span class="s">500</span> &amp;&amp; code !== <span class="s">429</span>) <span class="k">throw</span> err; <span class="c">// only retry transient</span>
+      <span class="k">if</span> (a &lt; maxAttempts)
+        <span class="k">await new</span> <span class="f">Promise</span>(r =&gt; <span class="f">setTimeout</span>(r, <span class="f">Math</span>.<span class="f">pow</span>(<span class="s">2</span>, a) * <span class="s">600</span>)); <span class="c">// 1.2s, 2.4s</span>
+    }
+  }
+  <span class="k">throw</span> lastErr;
+}</pre>
+
+<div class="box tip"><strong>JSON mode vs. function calling.</strong> The Google SDK also supports "function calling" (the model picks a named tool). We tried it and found plain <strong>JSON mode</strong> (<code>responseMimeType: 'application/json'</code>) more reliable with Gemma. We define our tool schemas anyway for documentation, but the calls that matter use JSON mode and we parse the result ourselves. If you are on Gemini instead, function calling works well too — pick one and be consistent.</div>
+
+<!-- ============================================================ -->
+<h2 id="p8">8. Prompt engineering — the real work <span class="tag t-should">BUILD</span></h2>
+
+<p>This is where 80% of the quality lives. A prompt is the instruction sheet you hand the model. In a static chat, you wrote the answers; here, you write the <em>rules for producing answers</em>. Three prompts carry our system.</p>
+
+<h3>8.1 The analyze/route prompt — decide before doing</h3>
+<p>Goal: read the question, decide "route" (I know enough) or "clarify" (I must ask). The decisive trick is <strong>giving the model a closed list of real options</strong> and forbidding it to invent any.</p>
+<pre>You are a friendly business intelligence assistant...
+
+AVAILABLE DATA (only suggest options from this list — these are the
+only reports with real data):
+- domain="Sales"   report="Monthly Revenue"  table="fact_sug_monthly_rollup"
+- domain="Network" report="Network KPI Trends" table="fact_network_kpi_points"
+  ...(generated from your real data sources)...
+
+RULES:
+1. If query + history name a domain AND a report → action="route",
+   set table to the EXACT string above.
+2. If domain unclear → action="clarify", options = the domain names above.
+3. If domain clear but report unclear → action="clarify",
+   options = ONLY that domain's report names.
+5. NEVER invent table, domain, or report names.
+
+Respond with valid JSON only:
+{ "action":"route"|"clarify", "opener":"...", "question":"...",
+  "options":["..."], "table":"...", "intent":"trend"|"comparison"|"metric_by_dimension" }</pre>
+
+<div class="box warn"><strong>The golden rule of grounding.</strong> Notice rules 5 and 6 forbid invention, and the options are validated <em>again in code</em> after the model replies — anything not in your real catalog is dropped. An LLM will happily offer a "2023 Cohort Analysis" report that doesn't exist. Constrain it in the prompt <strong>and</strong> verify in code. Never trust, always check.</div>
+
+<h3>8.2 The design-report prompt — choose the visualization</h3>
+<p>Goal: given the data's shape and a few sample rows, design the answer. This prompt is long because it teaches the model <em>which component fits which intent</em>. Excerpt of the decision rules we give it:</p>
+<pre>STEP 1 — UNDERSTAND THE QUERY INTENT:
+  TREND / over time        → LineChart or AreaChart + 1 KPICard
+  COMPARISON / ranking     → BarChart or RankedList or ComparisonCard
+  SINGLE METRIC            → KPIGrid or 1–3 KPICards, no table unless asked
+  CORRELATION              → ScatterPlot + 1 InsightCard
+  SUMMARY / "explain/why"  → 1–2 KPICards + InsightCard, NO charts
+
+COLUMN NAME RULE (most important):
+  Copy column names from EXACT_COLUMNS character-for-character into
+  xKey, yKey, nameKey, valueKey. NEVER lowercase or invent them.
+
+ENTITY SPECIFICITY:
+  If the query names T-007, use THAT row's values for KPIs — never the
+  global average. Title and message must name the entity explicitly.
+
+Respond with JSON only:
+{ "title":"...", "message":"...", "cards":[{ "renderType":"...","props":{...} }],
+  "followUp":[{ "label":"...", "intent":"..." }] }</pre>
+
+<div class="box info"><strong>Why we send only a sample, never all rows.</strong> Step 5 of the pipeline hands the model ~10–20 representative rows plus a written summary of the shape ("12 columns, 3 are dates, REVENUE ranges 0–4.2M"). The model designs the layout from the sample; step 8 attaches the <em>full</em> data afterward. This keeps prompts small (cheap, fast) and stops the model from miscalculating totals.</div>
+
+<h3>8.3 The fused follow-up prompt — one call, four outcomes</h3>
+<p>When an answer is already on screen and the user types again, a naïve design makes two model calls (classify, then act). We fused them into <strong>one</strong> call that both decides and does:</p>
+<pre>The user has an open report and sends a follow-up. Choose ONE action:
+
+QA / ANSWER  ("summarize", "why", "explain", "in bullets", any question)
+  → { "action":"qa_answer", "message":"...uses real values...", "followUp":[...] }
+STRUCTURAL EDIT  ("remove the chart", "show only KPIs", "change to line")
+  → { "action":"edit_structural", "acknowledgment":"...", "cards":[surviving cards] }
+DATA CHANGE  ("top 5", "filter T-017", "last 3 months")
+  → { "action":"edit_data_change", "sqlOverride":"ORDER BY REVENUE DESC LIMIT 5" }
+NEW REPORT  (unrelated topic)  → { "action":"new_report" }
+AMBIGUOUS                      → { "action":"clarify_intent" }</pre>
+
+<div class="box ok"><strong>Three habits that make prompts reliable.</strong> (1) Always end with the exact JSON shape you expect. (2) Give a closed list of allowed values (render types, table names, actions) — never an open question. (3) Put the most important rule ("never invent column names") in CAPS near the top <em>and</em> repeat it at the bottom. Models weight the start and end of a prompt most.</div>
+
+<!-- ============================================================ -->
+<h2 id="p9" class="pb">9. Streaming answers (SSE) <span class="tag t-should">BUILD</span></h2>
+
+<p>A full report can take a few seconds. Rather than a long blank wait, we <strong>stream</strong> the answer: the status appears, then the title, then each chart pops in as it's ready. The mechanism is <strong>Server-Sent Events (SSE)</strong> — a one-way stream of small messages from server to browser over a single HTTP response.</p>
+
+<div class="analogy"><strong>Analogy.</strong> A normal API call is a sealed letter — nothing until it all arrives. SSE is a phone call — you hear each sentence as it's spoken. The user sees progress, so the wait feels short.</div>
+
+<h4>Server side — a tiny <code>send</code> helper</h4>
+<pre>res.<span class="f">writeHead</span>(<span class="s">200</span>, {
+  <span class="s">'Content-Type'</span>: <span class="s">'text/event-stream'</span>,
+  <span class="s">'Cache-Control'</span>: <span class="s">'no-cache'</span>,
+  <span class="s">'Connection'</span>: <span class="s">'keep-alive'</span>,
+});
+<span class="k">const</span> <span class="f">send</span> = (event, data) =&gt;
+  res.<span class="f">write</span>(<span class="s">`event: </span>${event}<span class="s">\ndata: </span>${<span class="f">JSON</span>.<span class="f">stringify</span>(data)}<span class="s">\n\n`</span>);
+
+<span class="f">send</span>(<span class="s">'status'</span>,    { message: <span class="s">'Understanding your query...'</span> });
+<span class="f">send</span>(<span class="s">'meta'</span>,      { title, description, template });
+<span class="f">send</span>(<span class="s">'component'</span>, hydratedCard);  <span class="c">// one per chart/KPI</span>
+<span class="f">send</span>(<span class="s">'followUp'</span>,  suggestions);
+<span class="f">send</span>(<span class="s">'done'</span>,      { success: <span class="k">true</span> });</pre>
+
+<h4>The event protocol (what the browser listens for)</h4>
+<table>
+<tr><th>Event</th><th>Meaning for the UI</th></tr>
+<tr><td><code>status</code></td><td>Show a progress line ("Querying database…")</td></tr>
+<tr><td><code>meta</code></td><td>Set the answer's title + description</td></tr>
+<tr><td><code>component</code></td><td>Append one chart/table/KPI — render it immediately</td></tr>
+<tr><td><code>followUp</code></td><td>Show suggested next-question chips</td></tr>
+<tr><td><code>clarification</code></td><td>Show a question card with option buttons</td></tr>
+<tr><td><code>qa_answer</code></td><td>Show a text reply, no new dashboard</td></tr>
+<tr><td><code>acknowledgment</code></td><td>Confirm an edit was applied</td></tr>
+<tr><td><code>error</code></td><td>Show an error state + retry button</td></tr>
+<tr><td><code>done</code></td><td>Stream finished — stop the spinner</td></tr>
+</table>
+
+<h4>Browser side — read the stream</h4>
+<pre><span class="k">const</span> res = <span class="k">await</span> <span class="f">fetch</span>(<span class="s">'/api/conversational/stream'</span>, { method: <span class="s">'POST'</span>, body });
+<span class="k">const</span> reader = res.body.<span class="f">getReader</span>();
+<span class="c">// loop: decode each chunk, split on \n, route by event type, patch UI state</span></pre>
+
+<div class="box tip"><strong>Don't have time for SSE on day one?</strong> Ship a non-streaming endpoint first (one JSON response with the whole answer) and add streaming later. Our backend keeps both: <code>/api/conversational/stream</code> (SSE) and <code>/api/conversational</code> (plain JSON fallback). Same pipeline underneath.</div>
+
+<!-- ============================================================ -->
+<h2 id="p10">10. The frontend conversion <span class="tag t-should">BUILD</span></h2>
+
+<p>Good news: you keep your UI. The chat bubbles, the input box, the sidebar — all stay. What changes is <em>where the answer comes from</em>. In the static version, a click looked up a hardcoded screen. Now, the message goes to the backend and the answer streams back as a list of components to render.</p>
+
+<h3>The one component that makes this work: a renderer</h3>
+<p>The model returns abstract descriptions like <code>{ renderType: "LineChart", props: { xKey: "MONTH", yKey: "REVENUE" }, data: [...] }</code>. You need <strong>one</strong> function — call it <code>UITreeRenderer</code> — that maps each <code>renderType</code> to a real widget. This is the bridge between "what the model decided" and "what the user sees."</p>
+<pre><span class="k">function</span> <span class="f">UITreeRenderer</span>({ renderType, props, data }) {
+  <span class="k">switch</span> (renderType) {
+    <span class="k">case</span> <span class="s">'LineChart'</span>:  <span class="k">return</span> &lt;<span class="f">LineChart</span> {...props} data={data} /&gt;;
+    <span class="k">case</span> <span class="s">'BarChart'</span>:   <span class="k">return</span> &lt;<span class="f">BarChart</span> {...props} data={data} /&gt;;
+    <span class="k">case</span> <span class="s">'KPICard'</span>:    <span class="k">return</span> &lt;<span class="f">KPICard</span> {...props} /&gt;;
+    <span class="k">case</span> <span class="s">'RankedList'</span>: <span class="k">return</span> &lt;<span class="f">RankedList</span> {...props} data={data} /&gt;;
+    <span class="k">case</span> <span class="s">'Table'</span>:      <span class="k">return</span> &lt;<span class="f">DataTable</span> {...props} data={data} /&gt;;
+    <span class="c">// ...20+ types: charts, KPIs, narrative cards, layout wrappers</span>
+    <span class="k">default</span>:           <span class="k">return</span> &lt;<span class="f">Fallback</span> type={renderType} /&gt;;
+  }
+}</pre>
+
+<div class="box info"><strong>Build the renderer's vocabulary first.</strong> The set of <code>renderType</code> values your renderer understands <em>is</em> the set the model is allowed to choose from. List them in the design prompt (Part 8.2) and implement each in the renderer. Start with five (KPICard, LineChart, BarChart, Table, InsightCard) and grow. A model asking for a type you didn't build should hit the <code>default</code> fallback, never crash.</div>
+
+<h3>What to delete from the static frontend</h3>
+<table>
+<tr><th>Static artifact</th><th>Fate</th></tr>
+<tr><td>Hardcoded decision-tree branches (<code>if step==='X'</code>)</td><td>Delete — the model decides now</td></tr>
+<tr><td>Pre-written bot reply strings</td><td>Delete — generated live</td></tr>
+<tr><td>Fixed button menus for every step</td><td>Replace with model-supplied <code>followUp</code> chips + <code>clarification</code> options</td></tr>
+<tr><td>Chat bubbles, input box, sidebar, layout</td><td>Keep — purely visual</td></tr>
+<tr><td>Your chart/table components</td><td>Keep — the renderer now drives them</td></tr>
+</table>
+
+<h3>Message state shape</h3>
+<p>Each message becomes richer than a string. Store the rendered components alongside the text so history reloads correctly:</p>
+<pre>Message = {
+  role: <span class="s">'user'</span> | <span class="s">'assistant'</span>,
+  content: <span class="s">string</span>,              <span class="c">// the text</span>
+  components: UINode[],         <span class="c">// hydrated charts/tables/KPIs</span>
+  suggestedPrompts: [{ label, intent }],
+}</pre>
+
+<!-- ============================================================ -->
+<h2 id="p11" class="pb">11. Your data layer <span class="tag t-should">BUILD</span></h2>
+
+<p>The model is only as good as the data you ground it in. Your job is to give it a clean, named menu of data sources. We use a <strong>data source map</strong> — a plain list that ties a human report name to a real table and its key metrics.</p>
+
+<pre>DATA_SOURCES = [
+  { domain: <span class="s">'Sales'</span>,   reportName: <span class="s">'Monthly Revenue &amp; Take Rate'</span>,
+    table: <span class="s">'fact_sug_monthly_rollup'</span>,
+    kpis: [<span class="s">'Revenue'</span>, <span class="s">'Run Rate'</span>, <span class="s">'Take Rate %'</span>, <span class="s">'Return Rate %'</span>] },
+  { domain: <span class="s">'Network'</span>, reportName: <span class="s">'Network KPI Trends'</span>,
+    table: <span class="s">'fact_network_kpi_points'</span>,
+    kpis: [<span class="s">'Network KPI Score'</span>, <span class="s">'Signal Strength'</span>, <span class="s">'Latency'</span>] },
+  <span class="c">// ...one entry per real report...</span>
+];</pre>
+
+<p>This single list powers three things: the options the model offers when clarifying, the <code>enum</code> of valid tables it may route to, and the catalog text injected into the analyze prompt. <strong>If it isn't in this list, the model can't offer it</strong> — which is exactly the safety you want.</p>
+
+<h4>Two data-layer habits worth copying</h4>
+<ul>
+<li><strong>Startup probe.</strong> On boot, run <code>SELECT 1 FROM table LIMIT 1</code> against each source and cache which ones actually return rows. Only offer reports backed by live data. (We re-probe every 24h.)</li>
+<li><strong>Catalog refresh.</strong> Periodically pull real column names + descriptions from your warehouse into a markdown "catalog" and inject it into prompts. This lets the model ask field-aware clarifying questions ("by territory or by device?") instead of generic ones.</li>
+</ul>
+
+<div class="box tip"><strong>Not using BigQuery?</strong> Nothing above is BigQuery-specific. Swap the <code>table</code> field for an API endpoint, a SQL view, a collection name, or a file path. The pipeline only needs a function that takes a source id (+ optional filter) and returns <code>rows[]</code>. Everything downstream — shape analysis, hydration, rendering — is data-source agnostic.</div>
+
+<!-- ============================================================ -->
+<h2 id="p11b" class="pb">11½. No database? Use a Markdown context file <span class="tag t-should">BUILD</span></h2>
+
+<p>Many prototypes have <strong>no warehouse at all</strong> — no BigQuery, no SQL, just knowledge that lives in someone's head or a wiki. You don't need a database to go LLM-based. Instead, write the knowledge down as a plain <strong>Markdown (<code>.md</code>) file</strong> in the backend, and inject it into the model's system instruction on every call. The model reads it like an open-book exam and answers from it.</p>
+
+<div class="analogy"><strong>Analogy.</strong> BigQuery is a <em>filing cabinet</em> the assistant searches. A Markdown context file is a <em>cheat-sheet</em> you tape to the assistant's desk — everything it needs to know, always in view. For small, mostly-static knowledge, the cheat-sheet is simpler, faster, and free.</div>
+
+<div class="box ok"><strong>We already do exactly this.</strong> Even in our BigQuery build, the model is handed a hand-shaped Markdown catalog (<code>backend/data/catalog_context.md</code>) describing domains, reports, and column names. It's loaded once, cached for 25 hours, and injected into the analyze prompt. The no-database path is the <em>same mechanism</em> — you just author the file by hand instead of generating it from a warehouse.</div>
+
+<h3>When the Markdown file is the right choice</h3>
+<table>
+<tr><th>Use a Markdown context file when…</th><th>Use a real database when…</th></tr>
+<tr><td>Knowledge is small (fits in a few pages)</td><td>Data is large (thousands+ of rows)</td></tr>
+<tr><td>Facts change rarely (policies, FAQs, product specs)</td><td>Numbers change constantly (live metrics)</td></tr>
+<tr><td>Answers are text/explanations</td><td>Answers are charts/tables of figures</td></tr>
+<tr><td>No data team or warehouse available</td><td>You already have SQL access</td></tr>
+<tr><td>You want to ship this week</td><td>You need always-current aggregates</td></tr>
+</table>
+
+<h3>What goes in the file</h3>
+<p>Everything the model would otherwise have to guess. Structure it with clear headings so the model can navigate it. Typical contents:</p>
+<ul>
+<li><strong>Who the assistant is</strong> and its scope ("You help employees with HR policy questions only").</li>
+<li><strong>The knowledge itself</strong> — policies, FAQs, product details, process steps, definitions.</li>
+<li><strong>The closed list of topics</strong> it can route to (the same grounding idea as <code>DATA_SOURCES</code>).</li>
+<li><strong>Worked examples</strong> — a few question→answer pairs that show the tone and format you want.</li>
+<li><strong>What to do when it doesn't know</strong> ("If the answer isn't in this document, say so and offer to escalate").</li>
+</ul>
+
+<h4>Example — <code>backend/data/knowledge.md</code></h4>
+<pre><span class="c"># Acme Support Assistant — Knowledge Base</span>
+<span class="c">Last updated: 2026-06-20</span>
+
+<span class="c">## Scope</span>
+You answer questions about Acme's return policy, shipping, and warranties.
+If a question falls outside these topics, say you can't help and suggest
+contacting support@acme.com.
+
+<span class="c">## Topics (only route to these)</span>
+- Returns
+- Shipping
+- Warranty
+
+<span class="c">## Returns</span>
+- Window: 30 days from delivery for a full refund.
+- Condition: unused, original packaging.
+- Final-sale items (clearance) cannot be returned.
+
+<span class="c">## Shipping</span>
+- Standard: 5–7 business days, free over $50.
+- Express: 2 business days, $12 flat.
+
+<span class="c">## Warranty</span>
+- Electronics: 1 year against manufacturing defects.
+- Claims need the order number and a photo.
+
+<span class="c">## Examples</span>
+Q: "Can I return a clearance shirt?"
+A: "Clearance items are final sale and can't be returned. Anything else I can help with?"</pre>
+
+<h3>How to load and inject it (grounded in our real loader)</h3>
+<p>Read the file once, cache it in memory, and prepend it to the system instruction. This is the same shape as our <code>loadCatalogContext()</code>, minus the database refresh.</p>
+<pre><span class="k">import</span> fs <span class="k">from</span> <span class="s">'fs/promises'</span>;
+<span class="k">import</span> path <span class="k">from</span> <span class="s">'path'</span>;
+
+<span class="k">const</span> KB_PATH = path.<span class="f">resolve</span>(__dirname, <span class="s">'../data/knowledge.md'</span>);
+<span class="k">let</span> _kb = <span class="k">null</span>, _at = <span class="s">0</span>;
+<span class="k">const</span> TTL = <span class="s">25</span> * <span class="s">60</span> * <span class="s">60</span> * <span class="s">1000</span>; <span class="c">// re-read at most once a day</span>
+
+<span class="k">async function</span> <span class="f">loadKnowledge</span>() {
+  <span class="k">if</span> (_kb &amp;&amp; <span class="f">Date</span>.<span class="f">now</span>() - _at &lt; TTL) <span class="k">return</span> _kb;   <span class="c">// serve from cache</span>
+  _kb = <span class="k">await</span> fs.<span class="f">readFile</span>(KB_PATH, <span class="s">'utf-8'</span>);
+  _at = <span class="f">Date</span>.<span class="f">now</span>();
+  <span class="k">return</span> _kb;
+}
+
+<span class="c">// inject into every model call:</span>
+<span class="k">const</span> knowledge = <span class="k">await</span> <span class="f">loadKnowledge</span>();
+<span class="k">const</span> system = <span class="s">`You are a support assistant. Answer ONLY from the</span>
+<span class="s">knowledge below. If the answer isn't here, say you don't know.</span>
+
+<span class="s">--- KNOWLEDGE BASE ---</span>
+${knowledge}
+<span class="s">--- END ---`</span>;
+
+<span class="k">const</span> response = <span class="k">await</span> ai.models.<span class="f">generateContent</span>({
+  model: MODEL,
+  config: { temperature: <span class="s">0.2</span>, systemInstruction: system },
+  contents: [{ role: <span class="s">'user'</span>, parts: [{ text: userQuery }] }],
+});</pre>
+
+<div class="box warn"><strong>The one rule that prevents hallucination.</strong> Always tell the model, in caps, to answer <strong>only</strong> from the document and to <strong>admit when it doesn't know</strong>. Without this, the model fills gaps with confident invention. The file is the model's <em>only</em> permitted source of facts — say so explicitly, every call.</div>
+
+<h3>Where this plugs into the pipeline</h3>
+<p>The Markdown file <em>replaces</em> the fetch-data steps. Your pipeline gets shorter:</p>
+<div class="ascii">USER MESSAGE
+   │
+[0] CACHE CHECK
+   │
+[1] (optional) ANALYZE — only if you route across several .md topics
+   │
+[2] ANSWER — Gemma reads the injected knowledge.md and replies
+   │           (text answer, or designed cards if you still render UI)
+   ▼
+[9] STREAM &amp; CACHE</div>
+<p>Steps [3]–[8] (fetch, shape, aggregate, hydrate) simply don't exist — there are no rows to shape. If your assistant is purely conversational (text in, text out), you can use the simple <code>/api/chat</code> style endpoint that calls Gemma with a system prompt and message history, no pipeline at all.</p>
+
+<h3>Practical tips</h3>
+<ul>
+<li><strong>Mind the size.</strong> The whole file is sent on every call, so every word costs tokens. Keep it tight — a few pages, not a novel. If it grows past ~10–15 pages, it's time to split it (see below) or move to a database/search index.</li>
+<li><strong>Split by topic if it's big.</strong> Keep one small <code>index.md</code> listing topics, then load only the relevant topic file after a cheap routing call. This is "poor man's retrieval" and keeps prompts small.</li>
+<li><strong>Version it in git.</strong> The <code>.md</code> file is just text — commit it, review changes in pull requests, and you get a full history of what the assistant "knew" and when.</li>
+<li><strong>Editable by non-engineers.</strong> A product owner can update the knowledge by editing Markdown — no code deploy if you read it fresh (or on a short TTL). This is a real advantage over hardcoded answers.</li>
+<li><strong>Cache, but allow refresh.</strong> Read once and cache (like above). For frequently-edited files, drop the TTL to minutes, or expose an admin endpoint that busts the cache on demand.</li>
+</ul>
+
+<div class="box info"><strong>Hybrid is fine — and common.</strong> You can do both at once: a Markdown file for stable context (definitions, business rules, tone) <em>and</em> a database for live numbers. Our system already runs this way — hand-written catalog Markdown for grounding plus BigQuery for the actual figures. Start with just the <code>.md</code> file; add a data source later only if and when you need live data.</div>
+
+<!-- ============================================================ -->
+<h2 id="p12" class="pb">12. Clarification &amp; follow-up flows <span class="tag t-nice">PLAIN</span></h2>
+
+<h3>When the question is vague</h3>
+<p>A good assistant asks before guessing — but only when needed, and never twice for the same thing. The model returns <code>action: "clarify"</code> with a question and 3–4 option chips. The user taps one; that answer is appended to a running <code>clarificationHistory</code>, and the pipeline re-runs with the extra context. Because every option is drawn from your real catalog, the user can never pick a dead end.</p>
+
+<div class="ascii">vague query → Gemma: "clarify" → UI shows question + option chips
+   → user taps "Sales" → append {q,a} to history → re-run pipeline
+   → now enough context → "route" → real answer</div>
+
+<h3>When they want to change the answer on screen</h3>
+<p>This is the feature static chats simply cannot do. With an answer already rendered, the follow-up goes through the <strong>fused</strong> call (Part 8.3) which picks one of four paths:</p>
+<table>
+<tr><th>User says…</th><th>Action</th><th>What happens</th></tr>
+<tr><td>"show only the KPIs"</td><td><code>edit_structural</code></td><td>Model returns the surviving cards; we re-attach their original data. No database hit.</td></tr>
+<tr><td>"top 5 territories"</td><td><code>edit_data_change</code></td><td>Model supplies a SQL tweak; pipeline re-queries from step [3].</td></tr>
+<tr><td>"summarize this in bullets"</td><td><code>qa_answer</code></td><td>Model writes a text reply using the on-screen data; no new dashboard.</td></tr>
+<tr><td>"now show me network outages"</td><td><code>new_report</code></td><td>Treated as a fresh question; full pipeline runs.</td></tr>
+</table>
+
+<div class="box ok"><strong>The clever bit: data survival on edits.</strong> When the model rewrites the card layout for a structural edit, it never sees the heavy data arrays (we strip them to save tokens). So after the edit we rebuild a lookup keyed by <code>renderType + title</code> and re-attach the original rows. The user reorders charts; the data rides along untouched.</div>
+
+<!-- ============================================================ -->
+<h2 id="p13" class="pb">13. Caching, retries &amp; safety nets <span class="tag t-should">BUILD</span></h2>
+
+<p>An LLM system has more failure modes than a static one. Three layers keep it dependable.</p>
+
+<h4>Caching — don't pay twice</h4>
+<p>Key the cache on a stable hash of <em>everything that affects the answer</em>: the query text, the persona, the clarification history, and any prior context. On a hit, skip steps [3]–[8] and replay the stored components. TTL of ~5 minutes is plenty for interactive use; the data catalog gets a longer TTL (10 min) and a 24h hard refresh.</p>
+
+<h4>Retries — survive a flaky model</h4>
+<p>Every model call is wrapped in <code>withRetry</code> (Part 7): on a 429 (rate limit) or 500 (server error), wait and retry up to 3 times with exponential backoff. Other errors throw immediately — no point retrying a malformed request.</p>
+
+<h4>Fallbacks — never show a dead end</h4>
+<table>
+<tr><th>Failure</th><th>Safety net</th></tr>
+<tr><td>Model call fails after retries</td><td><strong>Deterministic fallback</strong>: build the next clarifying question from known context using plain code, no model.</td></tr>
+<tr><td>Model returns empty/garbage cards</td><td>Fallback card generator produces a basic table from the data.</td></tr>
+<tr><td>Model invents a table/option</td><td>Code validates against the real catalog and drops invalids.</td></tr>
+<tr><td>Query returns 0 rows</td><td>Recovery path suggests alternative tables/domains.</td></tr>
+<tr><td>Model lowercases a column name</td><td><code>fixColumnCasing</code> maps it back to the real schema.</td></tr>
+<tr><td>Chart type unsuitable for data</td><td>Validator falls back to a Table view with a notice.</td></tr>
+</table>
+
+<div class="box warn"><strong>Rule: every model call needs a non-model answer behind it.</strong> The model is the preferred path, never the only path. If it's down, the user should still get <em>something</em> useful. This is the difference between a demo and a product.</div>
+
+<!-- ============================================================ -->
+<h2 id="p14">14. Security &amp; configuration <span class="tag t-must">MUST</span></h2>
+
+<ul>
+<li><strong>Keys live server-side only.</strong> <code>GOOGLE_AI_API_KEY</code> and DB credentials go in the backend <code>.env</code> / host config — never in frontend code, never in the git repo. If a key ever reaches the browser bundle, it is compromised.</li>
+<li><strong>Never deploy a <code>.env</code> file to cloud hosts.</strong> Set each variable in the platform's config panel (App Service settings, etc.).</li>
+<li><strong>Lock CORS in production.</strong> Default <code>*</code> is fine for local dev; in production set <code>FRONTEND_ORIGIN</code> to your exact frontend URL so only it can call the backend.</li>
+<li><strong>Gate access if needed.</strong> Our backend checks a server-side <code>ACCESS_PASSWORD</code> via <code>/api/auth/verify</code>; the password never ships to the client.</li>
+<li><strong>Validate model output before using it.</strong> Treat everything the model returns as untrusted input: parse defensively, validate against your catalog/schema, never <code>eval</code> it, never run model-supplied SQL without sanitising the override.</li>
+<li><strong>Least-privilege data access.</strong> The service account should be read-only (Data Viewer + Job User), scoped to the one dataset the app needs.</li>
+</ul>
+
+<div class="box warn"><strong>The model-supplied SQL caveat.</strong> The <code>edit_data_change</code> path lets the model return a SQL fragment (e.g. <code>ORDER BY REVENUE DESC LIMIT 5</code>). Keep these to constrained, append-only clauses, validate them, and run them under a read-only account. Never let a raw model string become an unguarded full query.</div>
+
+<!-- ============================================================ -->
+<h2 id="p15" class="pb">15. Testing &amp; evaluation <span class="tag t-should">BUILD</span></h2>
+
+<p>Static chats are tested by clicking every branch. LLM chats need a different approach because the output varies. Build an <strong>evaluation set</strong>: a list of example questions paired with what should happen.</p>
+
+<pre>testCases = [
+  { query: <span class="s">'show revenue trend'</span>,        expect: { route: <span class="s">'fact_sug_monthly_rollup'</span>,
+                                              chartContains: <span class="s">'LineChart'</span> } },
+  { query: <span class="s">'hello'</span>,                      expect: { action: <span class="s">'clarify'</span> } },
+  { query: <span class="s">'compare T-007 and T-001'</span>,   expect: { chartContains: <span class="s">'ComparisonCard'</span>,
+                                              mentionsEntities: [<span class="s">'T-007'</span>,<span class="s">'T-001'</span>] } },
+];</pre>
+
+<p>Run the set after every prompt change and score the hit rate. This turns prompt tuning from guesswork into measurement — you can prove a change helped instead of hoping. Our repo ships exactly this as a runnable benchmark.</p>
+
+<h4>What to assert (not exact strings — behaviours)</h4>
+<ul>
+<li>Did it route to the correct table?</li>
+<li>Did it clarify when (and only when) it should?</li>
+<li>Did the chosen chart type match the intent?</li>
+<li>Did it use the specific entity's numbers, not the global average?</li>
+<li>Is the JSON valid and renderable?</li>
+</ul>
+
+<div class="box tip"><strong>Manual smoke tests matter too.</strong> Keep a short list of "trap" queries — vague, multi-part, off-topic, typo-ridden — and run them by hand before each release. The eval set catches regressions; trap queries catch the weird stuff users actually type.</div>
+
+<!-- ============================================================ -->
+<h2 id="p16">16. Cost &amp; performance <span class="tag t-nice">PLAIN</span></h2>
+
+<p>Two things drive cost: <strong>how many model calls</strong> you make and <strong>how big each prompt</strong> is. Our design attacks both.</p>
+<table>
+<tr><th>Lever</th><th>Effect</th></tr>
+<tr><td>Deterministic-First (3 model calls, not 9)</td><td>Fewer calls per question</td></tr>
+<tr><td>Fused follow-up (1 call does classify + edit)</td><td>Halves follow-up cost</td></tr>
+<tr><td>Fast path (skip model when query is already explicit)</td><td>Some questions cost $0 in model calls</td></tr>
+<tr><td>Send 10–20 sample rows, not the whole table</td><td>Smaller, cheaper prompts</td></tr>
+<tr><td>Strip data arrays before edit calls</td><td>Edit prompts stay tiny</td></tr>
+<tr><td>5-minute cache</td><td>Repeat questions are free + instant</td></tr>
+<tr><td>Gemma instead of a frontier model</td><td>Lower per-token price for routine decisions</td></tr>
+</table>
+
+<p><strong>Latency.</strong> Streaming (SSE) doesn't make the work faster, but it makes it <em>feel</em> 3–4× faster because the user sees progress within ~1 second instead of staring at a blank screen for the full duration.</p>
+
+<!-- ============================================================ -->
+<h2 id="p17" class="pb">17. Migration checklist <span class="tag t-should">BUILD</span></h2>
+
+<p>The recommended order. Each phase is shippable on its own.</p>
+
+<h4>Phase 1 — Foundations</h4>
+<ul>
+<li>☐ Get a <code>GOOGLE_AI_API_KEY</code> from Google AI Studio.</li>
+<li>☐ Stand up a Node + Express backend with one endpoint and a <code>.env</code>.</li>
+<li>☐ Make one successful Gemma call in JSON mode; add <code>stripThinkTags</code> + <code>extractJSON</code> + <code>withRetry</code>.</li>
+</ul>
+<h4>Phase 2 — Ground it in your data</h4>
+<ul>
+<li>☐ Write your <code>DATA_SOURCES</code> map (domain → report → table/source → KPIs).</li>
+<li>☐ Write a fetch function that returns <code>rows[]</code> for a given source.</li>
+<li>☐ Add the startup availability probe.</li>
+</ul>
+<h4>Phase 3 — The brain (3 model calls)</h4>
+<ul>
+<li>☐ Implement <code>analyzeQuery</code> (route vs. clarify) with the closed-list prompt + code validation.</li>
+<li>☐ Implement <code>generateReport</code> (design the cards) with the EXACT_COLUMNS rule.</li>
+<li>☐ Implement the fused <code>classifyAndEditReport</code> for follow-ups.</li>
+</ul>
+<h4>Phase 4 — The plumbing (plain code)</h4>
+<ul>
+<li>☐ Shape analysis, pre-aggregation, column-casing fix, hydration.</li>
+<li>☐ Assemble them into the ordered pipeline.</li>
+</ul>
+<h4>Phase 5 — The frontend swap</h4>
+<ul>
+<li>☐ Build the <code>UITreeRenderer</code> (start with 5 component types).</li>
+<li>☐ Point the chat input at the backend; delete the static decision tree.</li>
+<li>☐ Render <code>clarification</code> options + <code>followUp</code> chips from model output.</li>
+</ul>
+<h4>Phase 6 — Make it feel alive</h4>
+<ul>
+<li>☐ Add SSE streaming; render components as they arrive.</li>
+<li>☐ Add the cache.</li>
+</ul>
+<h4>Phase 7 — Harden</h4>
+<ul>
+<li>☐ Wire every fallback (deterministic clarify, fallback cards, 0-row recovery).</li>
+<li>☐ Build the eval set; run it; tune prompts.</li>
+<li>☐ Lock CORS, move secrets to host config, set read-only DB access.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="p18">18. Pitfalls &amp; FAQ <span class="tag t-nice">PLAIN</span></h2>
+
+<h4>Common pitfalls</h4>
+<table>
+<tr><th>Pitfall</th><th>Fix</th></tr>
+<tr><td>Letting the model do everything</td><td>Deterministic-First — model only for judgement calls.</td></tr>
+<tr><td>Trusting model output blindly</td><td>Validate against your real catalog/schema in code, every time.</td></tr>
+<tr><td>Sending whole tables to the model</td><td>Sample 10–20 rows; attach full data after.</td></tr>
+<tr><td>Open-ended prompts</td><td>Give closed lists + exact JSON shapes.</td></tr>
+<tr><td>No fallback path</td><td>Every model call gets a non-model backup.</td></tr>
+<tr><td>Column-name mismatches → blank charts</td><td>EXACT_COLUMNS rule + casing fix.</td></tr>
+<tr><td>Re-asking answered questions</td><td>Carry clarification history; tell the model not to repeat.</td></tr>
+<tr><td>Keys in frontend code</td><td>Server-side only, always.</td></tr>
+</table>
+
+<h4>FAQ</h4>
+<p><strong>Do we have to use BigQuery?</strong> No. Any data source works — swap the fetch function. The model never touches the database directly.</p>
+<p><strong>Do we have to use Gemma?</strong> No. The model id is one constant. Gemma is our cost/quality default; swap to Gemini or another model per call if a task needs it.</p>
+<p><strong>Can we keep our existing UI?</strong> Yes — that's the point. You keep the look; you swap the engine and add one renderer.</p>
+<p><strong>How long does a conversion take?</strong> A focused engineer can reach a working Phase-3 prototype in days. Polish (streaming, eval, hardening) is where the rest of the time goes.</p>
+<p><strong>What if the model gives a wrong answer?</strong> It can. That's why answers are grounded in your real fetched data, output is validated, and fallbacks exist. Never let the model state facts it wasn't given data for.</p>
+<p><strong>Is it more expensive than static?</strong> Per message, yes — there's a model call. But Deterministic-First, caching, sampling, and Gemma keep it modest, and the capability gain is enormous.</p>
+
+<!-- ============================================================ -->
+<h2 id="p19" class="pb">19. Glossary — plain English <span class="tag t-nice">PLAIN</span></h2>
+<table>
+<tr><th>Term</th><th>Means</th></tr>
+<tr><td><strong>LLM</strong></td><td>Large Language Model — software that reads and writes human language and makes judgement calls from it.</td></tr>
+<tr><td><strong>Gemma</strong></td><td>Google's open model family. Our brain. Accessed via the Google AI API.</td></tr>
+<tr><td><strong>Prompt</strong></td><td>The instruction sheet you hand the model. The system prompt is the rules; the user content is the question + data.</td></tr>
+<tr><td><strong>System instruction</strong></td><td>The standing rules given to the model on every call (tone, allowed options, output format).</td></tr>
+<tr><td><strong>JSON mode</strong></td><td>A setting that forces the model to reply in machine-readable structured data instead of prose.</td></tr>
+<tr><td><strong>Token</strong></td><td>A chunk of text (~¾ of a word). Models are billed per token, in and out — smaller prompts cost less.</td></tr>
+<tr><td><strong>Temperature</strong></td><td>A 0–1 dial for randomness. Low = consistent/predictable; higher = more creative/varied.</td></tr>
+<tr><td><strong>Intent</strong></td><td>What the user actually wants (a trend, a comparison, a single number, an explanation).</td></tr>
+<tr><td><strong>Routing</strong></td><td>Deciding which data source answers the question.</td></tr>
+<tr><td><strong>Clarification</strong></td><td>The model asking a follow-up question when the request is too vague to answer well.</td></tr>
+<tr><td><strong>Pipeline</strong></td><td>The ordered chain of steps a message passes through on the backend.</td></tr>
+<tr><td><strong>Deterministic</strong></td><td>Plain code that always does the same thing — the opposite of the model's variability.</td></tr>
+<tr><td><strong>Hydration</strong></td><td>Attaching the real data rows to the chart shells the model designed.</td></tr>
+<tr><td><strong>SSE</strong></td><td>Server-Sent Events — streaming the answer to the browser piece by piece.</td></tr>
+<tr><td><strong>Grounding</strong></td><td>Forcing the model to work only from your real data and a closed list of options, so it can't make things up.</td></tr>
+<tr><td><strong>Render type</strong></td><td>The name of a UI widget (LineChart, KPICard…) the model is allowed to choose.</td></tr>
+<tr><td><strong>Fallback</strong></td><td>The non-model backup that runs when a model call fails or returns junk.</td></tr>
+<tr><td><strong>CORS</strong></td><td>The rule controlling which website is allowed to call your backend.</td></tr>
+</table>
+
+<div class="footer">
+Static Chat → LLM Chat Conversion Guidebook &nbsp;•&nbsp; Reference implementation: Conversational UI (Generative BI Report Hub) &nbsp;•&nbsp; Stack: React + Node/Express + Google Gemma (<code>gemma-4-31b-it</code>) + BigQuery &nbsp;•&nbsp; For deeper code detail see <code>CHAT_FLOW_ARCHITECTURE.md</code> and <code>backend/src/services/llmHandler.ts</code> in the repo.
+</div>
+
+</body>
+</html>
