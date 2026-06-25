@@ -2581,7 +2581,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
       const res = await fetch(`${API_BASE}/api/conversational/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, skipClarification, clarificationHistory: history, priorContext, currentCards: currentCards.length > 0 ? currentCards : undefined, activeTable: activeTableRef, conversationHistory }),
+        body: JSON.stringify({ query, skipClarification, clarificationHistory: history, priorContext, currentCards: currentCards.length > 0 ? currentCards : undefined, activeTable: activeTableRef, conversationHistory, provider: localStorage.getItem('llm_provider') || 'gemma' }),
       });
 
       if (!res.ok || !res.body) throw new Error(`Backend error: ${res.status}`);

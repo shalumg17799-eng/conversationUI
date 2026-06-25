@@ -1,4 +1,5 @@
 import { GoogleGenAI, Type, Tool } from '@google/genai';
+import { spawn } from 'child_process';
 import dotenv from 'dotenv';
 import { ShapeSignature } from '../types';
 import { runQueryWithMeta, qualifiedTable } from '../lib/bigqueryClient';
@@ -175,6 +176,85 @@ async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> {
     }
   }
   throw lastErr;
+}
+
+// ── Provider abstraction ──────────────────────────────────────────────────────
+// Two LLM backends, selected per-request based on the logged-in user:
+//   'gemma'  → internal users → Google Gemma via @google/genai (production path)
+//   'sonnet' → client users   → Anthropic Sonnet via the `claude` CLI (temporary
+//              stopgap until a Sonnet API key is available; swap generateViaCLI
+//              for a direct SDK call when the key arrives — nothing else changes).
+export type LLMProvider = 'gemma' | 'sonnet';
+
+const SONNET_MODEL = process.env.SONNET_MODEL || 'sonnet'; // CLI alias for latest Sonnet
+
+export function resolveProvider(raw: unknown): LLMProvider {
+  return raw === 'sonnet' ? 'sonnet' : 'gemma';
+}
+
+interface GenOpts {
+  system: string;
+  user: string;
+  temperature?: number;
+  maxOutputTokens?: number;
+}
+
+// Sonnet path — shell out to the locally-authenticated `claude` CLI in print mode.
+// No API key needed; uses the user's existing CLI login (OAuth/keychain), so we do
+// NOT pass --bare (which would force ANTHROPIC_API_KEY-only auth). --system-prompt
+// REPLACES Claude Code's default agent prompt with ours; the user text goes on stdin
+// to avoid any shell-escaping issues (spawn runs without a shell).
+function generateViaCLI(opts: GenOpts): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const args = [
+      '-p',
+      '--model', SONNET_MODEL,
+      '--system-prompt', opts.system,
+      '--output-format', 'json',
+      '--no-session-persistence',
+    ];
+    const child = spawn('claude', args, { stdio: ['pipe', 'pipe', 'pipe'] });
+
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', d => { stdout += d.toString(); });
+    child.stderr.on('data', d => { stderr += d.toString(); });
+    child.on('error', err => reject(new Error(`Sonnet CLI spawn failed: ${err.message}. Is the \`claude\` CLI installed and logged in?`)));
+    child.on('close', code => {
+      if (code !== 0) {
+        return reject(new Error(`Sonnet CLI exited ${code}: ${stderr.trim() || stdout.trim() || 'no output'}`));
+      }
+      // --output-format json wraps the reply: { type:'result', result:'<text>', ... }
+      try {
+        const env = JSON.parse(stdout);
+        if (env && typeof env.result === 'string') return resolve(env.result);
+        if (env && env.is_error) return reject(new Error(`Sonnet CLI error: ${env.result ?? 'unknown'}`));
+      } catch { /* not JSON — fall through to raw */ }
+      resolve(stdout);
+    });
+
+    child.stdin.write(opts.user);
+    child.stdin.end();
+  });
+}
+
+// Single entry point every LLM call funnels through. Returns the raw model text;
+// callers still run stripThinkTags + extractJSON as before.
+async function modelGenerate(provider: LLMProvider, opts: GenOpts): Promise<string> {
+  if (provider === 'sonnet') return generateViaCLI(opts);
+
+  const ai = getAI();
+  const response = await ai.models.generateContent({
+    model: MODEL,
+    config: {
+      temperature: opts.temperature ?? 0.3,
+      maxOutputTokens: opts.maxOutputTokens ?? 2048,
+      responseMimeType: 'application/json',
+      systemInstruction: opts.system,
+    },
+    contents: [{ role: 'user', parts: [{ text: opts.user }] }],
+  });
+  return response.text ?? '';
 }
 
 function getFunctionCall(response: any): { name: string; args: Record<string, any> } | null {
@@ -452,8 +532,8 @@ Analyze this. Respond with JSON.`;
 export async function analyzeQuery(
   query: string,
   history: ClarificationTurn[] = [],
+  provider: LLMProvider = 'gemma',
 ): Promise<AnalyzeResult> {
-  const ai = getAI();
   const allTexts = [query, ...history.map(t => t.answer)];
 
   // Fast path: query already contains full context → route directly, no LLM needed
@@ -467,18 +547,10 @@ export async function analyzeQuery(
   try {
     const { system, user } = await buildAnalyzePrompt(query, history);
 
-    const response = await withRetry(() => ai.models.generateContent({
-      model: MODEL,
-      config: {
-        temperature: 0.2,
-        maxOutputTokens: 768,
-        responseMimeType: 'application/json',
-        systemInstruction: system,
-      },
-      contents: [{ role: 'user', parts: [{ text: user }] }],
+    const raw = await withRetry(() => modelGenerate(provider, {
+      system, user, temperature: 0.2, maxOutputTokens: 768,
     }));
 
-    const raw = response.text ?? '';
     const cleaned = stripThinkTags(raw);
     const jsonStr = extractJSON(cleaned);
     const parsed = JSON.parse(jsonStr);
@@ -622,8 +694,8 @@ export async function classifyAndEditReport(
   priorContext: string,
   dataContext = '',
   conversationHistory: ConversationTurn[] = [],
+  provider: LLMProvider = 'gemma',
 ): Promise<FusedIntentResult> {
-  const ai = getAI();
   const strippedCards = stripCardData(currentCards);
 
   // Detect requested output format so the LLM can honor it
@@ -694,18 +766,10 @@ ${JSON.stringify(strippedCards, null, 2)}
 ${historySection}`;
 
   return withRetry(async () => {
-    const response = await ai.models.generateContent({
-      model: MODEL,
-      config: {
-        temperature: 0.2,
-        maxOutputTokens: 4000,
-        responseMimeType: 'application/json',
-        systemInstruction: system,
-      },
-      contents: [{ role: 'user', parts: [{ text: userMessage }] }],
+    const raw = await modelGenerate(provider, {
+      system, user: userMessage, temperature: 0.2, maxOutputTokens: 4000,
     });
 
-    const raw = response.text ?? '';
     const parsed = JSON.parse(extractJSON(stripThinkTags(raw)));
     console.log(`[classifyAndEditReport] action=${parsed.action}`);
 
@@ -976,9 +1040,8 @@ export async function generateReport(
   shape: ShapeSignature,
   sampleRows: any[],
   priorContext?: string,
+  provider: LLMProvider = 'gemma',
 ): Promise<LLMReport> {
-  const ai = getAI();
-
   const allColumns = Object.keys(shape.columnTypes);
 
   const entities = extractQueryEntities(query, sampleRows, shape.dimensionColumns);
@@ -999,18 +1062,10 @@ ${compactSample}
 Design the best response to this query. Use EXACT_COLUMNS for all key fields. Respond with JSON only.`;
 
   try {
-    const response = await withRetry(() => ai.models.generateContent({
-      model: MODEL,
-      config: {
-        temperature: 0.4,
-        maxOutputTokens: 4000,
-        responseMimeType: 'application/json',
-        systemInstruction: REPORT_SYSTEM_PROMPT,
-      },
-      contents: [{ role: 'user', parts: [{ text: userMessage }] }],
+    const raw = await withRetry(() => modelGenerate(provider, {
+      system: REPORT_SYSTEM_PROMPT, user: userMessage, temperature: 0.4, maxOutputTokens: 4000,
     }));
 
-    const raw = response.text ?? '';
     const cleaned = stripThinkTags(raw);
     const jsonStr = extractJSON(cleaned);
     const parsed = JSON.parse(jsonStr);
@@ -1175,22 +1230,33 @@ Respond with valid JSON only. No markdown, no code fences.
 
 export async function callLLM(
   systemPrompt: string,
-  messages: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }>
+  messages: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }>,
+  provider: LLMProvider = 'gemma',
 ): Promise<LLMResponse> {
-  const ai = getAI();
+  const system = systemPrompt + '\n\n' + CHAT_JSON_SCHEMA;
 
-  const response = await ai.models.generateContent({
-    model: MODEL,
-    config: {
-      temperature: 0.3,
-      maxOutputTokens: 2048,
-      responseMimeType: 'application/json',
-      systemInstruction: systemPrompt + '\n\n' + CHAT_JSON_SCHEMA,
-    },
-    contents: messages,
-  });
+  let raw: string;
+  if (provider === 'sonnet') {
+    // CLI takes a single user turn — flatten the message history into one transcript.
+    const transcript = messages
+      .map(m => `${m.role === 'model' ? 'Assistant' : 'User'}: ${m.parts.map(p => p.text).join(' ')}`)
+      .join('\n');
+    raw = await generateViaCLI({ system, user: transcript, temperature: 0.3, maxOutputTokens: 2048 });
+  } else {
+    const ai = getAI();
+    const response = await ai.models.generateContent({
+      model: MODEL,
+      config: {
+        temperature: 0.3,
+        maxOutputTokens: 2048,
+        responseMimeType: 'application/json',
+        systemInstruction: system,
+      },
+      contents: messages,
+    });
+    raw = response.text ?? '';
+  }
 
-  const raw = response.text ?? '';
   const cleaned = stripThinkTags(raw);
   const jsonStr = extractJSON(cleaned);
 

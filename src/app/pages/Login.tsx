@@ -3,38 +3,67 @@ import { useNavigate, useSearchParams } from 'react-router';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-// Verify a password against the backend. Returns true on match. The password
-// is never compared client-side, so it is not present in the shipped bundle.
-async function verifyPassword(password: string): Promise<boolean> {
+interface VerifyResult {
+  success: boolean;
+  role?: 'internal' | 'client';
+  provider?: 'gemma' | 'sonnet';
+}
+
+// Verify username + password against the backend. Credentials are never compared
+// client-side, so they are not present in the shipped bundle. On success the backend
+// returns which role logged in and which LLM provider that role uses.
+async function verifyCredentials(username: string, password: string): Promise<VerifyResult> {
   try {
     const res = await fetch(`${API_BASE}/api/auth/verify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password }),
+      body: JSON.stringify({ username, password }),
     });
-    if (!res.ok) return false;
-    const data = await res.json();
-    return data.success === true;
+    if (!res.ok) return { success: false };
+    return await res.json();
   } catch {
-    return false;
+    return { success: false };
   }
+}
+
+// Persist the logged-in role + provider so the chat page can tell the backend
+// which model to use on every request.
+function storeSession(result: VerifyResult) {
+  if (result.role) localStorage.setItem('auth_role', result.role);
+  localStorage.setItem('llm_provider', result.provider ?? 'gemma');
 }
 
 export function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [isHovered, setIsHovered] = React.useState(false);
+  const [username, setUsername] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState('');
 
   useEffect(() => {
+    // Optional magic-link login: ?user=<username>&access=<password>
     const token = searchParams.get('access');
+    const user = searchParams.get('user') ?? '';
     if (token) {
-      verifyPassword(token).then((ok) => {
-        if (ok) navigate('/persona');
+      verifyCredentials(user, token).then((result) => {
+        if (result.success) {
+          storeSession(result);
+          navigate('/persona');
+        }
       });
     }
   }, []);
+
+  const handleLogin = async () => {
+    const result = await verifyCredentials(username, password);
+    if (result.success) {
+      storeSession(result);
+      navigate('/persona');
+    } else {
+      setError('Incorrect username or password. Please try again.');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#F8F9FB] flex items-center justify-center p-4 relative">
@@ -67,18 +96,36 @@ export function LoginPage() {
           </p>
         </div>
 
-        {/* 3) Password & Primary Action */}
+        {/* 3) Username, Password & Primary Action */}
         <div className="mb-6">
+          <label className="block text-[13px] font-medium text-[#111827] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+            Username
+          </label>
+          <input
+            type="text"
+            value={username}
+            autoComplete="username"
+            onChange={(e) => {
+              setUsername(e.target.value);
+              setError('');
+            }}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(); }}
+            placeholder="Enter your username"
+            className="w-full h-[42px] rounded-[8px] border border-[#E5E7EB] px-4 text-[14px] text-[#111827] mb-3 focus:outline-none focus:ring-2 focus:ring-[#111827] focus:border-transparent transition-all"
+            style={{ fontFamily: 'Inter, sans-serif' }}
+          />
           <label className="block text-[13px] font-medium text-[#111827] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
             Access Password
           </label>
           <input
             type="password"
             value={password}
+            autoComplete="current-password"
             onChange={(e) => {
               setPassword(e.target.value);
               setError('');
             }}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(); }}
             placeholder="Enter password to continue"
             className="w-full h-[42px] rounded-[8px] border border-[#E5E7EB] px-4 text-[14px] text-[#111827] mb-3 focus:outline-none focus:ring-2 focus:ring-[#111827] focus:border-transparent transition-all"
             style={{ fontFamily: 'Inter, sans-serif' }}
@@ -89,14 +136,7 @@ export function LoginPage() {
             </div>
           )}
           <button
-            onClick={async () => {
-              const ok = await verifyPassword(password);
-              if (ok) {
-                navigate('/persona');
-              } else {
-                setError('Incorrect password. Please try again.');
-              }
-            }}
+            onClick={handleLogin}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             className="w-full h-[42px] rounded-[8px] text-white transition-colors duration-200 font-medium"

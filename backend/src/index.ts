@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import { runPipeline } from './pipeline/runPipeline';
 import { runStreamingPipeline } from './pipeline/runStreamingPipeline';
 import { BigQueryService } from './services/bigqueryService';
-import { callLLM, probeTableAvailability } from './services/llmHandler';
+import { callLLM, probeTableAvailability, resolveProvider } from './services/llmHandler';
 import { refreshCatalog } from './services/catalogRefresher';
 
 dotenv.config();
@@ -28,18 +28,56 @@ app.get('/', (_req: Request, res: Response) => {
   res.json({ message: 'Generative UI Analytical Engine is running' });
 });
 
-// Access-gate verification — password lives only in backend env, never shipped to the client.
+// Access-gate verification — two user roles, each bound to an LLM provider.
+// Credentials live only in backend env, never shipped to the client.
+//   internal user → Gemma API
+//   client user   → Sonnet (via the `claude` CLI for now)
+// Legacy single-password (ACCESS_PASSWORD) still works and maps to the internal role.
+interface AuthUser { username?: string; password?: string; role: 'internal' | 'client'; provider: 'gemma' | 'sonnet'; }
+
+function getAuthUsers(): AuthUser[] {
+  const users: AuthUser[] = [
+    {
+      username: process.env.INTERNAL_USERNAME,
+      password: process.env.INTERNAL_PASSWORD || process.env.ACCESS_PASSWORD,
+      role: 'internal',
+      provider: 'gemma',
+    },
+    {
+      username: process.env.CLIENT_USERNAME,
+      password: process.env.CLIENT_PASSWORD,
+      role: 'client',
+      provider: 'sonnet',
+    },
+  ];
+  // Only keep users that have a password configured.
+  return users.filter(u => !!u.password);
+}
+
 app.post('/api/auth/verify', (req: Request, res: Response) => {
-  const { password } = req.body ?? {};
-  const expected = process.env.ACCESS_PASSWORD;
-  if (!expected) return res.status(500).json({ success: false, error: 'ACCESS_PASSWORD not configured' });
-  return res.json({ success: password === expected });
+  const { username, password } = req.body ?? {};
+  const users = getAuthUsers();
+  if (users.length === 0) {
+    return res.status(500).json({ success: false, error: 'No login credentials configured (set INTERNAL_/CLIENT_ USERNAME + PASSWORD).' });
+  }
+
+  const match = users.find(u =>
+    u.password === password &&
+    // If a username is configured for this user it must match; otherwise password alone suffices (legacy).
+    (!u.username || u.username === username)
+  );
+
+  if (!match) return res.json({ success: false });
+  return res.json({ success: true, role: match.role, provider: match.provider });
 });
 
 // SSE streaming endpoint — preferred for Generative UI
 app.post('/api/conversational/stream', async (req: Request, res: Response) => {
-  const { query, skipClarification, clarificationHistory, priorContext, activeTable, currentCards, conversationHistory } = req.body;
+  const { query, skipClarification, clarificationHistory, priorContext, activeTable, currentCards, conversationHistory, provider } = req.body;
   if (!query) return res.status(400).json({ error: 'Query is required' });
+
+  const llmProvider = resolveProvider(provider);
+  console.log(`[Stream] provider=${llmProvider}`);
 
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
@@ -53,7 +91,7 @@ app.post('/api/conversational/stream', async (req: Request, res: Response) => {
   };
 
   try {
-    await runStreamingPipeline(query, send, !!skipClarification, clarificationHistory ?? [], priorContext, activeTable, currentCards, conversationHistory ?? []);
+    await runStreamingPipeline(query, send, !!skipClarification, clarificationHistory ?? [], priorContext, activeTable, currentCards, conversationHistory ?? [], llmProvider);
     send('done', { success: true });
   } catch (error: any) {
     send('error', { message: error.message || 'Internal Server Error' });
@@ -126,11 +164,13 @@ app.post('/api/query', async (req: Request, res: Response) => {
 // chatMode === 'static' → keyword scripts (not implemented yet, falls through to LLM)
 // default              → full pipeline (BQ + Gemma via streaming endpoint)
 app.post('/api/chat', async (req: Request, res: Response) => {
-  const { chatMode = 'llm', system, messages, query } = req.body;
+  const { chatMode = 'llm', system, messages, query, provider } = req.body;
 
   if (!messages && !query) {
     return res.status(400).json({ error: 'messages or query required' });
   }
+
+  const llmProvider = resolveProvider(provider);
 
   if (chatMode === 'static') {
     // Placeholder — static keyword flows run on frontend; this path is a passthrough
@@ -142,7 +182,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
     const systemPrompt = system || 'You are a helpful business intelligence assistant.';
     const formattedMessages = messages ?? [{ role: 'user', parts: [{ text: query }] }];
 
-    const result = await callLLM(systemPrompt, formattedMessages);
+    const result = await callLLM(systemPrompt, formattedMessages, llmProvider);
     res.json({ success: true, ...result });
   } catch (error: any) {
     console.error('LLM chat error:', error);

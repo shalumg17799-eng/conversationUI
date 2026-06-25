@@ -4,7 +4,7 @@ import { analyzeDataShape } from '../services/dataShapeAnalyzer';
 import {
   generateReport, analyzeQuery,
   classifyAndEditReport, buildHydrationMap, rehydrateEditedCards,
-  ReportCard, ConversationTurn,
+  ReportCard, ConversationTurn, LLMProvider,
   getAvailableDataSources,
 } from '../services/llmHandler';
 import { runQueryWithMeta, qualifiedTable } from '../lib/bigqueryClient';
@@ -358,6 +358,7 @@ export async function runStreamingPipeline(
   activeTable?: string,
   currentCards?: ReportCard[],
   conversationHistory: ConversationTurn[] = [],
+  provider: LLMProvider = 'gemma',
 ): Promise<void> {
   const cacheKey = generateKey({ query, stream: true, v: 2, history: clarificationHistory, prior: priorContext });
   const cached = cacheService.get<{ components: UITypeTree[]; title: string; message: string; activeTable?: string }>(cacheKey);
@@ -394,7 +395,7 @@ export async function runStreamingPipeline(
     // Single fused LLM call: classifies intent AND applies structural edits in one shot.
     let fusedResult: Awaited<ReturnType<typeof classifyAndEditReport>> | null = null;
     try {
-      fusedResult = await classifyAndEditReport(classifyQuery, currentCards!, priorContext!, dataContext, conversationHistory);
+      fusedResult = await classifyAndEditReport(classifyQuery, currentCards!, priorContext!, dataContext, conversationHistory, provider);
     } catch (err) {
       console.error('[Pipeline] classifyAndEditReport failed after retries:', err);
       // Fall through to new-report flow as safe default
@@ -468,7 +469,7 @@ export async function runStreamingPipeline(
         const editEnrichedQuery = `EDIT REQUEST: ${query}. Prior report: ${priorContext}`;
 
         send('status', { message: 'Updating report...' });
-        const report = await generateReport(editEnrichedQuery, dataShape, sampleRows, priorContext);
+        const report = await generateReport(editEnrichedQuery, dataShape, sampleRows, priorContext, provider);
         const actualColumns = Object.keys(dataShape.columnTypes);
         report.cards = fixColumnCasing(report.cards, actualColumns);
         if (report.cards.length === 0) report.cards = generateFallbackCards(dataShape);
@@ -508,6 +509,7 @@ export async function runStreamingPipeline(
             priorContext!,
             dataContext,
             conversationHistory,
+            provider,
           );
           if (forced.action === 'qa_answer') {
             send('qa_answer', { message: forced.message, followUp: forced.followUp });
@@ -538,7 +540,7 @@ export async function runStreamingPipeline(
   const intent = { metric: 'unknown', dimension: 'unknown', intent: 'metric_by_dimension' as const };
 
   send('status', { message: 'Understanding your query...' });
-  const analysis = await analyzeQuery(query, clarificationHistory);
+  const analysis = await analyzeQuery(query, clarificationHistory, provider);
 
   if (analysis.action === 'clarify' && !forceGenerate) {
     send('clarification', {
@@ -615,9 +617,10 @@ export async function runStreamingPipeline(
   const aggregatedRows = preaggregateRows(allRows, dataShape);
   const sampleRows = aggregatedRows.slice(0, SAMPLE_SIZE);
 
-  // Step 4 — single Gemma call: decides everything (enriched query gives Gemma full context)
-  send('status', { message: `Analysing ${allRows.length} rows with Gemma...` });
-  const report = await generateReport(enrichedQuery, dataShape, sampleRows, priorContext);
+  // Step 4 — single LLM call: decides everything (enriched query gives the model full context)
+  const providerLabel = provider === 'sonnet' ? 'Sonnet' : 'Gemma';
+  send('status', { message: `Analysing ${allRows.length} rows with ${providerLabel}...` });
+  const report = await generateReport(enrichedQuery, dataShape, sampleRows, priorContext, provider);
 
   // Fix column casing: LLM often lowercases BQ column names which breaks charts
   const actualColumns = Object.keys(dataShape.columnTypes);
