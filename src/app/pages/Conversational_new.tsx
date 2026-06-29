@@ -7563,7 +7563,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
               </button>
 
               <div className="flex-1 overflow-y-auto px-8" style={{ paddingTop: 64 }}>
-                <div className="max-w-[900px] mx-auto space-y-6 pb-6">
+                <div className="max-w-[1100px] mx-auto space-y-6 pb-6">
                   {messages.map((message) => (
                     <div key={message.id}>
                       {renderMessage(message)}
@@ -7584,7 +7584,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                   borderTop: '1px solid rgba(229, 227, 223, 0.80)',
                 }}
               >
-                <div className="max-w-[900px] mx-auto flex gap-3 items-end">
+                <div className="max-w-[1100px] mx-auto flex gap-3 items-end">
                   <Textarea
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
