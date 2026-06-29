@@ -66,39 +66,39 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FB] flex items-center justify-center p-4 relative">
+    <div className="min-h-screen bg-[var(--background)] flex items-center justify-center p-4 relative">
       {/* Subtle corner label */}
-      <div className="absolute top-6 right-6 text-[11px] text-[#6B7280]">
+      <div className="absolute top-6 right-6 text-[11px] text-[var(--muted-foreground)]">
         Static Demo – Conceptual
       </div>
 
       {/* Main Login Card */}
-      <div className="w-full max-w-[456px] bg-white rounded-[12px] border border-[#E5E7EB] p-7 shadow-sm">
+      <div className="w-full max-w-[456px] bg-white rounded-[12px] border border-[var(--border)] p-7 shadow-sm">
         
         {/* 1) Brand / Identity */}
         <div className="flex flex-col items-center mb-6">
-          <div className="w-3 h-3 rounded-full bg-[#E11D48] mb-3" />
-          <div className="text-[18px] font-semibold text-[#111827] tracking-tight" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <div className="w-3 h-3 rounded-full bg-[var(--brand)] mb-3" />
+          <div className="text-[18px] font-semibold text-[var(--foreground)] tracking-tight" style={{ fontFamily: 'Inter, sans-serif' }}>
             Report Hub
           </div>
-          <div className="text-[13px] text-[#6B7280] mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <div className="text-[13px] text-[var(--muted-foreground)] mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>
             Single Pane of Glass for Analytics
           </div>
         </div>
 
         {/* 2) Welcome Message */}
         <div className="mb-6 text-center">
-          <h1 className="text-[21px] font-semibold text-[#111827] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <h1 className="text-[21px] font-semibold text-[var(--foreground)] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
             Welcome to Report Hub
           </h1>
-          <p className="text-[13px] text-[#6B7280] leading-relaxed" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <p className="text-[13px] text-[var(--muted-foreground)] leading-relaxed" style={{ fontFamily: 'Inter, sans-serif' }}>
             Access insights, reports, and analytics across platforms through one unified experience.
           </p>
         </div>
 
         {/* 3) Username, Password & Primary Action */}
         <div className="mb-6">
-          <label className="block text-[13px] font-medium text-[#111827] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <label className="block text-[13px] font-medium text-[var(--foreground)] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
             Username
           </label>
           <input
@@ -111,10 +111,10 @@ export function LoginPage() {
             }}
             onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(); }}
             placeholder="Enter your username"
-            className="w-full h-[42px] rounded-[8px] border border-[#E5E7EB] px-4 text-[14px] text-[#111827] mb-3 focus:outline-none focus:ring-2 focus:ring-[#111827] focus:border-transparent transition-all"
+            className="w-full h-[42px] rounded-[8px] border border-[var(--border)] px-4 text-[14px] text-[var(--foreground)] mb-3 focus:outline-none focus:ring-2 focus:ring-[var(--foreground)] focus:border-transparent transition-all"
             style={{ fontFamily: 'Inter, sans-serif' }}
           />
-          <label className="block text-[13px] font-medium text-[#111827] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <label className="block text-[13px] font-medium text-[var(--foreground)] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
             Access Password
           </label>
           <input
@@ -127,7 +127,7 @@ export function LoginPage() {
             }}
             onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(); }}
             placeholder="Enter password to continue"
-            className="w-full h-[42px] rounded-[8px] border border-[#E5E7EB] px-4 text-[14px] text-[#111827] mb-3 focus:outline-none focus:ring-2 focus:ring-[#111827] focus:border-transparent transition-all"
+            className="w-full h-[42px] rounded-[8px] border border-[var(--border)] px-4 text-[14px] text-[var(--foreground)] mb-3 focus:outline-none focus:ring-2 focus:ring-[var(--foreground)] focus:border-transparent transition-all"
             style={{ fontFamily: 'Inter, sans-serif' }}
           />
           {error && (
@@ -142,23 +142,23 @@ export function LoginPage() {
             className="w-full h-[42px] rounded-[8px] text-white transition-colors duration-200 font-medium"
             style={{ 
               fontFamily: 'Inter, sans-serif',
-              backgroundColor: isHovered ? '#0F172A' : '#111827',
+              backgroundColor: isHovered ? 'var(--primary)' : 'var(--foreground)',
               fontSize: '14px'
             }}
           >
             Enter with SSO
           </button>
-          <p className="text-[11px] text-[#6B7280] text-center mt-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <p className="text-[11px] text-[var(--muted-foreground)] text-center mt-2" style={{ fontFamily: 'Inter, sans-serif' }}>
             Password required for access — demo environment
           </p>
         </div>
 
         {/* 4) Value Callout */}
-        <div className="mb-6 bg-[#EFF6FF] rounded-[8px] p-4">
-          <div className="text-[12px] font-semibold text-[#111827] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <div className="mb-6 bg-brand-subtle rounded-[8px] p-4">
+          <div className="text-[12px] font-semibold text-[var(--foreground)] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
             What Report Hub enables
           </div>
-          <ul className="space-y-1.5 text-[12px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <ul className="space-y-1.5 text-[12px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
             <li className="flex items-start">
               <span className="mr-2">•</span>
               <span>One experience across BI platforms</span>
@@ -175,8 +175,8 @@ export function LoginPage() {
         </div>
 
         {/* 5) Footer Note */}
-        <div className="pt-5 border-t border-[#E5E7EB]">
-          <p className="text-[11px] text-[#6B7280] text-center" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <div className="pt-5 border-t border-[var(--border)]">
+          <p className="text-[11px] text-[var(--muted-foreground)] text-center" style={{ fontFamily: 'Inter, sans-serif' }}>
             Conceptual experience for leadership review
           </p>
         </div>

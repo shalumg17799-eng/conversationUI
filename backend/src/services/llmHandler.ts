@@ -1,9 +1,10 @@
 import { GoogleGenAI, Type, Tool } from '@google/genai';
+import Anthropic from '@anthropic-ai/sdk';
 import { spawn } from 'child_process';
 import dotenv from 'dotenv';
 import { ShapeSignature } from '../types';
 import { runQueryWithMeta, qualifiedTable } from '../lib/bigqueryClient';
-import { DATA_SOURCES, ALL_DOMAINS, ALL_TABLES, getSourcesByDomain } from './dataSourceMap';
+import { DATA_SOURCES, ALL_DOMAINS, ALL_TABLES, getSourcesByDomain, getAnglesByDomain, findAnglesByLabel } from './dataSourceMap';
 import { loadCatalogContext } from './catalogRefresher';
 
 dotenv.config();
@@ -200,8 +201,11 @@ interface GenOpts {
 }
 
 // Sonnet path — shell out to the locally-authenticated `claude` CLI in print mode.
-// No API key needed; uses the user's existing CLI login (OAuth/keychain), so we do
-// NOT pass --bare (which would force ANTHROPIC_API_KEY-only auth). --system-prompt
+// Uses the user's existing CLI login (OAuth/keychain). IMPORTANT: we strip
+// ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN from the child env, otherwise the CLI
+// would inherit the backend's ANTHROPIC_API_KEY (loaded by dotenv) and bill the
+// console/API account instead of the subscription behind the OAuth login. We also
+// do NOT pass --bare (which would force ANTHROPIC_API_KEY-only auth). --system-prompt
 // REPLACES Claude Code's default agent prompt with ours; the user text goes on stdin
 // to avoid any shell-escaping issues (spawn runs without a shell).
 function generateViaCLI(opts: GenOpts): Promise<string> {
@@ -213,7 +217,12 @@ function generateViaCLI(opts: GenOpts): Promise<string> {
       '--output-format', 'json',
       '--no-session-persistence',
     ];
-    const child = spawn('claude', args, { stdio: ['pipe', 'pipe', 'pipe'] });
+    // Force OAuth/subscription auth: remove any inherited API-key credentials so the
+    // CLI uses the logged-in account, not the (possibly empty) console API balance.
+    const childEnv = { ...process.env };
+    delete childEnv.ANTHROPIC_API_KEY;
+    delete childEnv.ANTHROPIC_AUTH_TOKEN;
+    const child = spawn('claude', args, { stdio: ['pipe', 'pipe', 'pipe'], env: childEnv });
 
     let stdout = '';
     let stderr = '';
@@ -238,10 +247,45 @@ function generateViaCLI(opts: GenOpts): Promise<string> {
   });
 }
 
+// Sonnet via the Anthropic API SDK — the fast path. No process spawn; the system
+// prompt is sent with cache_control so Anthropic caches it across calls (big latency
+// + cost win on the repeated catalog/system prompt). This is the drop-in replacement
+// for the CLI: same (system, user) -> text contract.
+let _anthropic: Anthropic | null = null;
+function getAnthropic(): Anthropic {
+  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || '' });
+  return _anthropic;
+}
+
+const SONNET_API_MODEL = process.env.SONNET_API_MODEL || 'claude-sonnet-4-6';
+
+async function generateViaAPI(opts: GenOpts): Promise<string> {
+  const client = getAnthropic();
+  const msg = await client.messages.create({
+    model: SONNET_API_MODEL,
+    max_tokens: opts.maxOutputTokens ?? 2048,
+    temperature: opts.temperature ?? 0.3,
+    system: [{ type: 'text', text: opts.system, cache_control: { type: 'ephemeral' } }],
+    messages: [{ role: 'user', content: opts.user }],
+  });
+  return msg.content
+    .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+    .map(b => b.text)
+    .join('');
+}
+
+// The Sonnet transport is chosen at call time, not hard-wired:
+//   • ANTHROPIC_API_KEY set  → API SDK (fast, cached)
+//   • no key                 → `claude` CLI on the user's OAuth login (stopgap)
+// Add the key to .env and Sonnet auto-upgrades to the API with zero code changes.
+function useSonnetApi(): boolean {
+  return !!(process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY.trim());
+}
+
 // Single entry point every LLM call funnels through. Returns the raw model text;
 // callers still run stripThinkTags + extractJSON as before.
 async function modelGenerate(provider: LLMProvider, opts: GenOpts): Promise<string> {
-  if (provider === 'sonnet') return generateViaCLI(opts);
+  if (provider === 'sonnet') return useSonnetApi() ? generateViaAPI(opts) : generateViaCLI(opts);
 
   const ai = getAI();
   const response = await ai.models.generateContent({
@@ -467,6 +511,169 @@ function deterministicFallback(query: string, history: ClarificationTurn[]): Ana
     question: 'Which domain would you like to report on?',
     options: availableDomains,
   };
+}
+
+// ── Sonnet front-door responder ───────────────────────────────────────────────
+// One Sonnet call that decides how to respond to ANY message — it is not forced to
+// build a report. Sonnet is capable enough to converse, answer, clarify, or route
+// in a single decision. Grounded by a COMPACT in-memory catalog (no heavy .md file).
+export type SonnetIntent =
+  | { action: 'chat'; message: string }
+  | { action: 'answer'; message: string }
+  | { action: 'clarify'; question: string; options: string[] }
+  | { action: 'generate'; table: string; intent: 'trend' | 'comparison' | 'metric_by_dimension' };
+
+// True when the text carries report-level intent beyond a bare domain — a metric,
+// dimension, chart type, or comparison. "create a sales report" → false (bare domain),
+// "sales revenue trend" / "compare territories" → true. Drives drill-down vs generate.
+function hasReportSpecificity(texts: string[], domainName?: string): boolean {
+  const STOP = new Set(['create', 'new', 'a', 'an', 'the', 'report', 'reports', 'me', 'my', 'i',
+    'want', 'wanted', 'please', 'to', 'for', 'build', 'generate', 'make', 'give', 'get', 'show',
+    'see', 'view', 'pull', 'can', 'you', 'of', 'on', 'about', 'dashboard', 'data', 'some', 'let',
+    'lets', 'need', 'would', 'like', 'with', 'and', 'this', 'that', 'help', 'please', 'us', 'we']);
+  const domainWords = new Set((domainName ?? '').toLowerCase().split(/\s+/));
+  const tokens = texts.join(' ').toLowerCase().replace(/[^a-z0-9\s%-]/g, ' ').split(/\s+/).filter(Boolean);
+  return tokens.some(t => t.length > 1 && !STOP.has(t) && !domainWords.has(t));
+}
+
+export async function sonnetRespond(
+  query: string,
+  history: ClarificationTurn[] = [],
+): Promise<SonnetIntent> {
+  const available = getAvailableDataSources();
+  const availableTables = new Set(available.map(s => s.table));
+  const allTexts = [query, ...history.map(t => t.answer)];
+
+  // ── Deterministic context extraction first — only ask for what's actually missing.
+  const { domain: knownDomain, source: knownSource } = extractContextFromText(allTexts);
+
+  // A report ANGLE was picked from the menu (or named) → build that specific report.
+  // The descriptive label rides into report generation via the clarification history,
+  // so the same table produces a different report per angle.
+  const pickedAngle = findAnglesByLabel(allTexts).find(a => availableTables.has(a.table));
+  if (pickedAngle) {
+    return { action: 'generate', table: pickedAngle.table, intent: 'metric_by_dimension' };
+  }
+
+  // A specific catalog report is identifiable → generate now (no LLM, no questions).
+  if (knownSource && availableTables.has(knownSource.table)) {
+    return { action: 'generate', table: knownSource.table, intent: 'metric_by_dimension' };
+  }
+
+  // Domain known but the request is BARE (no specific metric/dimension) → offer the
+  // domain's report menu (multiple angles from existing data). Don't pick arbitrarily.
+  if (knownDomain && !hasReportSpecificity(allTexts, knownDomain)) {
+    const angles = getAnglesByDomain(knownDomain).filter(a => availableTables.has(a.table));
+    if (angles.length >= 2) {
+      return { action: 'clarify', question: `Which ${knownDomain} report would you like?`, options: angles.map(a => a.label) };
+    }
+    if (angles.length === 1) {
+      return { action: 'generate', table: angles[0].table, intent: 'metric_by_dimension' };
+    }
+    // No angles configured for this domain — fall back to the raw catalog reports.
+    const inDomain = available.filter(s => s.domain.toLowerCase() === knownDomain.toLowerCase());
+    if (inDomain.length === 1) return { action: 'generate', table: inDomain[0].table, intent: 'metric_by_dimension' };
+    if (inDomain.length > 1) {
+      return { action: 'clarify', question: `Which ${knownDomain} report would you like?`, options: inDomain.map(s => s.reportName) };
+    }
+  }
+
+  const domains = [...new Set(available.map(s => s.domain))];
+  const reportNames = new Set(available.map(s => s.reportName));
+  const domainAngleLabels = knownDomain ? getAnglesByDomain(knownDomain).filter(a => availableTables.has(a.table)).map(a => a.label) : [];
+  const catalog = available.map(s => `- domain="${s.domain}" report="${s.reportName}" table="${s.table}" kpis=${s.kpis.slice(0, 4).join('/')}`).join('\n');
+
+  // Tell the model exactly what is already settled so it never re-asks it.
+  const knownBlock = knownDomain
+    ? `ALREADY KNOWN: domain = "${knownDomain}". Do NOT ask for the domain again. If the user's wording points at one report, GENERATE it; otherwise CLARIFY *which report* — options MUST be exactly ${JSON.stringify(domainAngleLabels)}.`
+    : `ALREADY KNOWN: nothing chosen yet.`;
+
+  const historyText = history.length
+    ? `\nCONVERSATION SO FAR:\n${history.map(t => `Q: ${t.question}\nA: ${t.answer}`).join('\n')}`
+    : '';
+
+  const system = `You are a warm, conversational business-intelligence assistant. Respond to what the user ACTUALLY said — never follow a fixed script, and never repeat a question whose answer you already have.
+
+Pick exactly ONE action:
+- "chat"     → greetings, small talk, thanks, general help → reply warmly in "message".
+- "answer"   → a question you can answer in prose without a dashboard → put it in "message".
+- "clarify"  → you are missing ONE thing needed to proceed. Ask ONLY for what's missing; put the question in "message" and choices in "options".
+- "generate" → there's enough context to build it → set "table" to the EXACT table string and pick "intent".
+
+${knownBlock}
+
+AVAILABLE DATA (only these exist — never invent tables, domains, or reports):
+${catalog}
+ALL DOMAINS: ${domains.join(', ')}
+
+Guidance:
+- Use CONVERSATION SO FAR. If the domain (or a report) is already established, MOVE FORWARD — never repeat a question you already have the answer to.
+- If the user gave only a DOMAIN with no specific report/metric/chart in mind (e.g. "create a sales report", "I want a network report"), you MUST CLARIFY *which report* and list that domain's reports as options. Do NOT arbitrarily pick one.
+- GENERATE only when the request names or strongly implies a specific report, metric, dimension, or chart (e.g. "sales revenue trend", "compare territories", "churn over time", "top territories by take rate"). Then pick the matching table.
+- One-off factual questions with no need for a visual → "answer". Greetings/small talk → "chat".
+
+Respond with valid JSON only, no markdown:
+{ "action": "chat"|"answer"|"clarify"|"generate", "message": "...", "options": ["..."], "table": "...", "intent": "trend"|"comparison"|"metric_by_dimension" }
+(omit fields irrelevant to the chosen action)`;
+
+  const user = `USER MESSAGE: "${query}"${historyText}\n\nDecide the best next action. Respond with JSON.`;
+
+  try {
+    const raw = await withRetry(() => modelGenerate('sonnet', { system, user, temperature: 0.4, maxOutputTokens: 1024 }));
+    const parsed = JSON.parse(extractJSON(stripThinkTags(raw)));
+
+    if (parsed.action === 'generate' && parsed.table && available.some(s => s.table === parsed.table)) {
+      return { action: 'generate', table: parsed.table, intent: parsed.intent ?? 'metric_by_dimension' };
+    }
+    if (parsed.action === 'clarify') {
+      // Guardrail: if the domain is already known, force report-level options so we can
+      // never bounce back to "which domain?". Otherwise validate against the catalog.
+      let opts: string[];
+      if (knownDomain) {
+        opts = domainAngleLabels;
+      } else {
+        opts = Array.isArray(parsed.options)
+          ? parsed.options.filter((o: string) => domains.includes(o) || reportNames.has(o))
+          : [];
+        if (!opts.length) opts = domains;
+      }
+      const q = (typeof parsed.message === 'string' && parsed.message.trim())
+        ? parsed.message
+        : (knownDomain ? `Which ${knownDomain} report would you like?` : 'Which area would you like to explore?');
+      return { action: 'clarify', question: q, options: opts };
+    }
+    if (parsed.action === 'answer' && typeof parsed.message === 'string') {
+      return { action: 'answer', message: parsed.message };
+    }
+    if (typeof parsed.message === 'string') return { action: 'chat', message: parsed.message };
+  } catch (err) {
+    console.error('[sonnetRespond] failed, using deterministic fallback:', err);
+  }
+
+  // Fallback: never a dead end. Drill to report-level if domain is known.
+  if (knownDomain && domainAngleLabels.length) {
+    return { action: 'clarify', question: `Which ${knownDomain} report would you like?`, options: domainAngleLabels };
+  }
+  const det = deterministicRoute(query, history);
+  if (det.action === 'route') return { action: 'generate', table: det.table, intent: det.intent };
+  return { action: 'clarify', question: det.question, options: det.options };
+}
+
+// ── Deterministic router (no LLM) ─────────────────────────────────────────────
+// Used by the lean Sonnet pipeline: route via the catalog fast-path, else fall back
+// to a deterministic clarify. This removes one Sonnet call per new report — Sonnet
+// is strong enough that we only need it for the single report-design step, not for
+// table routing (which the catalog already determines).
+export function deterministicRoute(query: string, history: ClarificationTurn[] = []): AnalyzeResult {
+  const allTexts = [query, ...history.map(t => t.answer)];
+  const { source } = extractContextFromText(allTexts);
+  if (source) {
+    const available = getAvailableDataSources();
+    if (available.some(s => s.table === source.table)) {
+      return { action: 'route', table: source.table, intent: 'metric_by_dimension' };
+    }
+  }
+  return deterministicFallback(query, history);
 }
 
 // ── LLM-driven query analysis ─────────────────────────────────────────────────

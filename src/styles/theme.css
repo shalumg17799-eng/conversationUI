@@ -1,44 +1,73 @@
 @custom-variant dark (&:is(.dark *));
 
+/* ─────────────────────────────────────────────────────────────
+   Report Hub design tokens
+   Palette: near-black primary on warm neutrals, terracotta brand accent.
+   Change a value here and the whole app (shadcn + shared components) follows.
+   ───────────────────────────────────────────────────────────── */
 :root {
   --font-size: 16px;
-  --background: #ffffff;
-  --foreground: oklch(0.145 0 0);
+
+  /* Surfaces — warm off-white */
+  --background: #f7f6f3;
+  --foreground: #1c1917;
   --card: #ffffff;
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: #030213;
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.95 0.0058 264.53);
-  --secondary-foreground: #030213;
-  --muted: #ececf0;
-  --muted-foreground: #717182;
-  --accent: #e9ebef;
-  --accent-foreground: #030213;
+  --card-foreground: #1c1917;
+  --popover: #ffffff;
+  --popover-foreground: #1c1917;
+
+  /* Primary — near-black (buttons, primary actions, key text) */
+  --primary: #1a1917;
+  --primary-foreground: #ffffff;
+
+  /* Secondary / muted / accent — warm neutral steps (hover surfaces, chips) */
+  --secondary: #f4f2ef;
+  --secondary-foreground: #2c2b29;
+  --muted: #f0ede8;
+  --muted-foreground: #8a8785;
+  --accent: #f5f2ee;
+  --accent-foreground: #1a1917;
+
+  /* Brand — terracotta. Use bg-brand / text-brand / border-brand.
+     --brand-subtle is the light tint for active nav + selected states. */
+  --brand: #d4572a;
+  --brand-foreground: #ffffff;
+  --brand-subtle: #fef0ec;
+  --brand-hover: #c14a20;
+
   --destructive: #d4183d;
   --destructive-foreground: #ffffff;
-  --border: rgba(0, 0, 0, 0.1);
-  --input: transparent;
-  --input-background: #f3f3f5;
+  --success: #2e7d32;
+  --warning: #e08e0b;
+
+  --border: #eceae6;
+  --input: #e5e3df;
+  --input-background: #f4f2ef;
   --switch-background: #cbced4;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
+
+  /* Focus ring — terracotta, matching the app convention */
+  --ring: #d4572a;
+
+  /* Charts — brand terracotta leads, warm complements */
+  --chart-1: oklch(0.62 0.18 38);
+  --chart-2: oklch(0.55 0.12 255);
+  --chart-3: oklch(0.7 0.13 180);
+  --chart-4: oklch(0.78 0.16 75);
+  --chart-5: oklch(0.6 0.2 300);
+
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: #030213;
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+
+  /* Sidebar / left rail */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1c1917;
+  --sidebar-primary: #d4572a;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #fef0ec;
+  --sidebar-accent-foreground: #d4572a;
+  --sidebar-border: #eceae6;
+  --sidebar-ring: #d4572a;
 }
 
 .dark {
@@ -56,6 +85,12 @@
   --muted-foreground: oklch(0.708 0 0);
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
+  --brand: #e06a3f;
+  --brand-foreground: #ffffff;
+  --brand-subtle: oklch(0.3 0.05 38);
+  --brand-hover: #d4572a;
+  --success: #4caf50;
+  --warning: #f0a830;
   --destructive: oklch(0.396 0.141 25.723);
   --destructive-foreground: oklch(0.637 0.237 25.331);
   --border: oklch(0.269 0 0);
@@ -93,8 +128,14 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-subtle: var(--brand-subtle);
+  --color-brand-hover: var(--brand-hover);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-input-background: var(--input-background);

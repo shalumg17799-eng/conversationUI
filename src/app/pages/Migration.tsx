@@ -31,7 +31,7 @@ export function MigrationPage() {
   const StatusBadge = ({ status }: { status: string }) => {
     const styles = {
       'Submitted': 'bg-muted text-foreground',
-      'In Review': 'bg-blue-50 text-blue-700',
+      'In Review': 'bg-brand-subtle text-brand',
       'In Progress': 'bg-yellow-50 text-yellow-700',
       'Validating': 'bg-purple-50 text-purple-700',
       'Completed': 'bg-green-50 text-green-700',
@@ -79,7 +79,7 @@ export function MigrationPage() {
     <div
       onClick={() => setSelectedMigration(migration)}
       className={`p-4 border-b border-border cursor-pointer transition-all hover:bg-muted ${
-        isActive ? 'bg-blue-50 border-l-4 border-l-blue-600' : 'border-l-4 border-l-transparent'
+        isActive ? 'bg-brand-subtle border-l-4 border-l-blue-600' : 'border-l-4 border-l-transparent'
       }`}
     >
       <div className="flex items-start justify-between gap-3">
@@ -107,7 +107,7 @@ export function MigrationPage() {
             </span>
           </div>
         </div>
-        {isActive && <ArrowRight className="w-4 h-4 text-blue-600 flex-shrink-0 mt-1" />}
+        {isActive && <ArrowRight className="w-4 h-4 text-brand flex-shrink-0 mt-1" />}
       </div>
     </div>
   );
@@ -130,7 +130,7 @@ export function MigrationPage() {
         </div>
         <button
           onClick={() => navigate('/talk/migration')}
-          className="px-5 py-2.5 bg-foreground hover:bg-foreground text-white rounded-lg text-[13px] font-medium transition-colors"
+          className="px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-[13px] font-medium transition-colors"
           style={{ fontFamily: 'var(--font-body)' }}
         >
           Request Migration
@@ -166,7 +166,7 @@ export function MigrationPage() {
           </div>
 
           {/* Completed Section */}
-          <div className="border-t-4 border-[#F3F4F6]">
+          <div className="border-t-4 border-[var(--muted)]">
             <div className="px-5 py-3 bg-muted border-b border-border">
               <h2 className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wide" style={{ fontFamily: 'var(--font-body)' }}>
                 Completed ({completedMigrations.length})
@@ -197,8 +197,8 @@ export function MigrationPage() {
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-3">
                 {selectedMigration.request_type === 'Report' ? (
-                  <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                    <FileText className="w-5 h-5 text-blue-600" />
+                  <div className="w-10 h-10 rounded-lg bg-brand-subtle flex items-center justify-center">
+                    <FileText className="w-5 h-5 text-brand" />
                   </div>
                 ) : (
                   <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
@@ -235,8 +235,8 @@ export function MigrationPage() {
                 </span>
               </div>
               <ArrowRight className="w-4 h-4 text-muted-foreground" />
-              <div className="px-4 py-2 bg-blue-50 rounded-lg border border-blue-200">
-                <span className="text-[13px] font-medium text-blue-700" style={{ fontFamily: 'var(--font-body)' }}>
+              <div className="px-4 py-2 bg-brand-subtle rounded-lg border border-brand/20">
+                <span className="text-[13px] font-medium text-brand" style={{ fontFamily: 'var(--font-body)' }}>
                   {selectedMigration.target_platform}
                 </span>
               </div>
@@ -288,7 +288,7 @@ export function MigrationPage() {
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {refMetricDefinitions.slice(0, 4).map(metric => (
-                    <span key={metric.metric_id} className="bg-blue-50 text-blue-700 text-[10px] font-medium px-2 py-0.5 rounded" style={{ fontFamily: 'var(--font-body)' }}>
+                    <span key={metric.metric_id} className="bg-brand-subtle text-brand text-[10px] font-medium px-2 py-0.5 rounded" style={{ fontFamily: 'var(--font-body)' }}>
                       {metric.metric_name}
                     </span>
                   ))}
@@ -310,11 +310,11 @@ export function MigrationPage() {
                       step.completed 
                         ? 'border-green-600 bg-green-600' 
                         : step.inProgress 
-                        ? 'border-blue-600 bg-blue-50'
+                        ? 'border-brand bg-brand-subtle'
                         : 'border-gray-300 bg-white'
                     }`}>
                       {step.completed && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
-                      {step.inProgress && <Clock className="w-3.5 h-3.5 text-blue-600" />}
+                      {step.inProgress && <Clock className="w-3.5 h-3.5 text-brand" />}
                     </div>
                     {idx < progressSteps.length - 1 && (
                       <div className={`absolute left-1/2 top-6 w-0.5 h-4 -translate-x-1/2 ${
@@ -324,7 +324,7 @@ export function MigrationPage() {
                   </div>
                   <div className="flex-1 pt-0.5">
                     <p className={`text-[13px] ${
-                      step.completed ? 'text-foreground font-medium' : step.inProgress ? 'text-blue-700 font-medium' : 'text-muted-foreground'
+                      step.completed ? 'text-foreground font-medium' : step.inProgress ? 'text-brand font-medium' : 'text-muted-foreground'
                     }`} style={{ fontFamily: 'var(--font-body)' }}>
                       {step.label}
                     </p>
@@ -363,7 +363,7 @@ export function MigrationPage() {
               )}
               {isCompleted && (
                 <>
-                  <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[12px] font-medium transition-colors flex items-center gap-2" style={{ fontFamily: 'var(--font-body)' }}>
+                  <button className="px-4 py-2 bg-brand hover:bg-brand-hover text-white rounded-lg text-[12px] font-medium transition-colors flex items-center gap-2" style={{ fontFamily: 'var(--font-body)' }}>
                     <ExternalLink className="w-4 h-4" />
                     View migrated asset
                   </button>

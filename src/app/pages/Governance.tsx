@@ -66,7 +66,7 @@ export function GovernancePage() {
             Visibility into data quality, definitions, and analytics usage.
           </p>
         </div>
-        <div className="text-[11px] text-muted-foreground bg-blue-50 px-3 py-1.5 rounded-md" style={{ fontFamily: 'var(--font-body)' }}>
+        <div className="text-[11px] text-brand bg-brand-subtle px-3 py-1.5 rounded-md" style={{ fontFamily: 'var(--font-body)' }}>
           System-Level · Conceptual
         </div>
       </div>
@@ -76,7 +76,7 @@ export function GovernancePage() {
         {/* Tile 1: Certified Datasets */}
         <button
           onClick={() => window.scrollTo({ top: 500, behavior: 'smooth' })}
-          className="bg-card rounded-[12px] border border-border p-6 shadow-sm text-left hover:border-[#6B7280] transition-colors"
+          className="bg-card rounded-[12px] border border-border p-6 shadow-sm text-left hover:border-brand/40 hover:shadow-md transition-all"
         >
           <div className="text-[13px] font-semibold text-muted-foreground mb-2" style={{ fontFamily: 'var(--font-body)' }}>
             Certified Datasets
@@ -92,14 +92,14 @@ export function GovernancePage() {
         {/* Tile 2: Standard vs Enterprise Reports */}
         <button
           onClick={() => window.scrollTo({ top: 1200, behavior: 'smooth' })}
-          className="bg-card rounded-[12px] border border-border p-6 shadow-sm text-left hover:border-[#6B7280] transition-colors"
+          className="bg-card rounded-[12px] border border-border p-6 shadow-sm text-left hover:border-brand/40 hover:shadow-md transition-all"
         >
           <div className="text-[13px] font-semibold text-muted-foreground mb-3" style={{ fontFamily: 'var(--font-body)' }}>
             Standard vs Enterprise Reports
           </div>
           <div className="flex items-center gap-4 mb-2">
             <div>
-              <div className="text-[24px] font-bold text-[#60A5FA]" style={{ fontFamily: 'var(--font-body)' }}>
+              <div className="text-[24px] font-bold text-brand" style={{ fontFamily: 'var(--font-body)' }}>
                 {governanceMetrics.standardReports}
               </div>
               <div className="text-[11px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
@@ -117,7 +117,7 @@ export function GovernancePage() {
           </div>
           <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
             <div 
-              className="h-full bg-[#60A5FA]" 
+              className="h-full bg-brand" 
               style={{ 
                 width: `${(governanceMetrics.standardReports / (governanceMetrics.standardReports + governanceMetrics.enterpriseReports)) * 100}%` 
               }}
@@ -128,7 +128,7 @@ export function GovernancePage() {
         {/* Tile 3: Dataset Freshness */}
         <button
           onClick={() => window.scrollTo({ top: 500, behavior: 'smooth' })}
-          className="bg-card rounded-[12px] border border-border p-6 shadow-sm text-left hover:border-[#6B7280] transition-colors"
+          className="bg-card rounded-[12px] border border-border p-6 shadow-sm text-left hover:border-brand/40 hover:shadow-md transition-all"
         >
           <div className="text-[13px] font-semibold text-muted-foreground mb-2" style={{ fontFamily: 'var(--font-body)' }}>
             Dataset Freshness
@@ -144,7 +144,7 @@ export function GovernancePage() {
         {/* Tile 4: Governed Metrics */}
         <button
           onClick={() => window.scrollTo({ top: 900, behavior: 'smooth' })}
-          className="bg-card rounded-[12px] border border-border p-6 shadow-sm text-left hover:border-[#6B7280] transition-colors"
+          className="bg-card rounded-[12px] border border-border p-6 shadow-sm text-left hover:border-brand/40 hover:shadow-md transition-all"
         >
           <div className="text-[13px] font-semibold text-muted-foreground mb-2" style={{ fontFamily: 'var(--font-body)' }}>
             Governed Metrics
@@ -190,7 +190,7 @@ export function GovernancePage() {
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#E5E7EB]">
+            <tbody className="divide-y divide-border">
               {datasetStatus.map((dataset) => (
                 <tr 
                   key={dataset.dataset_id}
@@ -371,7 +371,7 @@ export function GovernancePage() {
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#E5E7EB]">
+            <tbody className="divide-y divide-border">
               {catalogReports.map((report) => (
                 <tr 
                   key={report.report_id}
@@ -390,7 +390,7 @@ export function GovernancePage() {
                         Enterprise
                       </span>
                     ) : (
-                      <span className="bg-blue-50 text-blue-700 text-[10px] font-medium px-2 py-1 rounded" style={{ fontFamily: 'var(--font-body)' }}>
+                      <span className="bg-brand-subtle text-brand text-[10px] font-medium px-2 py-1 rounded" style={{ fontFamily: 'var(--font-body)' }}>
                         Standard
                       </span>
                     )}
@@ -417,7 +417,7 @@ export function GovernancePage() {
       </div>
 
       {/* SECTION 5: GOVERNANCE ACTIONS */}
-      <div className="bg-[#EFF6FF] rounded-[12px] border border-[#BFDBFE] p-6 shadow-sm">
+      <div className="bg-brand-subtle rounded-[12px] border border-brand/20 p-6 shadow-sm">
         <h3 className="text-[15px] font-semibold text-foreground mb-4" style={{ fontFamily: 'var(--font-body)' }}>
           Governance actions
         </h3>
@@ -453,7 +453,7 @@ export function GovernancePage() {
           </button>
         </div>
 
-        <div className="bg-card rounded-lg p-3 border border-[#BFDBFE]">
+        <div className="bg-card rounded-lg p-3 border border-brand/20">
           <p className="text-[12px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
             Changes are request-driven and reviewed through Report Hub.
           </p>
@@ -476,7 +476,7 @@ export function GovernancePage() {
             </button>
             <button
               onClick={() => navigate('/migration')}
-              className="px-5 py-2.5 bg-foreground hover:bg-foreground text-white rounded-lg text-[13px] font-medium transition-colors"
+              className="px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-[13px] font-medium transition-colors"
               style={{ fontFamily: 'var(--font-body)' }}
             >
               View Migration Requests

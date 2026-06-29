@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import { executeQuery } from '../services/queryEngine';
 import { analyzeDataShape } from '../services/dataShapeAnalyzer';
 import {
-  generateReport, analyzeQuery,
+  generateReport, analyzeQuery, sonnetRespond,
   classifyAndEditReport, buildHydrationMap, rehydrateEditedCards,
   ReportCard, ConversationTurn, LLMProvider,
   getAvailableDataSources,
@@ -539,30 +539,55 @@ export async function runStreamingPipeline(
   let tableOverride: string | undefined;
   const intent = { metric: 'unknown', dimension: 'unknown', intent: 'metric_by_dimension' as const };
 
-  send('status', { message: 'Understanding your query...' });
-  const analysis = await analyzeQuery(query, clarificationHistory, provider);
+  send('status', { message: provider === 'sonnet' ? 'Thinking…' : 'Understanding your query...' });
 
-  if (analysis.action === 'clarify' && !forceGenerate) {
-    send('clarification', {
-      opener: analysis.opener,
-      currentQuestion: { question: analysis.question, options: analysis.options },
-    });
-    return;
-  }
+  if (provider === 'sonnet') {
+    // Sonnet front-door: one call decides chat / answer / clarify / generate.
+    // It is NOT forced to build a report — greetings and questions get real replies.
+    const decision = await sonnetRespond(query, clarificationHistory);
+    console.log(`[Pipeline] Sonnet intent: ${decision.action}`);
 
-  if (analysis.action === 'route') {
-    tableOverride = analysis.table;
+    // Conversational or direct answer — reply as text, no dashboard.
+    if (decision.action === 'chat' || decision.action === 'answer') {
+      send('qa_answer', { message: decision.message, followUp: [] });
+      return;
+    }
+    // Needs a choice — ask, unless we're forcing generation.
+    if (decision.action === 'clarify') {
+      if (!forceGenerate) {
+        send('clarification', { opener: '', currentQuestion: { question: decision.question, options: decision.options } });
+        return;
+      }
+      tableOverride = getAvailableDataSources()[0]?.table;
+    } else {
+      // generate
+      tableOverride = decision.table;
+    }
   } else {
-    // forceGenerate or LLM couldn't route — derive table from history/query text
-    // using the same catalog-aware extractor used in analyzeQuery's fast-path
-    const allTexts = [query, ...clarificationHistory.map(t => t.answer)];
-    const availableSources = getAvailableDataSources();
-    const matched = availableSources.find(s =>
-      allTexts.some(t => t.toLowerCase().includes(s.reportName.toLowerCase()))
-    ) ?? availableSources.find(s =>
-      allTexts.some(t => t.toLowerCase().includes(s.domain.toLowerCase()))
-    );
-    tableOverride = matched?.table ?? availableSources[0]?.table;
+    // Gemma path — unchanged: LLM-driven analyze, then route or clarify.
+    const analysis = await analyzeQuery(query, clarificationHistory, provider);
+
+    if (analysis.action === 'clarify' && !forceGenerate) {
+      send('clarification', {
+        opener: analysis.opener,
+        currentQuestion: { question: analysis.question, options: analysis.options },
+      });
+      return;
+    }
+
+    if (analysis.action === 'route') {
+      tableOverride = analysis.table;
+    } else {
+      // forceGenerate or LLM couldn't route — derive table from history/query text
+      const allTexts = [query, ...clarificationHistory.map(t => t.answer)];
+      const availableSources = getAvailableDataSources();
+      const matched = availableSources.find(s =>
+        allTexts.some(t => t.toLowerCase().includes(s.reportName.toLowerCase()))
+      ) ?? availableSources.find(s =>
+        allTexts.some(t => t.toLowerCase().includes(s.domain.toLowerCase()))
+      );
+      tableOverride = matched?.table ?? availableSources[0]?.table;
+    }
   }
 
   // Step 2 — fetch real BigQuery data

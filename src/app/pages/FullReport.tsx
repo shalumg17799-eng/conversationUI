@@ -31,7 +31,7 @@ const MONTHLY_TREND = [
 ];
 
 const SEGMENT_PIE = [
-  { name: 'Enterprise', value: 38, color: '#3B82F6' },
+  { name: 'Enterprise', value: 38, color: 'var(--brand)' },
   { name: 'Mid-Market', value: 27, color: '#10B981' },
   { name: 'SMB', value: 19, color: '#F59E0B' },
   { name: 'Partners', value: 11, color: '#8B5CF6' },
@@ -177,7 +177,7 @@ export function FullReportPage() {
           </p>
           <button
             onClick={() => window.close()}
-            className="px-5 py-2.5 bg-foreground hover:bg-foreground text-white rounded-lg text-[13px] font-medium"
+            className="px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-[13px] font-medium"
             style={{ fontFamily: 'var(--font-body)' }}
           >
             Close Tab
@@ -200,7 +200,7 @@ export function FullReportPage() {
     Qlik:    { bg: '#DCFCE7', text: '#166534' },
   };
   const platform = report.source_application ?? '';
-  const pc = platformColors[platform] ?? { bg: '#F3F4F6', text: '#374151' };
+  const pc = platformColors[platform] ?? { bg: 'var(--border)', text: 'var(--foreground)' };
 
   return (
     <div className="min-h-screen bg-muted">
@@ -263,7 +263,7 @@ export function FullReportPage() {
                 Report Hub
               </button>
               <button
-                className="px-3 py-1.5 bg-foreground hover:bg-foreground text-white rounded-lg text-[12px] font-medium transition-colors flex items-center gap-1.5"
+                className="px-3 py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-[12px] font-medium transition-colors flex items-center gap-1.5"
                 style={{ fontFamily: 'var(--font-body)' }}
               >
                 <Download className="w-3.5 h-3.5" />
@@ -284,7 +284,7 @@ export function FullReportPage() {
               onClick={() => setActiveTab(tab.id)}
               className={`px-5 py-3 text-[13px] font-medium border-b-2 transition-colors ${
                 activeTab === tab.id
-                  ? 'border-[#111827] text-foreground'
+                  ? 'border-brand text-brand'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
               style={{ fontFamily: 'var(--font-body)' }}
@@ -339,11 +339,11 @@ export function FullReportPage() {
             <ResponsiveContainer width="100%" height={260}>
               <LineChart data={MONTHLY_TREND} margin={{ top: 5, right: 20, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                <XAxis dataKey="month" tick={{ fontSize: 11, fontFamily: 'var(--font-body)', fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fontFamily: 'var(--font-body)', fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={v => `$${v/1000}M`} />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fontFamily: 'var(--font-body)', fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fontFamily: 'var(--font-body)', fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} tickFormatter={v => `$${v/1000}M`} />
                 <Tooltip contentStyle={customTooltipStyle} formatter={(v: number) => [`$${v.toLocaleString()}K`, '']} />
                 <Legend wrapperStyle={{ fontSize: '11px', fontFamily: 'var(--font-body)' }} />
-                <Line type="monotone" dataKey="thisYear" name="This Year"  stroke="#3B82F6" strokeWidth={2.5} dot={{ r: 3, fill: '#3B82F6' }} activeDot={{ r: 5 }} />
+                <Line type="monotone" dataKey="thisYear" name="This Year"  stroke="var(--brand)" strokeWidth={2.5} dot={{ r: 3, fill: 'var(--brand)' }} activeDot={{ r: 5 }} />
                 <Line type="monotone" dataKey="lastYear" name="Last Year"  stroke="#94A3B8" strokeWidth={2}   strokeDasharray="4 2" dot={false} />
                 <Line type="monotone" dataKey="target"   name="Target"     stroke="#F59E0B" strokeWidth={1.5} strokeDasharray="6 3" dot={false} />
               </LineChart>
@@ -414,11 +414,11 @@ export function FullReportPage() {
             <ResponsiveContainer width="100%" height={230}>
               <BarChart data={QUARTERLY_YOY} barCategoryGap="30%" barGap={4}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-                <XAxis dataKey="quarter" tick={{ fontSize: 11, fontFamily: 'var(--font-body)', fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fontFamily: 'var(--font-body)', fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(0)}M`} />
+                <XAxis dataKey="quarter" tick={{ fontSize: 11, fontFamily: 'var(--font-body)', fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fontFamily: 'var(--font-body)', fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(0)}M`} />
                 <Tooltip contentStyle={customTooltipStyle} formatter={(v: number) => [`$${v.toLocaleString()}K`, '']} />
                 <Legend wrapperStyle={{ fontSize: '11px', fontFamily: 'var(--font-body)' }} />
-                <Bar dataKey="thisYear" name="FY 2024" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="thisYear" name="FY 2024" fill="var(--brand)" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="lastYear" name="FY 2023" fill="#CBD5E1" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -447,7 +447,7 @@ export function FullReportPage() {
                       style={{
                         width: `${r.pct}%`,
                         background: i === 0
-                          ? 'linear-gradient(90deg, #3B82F6, #60A5FA)'
+                          ? 'linear-gradient(90deg, var(--brand), color-mix(in srgb, var(--brand) 55%, white))'
                           : i === 1
                           ? 'linear-gradient(90deg, #10B981, #34D399)'
                           : i === 2
@@ -489,7 +489,7 @@ export function FullReportPage() {
             </div>
             <div className="flex items-center gap-2">
               {[
-                { color: '#3B82F6', label: 'Active Users' },
+                { color: 'var(--brand)', label: 'Active Users' },
                 { color: '#10B981', label: 'Sessions' },
                 { color: '#F59E0B', label: 'Conversions' },
               ].map((l, i) => (
@@ -504,8 +504,8 @@ export function FullReportPage() {
             <AreaChart data={ENGAGEMENT_TREND} margin={{ top: 0, right: 20, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="gradUsers" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#3B82F6" stopOpacity={0.12} />
-                  <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                  <stop offset="5%"  stopColor="var(--brand)" stopOpacity={0.12} />
+                  <stop offset="95%" stopColor="var(--brand)" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="gradSessions" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%"  stopColor="#10B981" stopOpacity={0.12} />
@@ -517,10 +517,10 @@ export function FullReportPage() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-              <XAxis dataKey="month" tick={{ fontSize: 11, fontFamily: 'var(--font-body)', fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fontFamily: 'var(--font-body)', fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}K` : v} />
+              <XAxis dataKey="month" tick={{ fontSize: 11, fontFamily: 'var(--font-body)', fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fontFamily: 'var(--font-body)', fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}K` : v} />
               <Tooltip contentStyle={customTooltipStyle} formatter={(v: number) => [v.toLocaleString(), '']} />
-              <Area type="monotone" dataKey="activeUsers"  name="Active Users"  stroke="#3B82F6" strokeWidth={2} fill="url(#gradUsers)"       dot={false} />
+              <Area type="monotone" dataKey="activeUsers"  name="Active Users"  stroke="var(--brand)" strokeWidth={2} fill="url(#gradUsers)"       dot={false} />
               <Area type="monotone" dataKey="sessions"     name="Sessions"      stroke="#10B981" strokeWidth={2} fill="url(#gradSessions)"    dot={false} />
               <Area type="monotone" dataKey="conversions"  name="Conversions"   stroke="#F59E0B" strokeWidth={2} fill="url(#gradConversions)" dot={false} />
             </AreaChart>
@@ -557,9 +557,9 @@ export function FullReportPage() {
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#F3F4F6]">
+              <tbody className="divide-y divide-border">
                 {TOP_PERFORMERS.map((row) => (
-                  <tr key={row.rank} className="hover:bg-[#FAFAFA] transition-colors">
+                  <tr key={row.rank} className="hover:bg-accent transition-colors">
                     <td className="px-5 py-3.5 text-center">
                       <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-bold ${row.rank <= 3 ? 'bg-amber-50 text-amber-600' : 'bg-muted text-muted-foreground'}`} style={{ fontFamily: 'var(--font-body)' }}>
                         {row.rank}
@@ -635,9 +635,9 @@ export function FullReportPage() {
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#F3F4F6]">
+              <tbody className="divide-y divide-border">
                 {SEGMENT_BREAKDOWN.map((row, idx) => (
-                  <tr key={idx} className="hover:bg-[#FAFAFA] transition-colors">
+                  <tr key={idx} className="hover:bg-accent transition-colors">
                     <td className="px-5 py-3.5">
                       <span className="text-[12px] font-medium text-foreground" style={{ fontFamily: 'var(--font-body)' }}>{row.segment}</span>
                     </td>
@@ -693,8 +693,8 @@ export function FullReportPage() {
                     </td>
                   ))}
                   <td className="px-5 py-3.5 text-center">
-                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-600" style={{ fontFamily: 'var(--font-body)' }}>
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-full bg-brand-subtle text-brand" style={{ fontFamily: 'var(--font-body)' }}>
+                      <span className="w-1.5 h-1.5 rounded-full bg-brand" />
                       Overall
                     </span>
                   </td>
@@ -716,15 +716,15 @@ export function FullReportPage() {
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate(`/reports/${reportId}`)}
-              className="text-[12px] text-[#3B82F6] hover:text-[#2563EB] hover:underline font-medium"
+              className="text-[12px] text-brand hover:text-brand-hover hover:underline font-medium"
               style={{ fontFamily: 'var(--font-body)' }}
             >
               Report Detail
             </button>
-            <span className="text-[#E5E7EB]">·</span>
+            <span className="text-border">·</span>
             <button
               onClick={() => navigate('/reports')}
-              className="text-[12px] text-[#3B82F6] hover:text-[#2563EB] hover:underline font-medium"
+              className="text-[12px] text-brand hover:text-brand-hover hover:underline font-medium"
               style={{ fontFamily: 'var(--font-body)' }}
             >
               All Reports

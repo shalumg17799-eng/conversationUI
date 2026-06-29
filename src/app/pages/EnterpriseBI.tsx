@@ -69,7 +69,7 @@ export function EnterpriseBIPage() {
             View and access connected enterprise BI platforms and their datasets.
           </p>
         </div>
-        <div className="text-[11px] text-muted-foreground bg-blue-50 px-3 py-1.5 rounded-md" style={{ fontFamily: 'var(--font-body)' }}>
+        <div className="text-[11px] text-muted-foreground bg-brand-subtle px-3 py-1.5 rounded-md" style={{ fontFamily: 'var(--font-body)' }}>
           {platforms.length} Platforms Connected
         </div>
       </div>
@@ -118,7 +118,7 @@ export function EnterpriseBIPage() {
         {platforms.map((platform) => (
           <div
             key={platform.name}
-            className="bg-card rounded-[12px] border border-border p-6 shadow-sm hover:shadow-md transition-all hover:border-[#6B7280]"
+            className="bg-card rounded-[12px] border border-border p-6 shadow-sm hover:shadow-md transition-all hover:border-brand/40"
           >
             {/* Tableau Decommission Banner */}
             {platform.name === 'Tableau' && (
@@ -192,7 +192,7 @@ export function EnterpriseBIPage() {
 
             {/* Primary Action */}
             <button
-              className="w-full px-4 py-2.5 bg-foreground hover:bg-foreground text-white rounded-lg text-[13px] font-medium transition-colors flex items-center justify-center gap-2"
+              className="w-full px-4 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-[13px] font-medium transition-colors flex items-center justify-center gap-2"
               style={{ fontFamily: 'var(--font-body)' }}
             >
               Open {platform.name}
@@ -203,7 +203,7 @@ export function EnterpriseBIPage() {
       </div>
 
       {/* Info Banner */}
-      <div className="bg-[#EFF6FF] rounded-[12px] border border-[#BFDBFE] p-6 shadow-sm mt-6">
+      <div className="bg-brand-subtle rounded-[12px] border border-brand/20 p-6 shadow-sm mt-6">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-[14px] font-semibold text-foreground mb-1" style={{ fontFamily: 'var(--font-body)' }}>
@@ -223,7 +223,7 @@ export function EnterpriseBIPage() {
             </button>
             <button
               onClick={() => navigate('/conversational')}
-              className="px-5 py-2.5 bg-foreground hover:bg-foreground text-white rounded-lg text-[13px] font-medium transition-colors"
+              className="px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-[13px] font-medium transition-colors"
               style={{ fontFamily: 'var(--font-body)' }}
             >
               Ask Questions

@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Layout } from '../components/ui/Layout';
+import { Textarea } from '../components/ui/textarea';
+import { Button } from '../components/ui/Button';
 import { useNavigate, useSearchParams, useLocation, useParams } from 'react-router';
 import {
   getMonthlyTakeRateTrend,
@@ -31,6 +33,7 @@ import { ReportGenerationPreview } from '@/app/components/ReportGenerationPrevie
 import { GenerativeTable } from '@/app/components/GenerativeTable';
 import { ReportSkeleton } from '@/app/components/ReportSkeleton';
 import { UITreeRenderer, type UITreeNode } from '@/app/components/UITreeRenderer';
+import { exportReportPDF, exportReportExcel } from '@/lib/exportReport';
 import { 
   Send, 
   Sparkles, 
@@ -55,6 +58,8 @@ import {
   ChevronRight,
   Info,
   Medal,
+  Download,
+  FileSpreadsheet,
 } from 'lucide-react';
 import MedallionIcon from '@/imports/Group5';
 import { usePersona } from '@/app/context/PersonaContext';
@@ -1192,9 +1197,9 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
       },
       'Tableau': {
         formatLabel: 'Tableau Workbook (TWBX)',
-        bgColor: 'bg-blue-50',
-        borderColor: 'border-blue-200',
-        textColor: 'text-blue-800',
+        bgColor: 'bg-brand-subtle',
+        borderColor: 'border-brand/20',
+        textColor: 'text-brand',
         sampleQuery: 'EVALUATE [Sales] BY [Category]',
         dataFormat: [
           { field: 'TransactionID', type: 'String', sample: 'TXN-2024-0001' },
@@ -3128,7 +3133,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
   const getSourceAppColor = (app?: string) => {
     switch (app) {
       case 'Tableau':
-        return 'bg-blue-100 text-blue-700';
+        return 'bg-brand-subtle text-brand';
       case 'Looker':
         return 'bg-purple-100 text-purple-700';
       case 'Qlik':
@@ -3145,7 +3150,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
       case 'Looker':
         return 'bg-purple-100 text-purple-700';
       case 'Tableau':
-        return 'bg-blue-100 text-blue-700';
+        return 'bg-brand-subtle text-brand';
       default:
         return 'bg-gray-100 text-gray-700';
     }
@@ -3425,8 +3430,8 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
     if (message.type === 'user') {
       return (
         <div className="flex justify-end">
-          <div className="max-w-[70%] bg-[#2563EB] border border-[#1D4ED8] rounded-2xl px-4 py-3">
-            <p className="text-[14px] text-white" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <div className="max-w-[70%] bg-primary rounded-2xl px-4 py-3">
+            <p className="text-[14px] text-primary-foreground" style={{ fontFamily: 'Inter, sans-serif' }}>
               {message.content}
             </p>
           </div>
@@ -3438,12 +3443,12 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
     if (message.type === 'assistant') {
       return (
         <div className="flex items-start gap-3">
-          <div className="w-8 h-8 rounded-full bg-[#FEF0EC] flex items-center justify-center flex-shrink-0">
-            <Sparkles className="w-4 h-4 text-[#D4572A]" />
+          <div className="w-8 h-8 rounded-full bg-brand-subtle flex items-center justify-center flex-shrink-0">
+            <Sparkles className="w-4 h-4 text-brand" />
           </div>
           <div className="flex-1">
             {message.content && (
-              <p className="text-[14px] text-[#1C1917] leading-relaxed whitespace-pre-line mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <p className="text-[14px] text-foreground leading-relaxed whitespace-pre-line mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
                 {message.content.split('**').map((part, i) =>
                   i % 2 === 0 ? part : <strong key={i}>{part}</strong>
                 )}
@@ -3457,7 +3462,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                   <button
                     key={i}
                     onClick={() => { setInputValue(fu.intent); }}
-                    className="px-3 py-1.5 text-[12px] font-medium bg-white border border-[#E5E7EB] rounded-full text-[#374151] hover:bg-gray-50 hover:border-gray-300 transition-all text-left"
+                    className="px-3 py-1.5 text-[12px] font-medium bg-card border border-border rounded-full text-foreground hover:bg-accent hover:border-brand/40 transition-all text-left"
                   >
                     {fu.intent}
                   </button>
@@ -3469,7 +3474,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
             {message.renderType === 'structured_qa_card' && message.data && (
               <div className="space-y-3 mt-3">
                 {/* Title */}
-                <h3 className="text-[15px] font-semibold text-[#111827] mb-4" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <h3 className="text-[15px] font-semibold text-[var(--foreground)] mb-4" style={{ fontFamily: 'Inter, sans-serif' }}>
                   {message.data.title}
                 </h3>
 
@@ -3478,12 +3483,12 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                   {message.data.items.map((item: any, idx: number) => (
                     <div
                       key={idx}
-                      className="bg-[#FAFAFA] border-l-4 border-[#334155] rounded-lg p-4 shadow-sm"
+                      className="bg-[var(--muted)] border-l-4 border-[var(--brand)] rounded-lg p-4 shadow-sm"
                     >
                       <div className="flex items-start gap-4">
                         {/* Rank Number */}
                         <div className="flex-shrink-0">
-                          <div className="text-[32px] font-bold text-[#334155]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <div className="text-[32px] font-bold text-[var(--brand)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                             {item.rank}
                           </div>
                         </div>
@@ -3491,13 +3496,13 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                         {/* Content */}
                         <div className="flex-1">
                           {/* Title */}
-                          <h4 className="text-[14px] font-bold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <h4 className="text-[14px] font-bold text-[var(--foreground)] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
                             {item.title}
                           </h4>
                           
                           {/* Category */}
                           {item.category && (
-                            <p className="text-[12px] text-[#6B7280] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+                            <p className="text-[12px] text-[var(--muted-foreground)] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
                               {item.category}
                             </p>
                           )}
@@ -3517,22 +3522,22 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                 {/* Additional Items (if present) */}
                 {message.data.additionalItems && message.data.additionalItems.length > 0 && (
                   <>
-                    <h4 className="text-[13px] font-semibold text-[#111827] mt-5 mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <h4 className="text-[13px] font-semibold text-[var(--foreground)] mt-5 mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
                       Additional Focus Areas:
                     </h4>
                     <div className="space-y-2">
                       {message.data.additionalItems.map((item: any, idx: number) => (
                         <div
                           key={idx}
-                          className="bg-[#FAFAFA] border-l-4 border-[#334155] rounded-lg p-3 shadow-sm"
+                          className="bg-[var(--muted)] border-l-4 border-[var(--brand)] rounded-lg p-3 shadow-sm"
                         >
                           <div className="flex items-start gap-3">
                             <div className="flex-1">
-                              <h5 className="text-[13px] font-bold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                              <h5 className="text-[13px] font-bold text-[var(--foreground)] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
                                 {item.title}
                               </h5>
                               {item.category && (
-                                <p className="text-[11px] text-[#6B7280] mb-1.5" style={{ fontFamily: 'Inter, sans-serif' }}>
+                                <p className="text-[11px] text-[var(--muted-foreground)] mb-1.5" style={{ fontFamily: 'Inter, sans-serif' }}>
                                   {item.category}
                                 </p>
                               )}
@@ -3551,9 +3556,9 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
 
                 {/* Key Insight Section */}
                 {message.data.insight && (
-                  <div className="bg-[#F1F5F9] border-l-4 border-[#334155] rounded-lg p-4 mt-5">
-                    <h4 className="text-[13px] font-bold text-[#111827] mb-2 flex items-center gap-2" style={{ fontFamily: 'Inter, sans-serif' }}>
-                      <span className="text-[#334155]">💡</span> Key Insight:
+                  <div className="bg-[var(--brand-subtle)] border-l-4 border-[var(--brand)] rounded-lg p-4 mt-5">
+                    <h4 className="text-[13px] font-bold text-[var(--foreground)] mb-2 flex items-center gap-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <span className="text-[var(--brand)]">💡</span> Key Insight:
                     </h4>
                     <p className="text-[12px] text-[#374151] leading-relaxed" style={{ fontFamily: 'Inter, sans-serif' }}>
                       {message.data.insight}
@@ -3589,10 +3594,10 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                         handleCreateReportDatasetSelect(dataset);
                       }
                     }}
-                    className="border border-[#E5E7EB] rounded-lg p-4 hover:border-blue-400 hover:shadow-sm cursor-pointer transition-all bg-white"
+                    className="border border-[var(--border)] rounded-lg p-4 hover:border-brand/50 hover:shadow-sm cursor-pointer transition-all bg-white"
                   >
                     <div className="flex items-center gap-2 mb-1">
-                      <p className="text-[13px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <p className="text-[13px] font-semibold text-[var(--foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                         {dataset.dataset_name}
                       </p>
                       {dataset.certified_flag && (
@@ -3601,7 +3606,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                         </div>
                       )}
                     </div>
-                    <p className="text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <p className="text-[11px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                       {dataset.domain}
                     </p>
                   </div>
@@ -3637,15 +3642,15 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                           }}
                           className={`px-4 py-2.5 border rounded-full text-[13px] transition-all shadow-sm hover:shadow-md ${
                             isSelected 
-                              ? 'bg-[#111827] text-white border-[#111827]' 
-                              : 'bg-white hover:bg-gray-50 border-[#E5E7EB] text-[#111827]'
+                              ? 'bg-[var(--foreground)] text-white border-[var(--foreground)]' 
+                              : 'bg-white hover:bg-gray-50 border-[var(--border)] text-[var(--foreground)]'
                           }`}
                           style={{ fontFamily: 'Inter, sans-serif' }}
                         >
                           {action}
                         </button>
                         {description && (
-                          <p className="text-[10px] text-[#9CA3AF] mt-1 ml-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <p className="text-[10px] text-[var(--muted-foreground)] mt-1 ml-2" style={{ fontFamily: 'Inter, sans-serif' }}>
                             {description}
                           </p>
                         )}
@@ -3659,7 +3664,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                       handleCreateReportAction(`Selected: ${multiSelectItems.join(', ')}`, multiSelectItems);
                       setMultiSelectItems([]);
                     }}
-                    className="px-5 py-2.5 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg text-[13px] font-medium transition-colors"
+                    className="px-5 py-2.5 bg-[var(--foreground)] hover:bg-[var(--primary)] text-white rounded-lg text-[13px] font-medium transition-colors"
                     style={{ fontFamily: 'Inter, sans-serif' }}
                   >
                     Continue with {multiSelectItems.length} selected
@@ -3668,7 +3673,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                 
                 {/* Helper message - show for all steps that have helperText */}
                 {message.data.helperText && (
-                  <p className="text-[11px] text-[#9CA3AF] italic leading-relaxed mt-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <p className="text-[11px] text-[var(--muted-foreground)] italic leading-relaxed mt-2" style={{ fontFamily: 'Inter, sans-serif' }}>
                     {message.data.helperText}
                   </p>
                 )}
@@ -3681,7 +3686,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                 {/* Open Report Button */}
                 <button
                   onClick={handleViewReport}
-                  className="px-5 py-3 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg text-[13px] font-medium transition-colors shadow-sm flex items-center gap-2"
+                  className="px-5 py-3 bg-[var(--foreground)] hover:bg-[var(--primary)] text-white rounded-lg text-[13px] font-medium transition-colors shadow-sm flex items-center gap-2"
                   style={{ fontFamily: 'Inter, sans-serif' }}
                 >
                   Open report
@@ -3690,7 +3695,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
 
                 {/* Enhancement Pills */}
                 <div>
-                  <p className="text-[11px] text-[#6B7280] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <p className="text-[11px] text-[var(--muted-foreground)] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
                     Refine visualization:
                   </p>
                   <div className="flex flex-wrap gap-2">
@@ -3698,7 +3703,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                       <button
                         key={`${message.id}-enhance-${idx}`}
                         onClick={() => handleEnhancementAction(action)}
-                        className="px-4 py-2 bg-white hover:bg-gray-50 border border-[#E5E7EB] rounded-full text-[12px] text-[#111827] transition-all shadow-sm hover:shadow-md"
+                        className="px-4 py-2 bg-white hover:bg-gray-50 border border-[var(--border)] rounded-full text-[12px] text-[var(--foreground)] transition-all shadow-sm hover:shadow-md"
                         style={{ fontFamily: 'Inter, sans-serif' }}
                       >
                         {action}
@@ -3711,7 +3716,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
 
             {/* Marketplace Dataset Grid */}
             {message.renderType === 'marketplace_dataset_grid' && message.data && (
-              <div className="mt-4 bg-white border border-[#E5E7EB] rounded-xl p-5 shadow-sm">
+              <div className="mt-4 bg-white border border-[var(--border)] rounded-xl p-5 shadow-sm">
                 {/* Search and Controls */}
                 <div className="mb-4 space-y-3">
                   <input
@@ -3719,25 +3724,25 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                     placeholder="Search customer data for churn and retention analysis..."
                     value={marketplaceSearchQuery}
                     onChange={(e) => setMarketplaceSearchQuery(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-[#E5E7EB] rounded-lg text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2.5 border border-[var(--border)] rounded-lg text-[13px] focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
                     style={{ fontFamily: 'Inter, sans-serif' }}
                   />
                   
                   <div className="flex items-center justify-between gap-3">
                     <button
                       onClick={() => setMarketplaceFiltersOpen(!marketplaceFiltersOpen)}
-                      className="px-3 py-1.5 text-[11px] text-[#6B7280] border border-[#E5E7EB] rounded-lg hover:bg-gray-50 transition-colors"
+                      className="px-3 py-1.5 text-[11px] text-[var(--muted-foreground)] border border-[var(--border)] rounded-lg hover:bg-gray-50 transition-colors"
                       style={{ fontFamily: 'Inter, sans-serif' }}
                     >
                       {marketplaceFiltersOpen ? 'Hide' : 'Show'} Filters
                     </button>
                     
                     <div className="flex items-center gap-3">
-                      <select className="px-3 py-1.5 text-[11px] text-[#6B7280] border border-[#E5E7EB] rounded-lg bg-white" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <select className="px-3 py-1.5 text-[11px] text-[var(--muted-foreground)] border border-[var(--border)] rounded-lg bg-white" style={{ fontFamily: 'Inter, sans-serif' }}>
                         <option>Items / Page: 10</option>
                         <option>Items / Page: 20</option>
                       </select>
-                      <select className="px-3 py-1.5 text-[11px] text-[#6B7280] border border-[#E5E7EB] rounded-lg bg-white" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <select className="px-3 py-1.5 text-[11px] text-[var(--muted-foreground)] border border-[var(--border)] rounded-lg bg-white" style={{ fontFamily: 'Inter, sans-serif' }}>
                         <option>Sort by: Relevance</option>
                         <option>Sort by: Name</option>
                         <option>Sort by: Recently Updated</option>
@@ -3748,26 +3753,26 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
 
                 {/* Filters Panel */}
                 {marketplaceFiltersOpen && (
-                  <div className="mb-4 p-4 bg-gray-50 border border-[#E5E7EB] rounded-lg">
-                    <h4 className="text-[12px] font-semibold text-[#111827] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <div className="mb-4 p-4 bg-gray-50 border border-[var(--border)] rounded-lg">
+                    <h4 className="text-[12px] font-semibold text-[var(--foreground)] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
                       Filters
                     </h4>
                     <div className="space-y-2">
                       <details className="group">
-                        <summary className="cursor-pointer text-[11px] font-medium text-[#6B7280] list-none flex items-center justify-between" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        <summary className="cursor-pointer text-[11px] font-medium text-[var(--muted-foreground)] list-none flex items-center justify-between" style={{ fontFamily: 'Inter, sans-serif' }}>
                           Applicable Spoke(s)
                           <ChevronRight className="w-3 h-3 group-open:rotate-90 transition-transform" />
                         </summary>
                         <div className="mt-2 ml-2 space-y-1.5">
-                          <label className="flex items-center gap-2 text-[10px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <label className="flex items-center gap-2 text-[10px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                             <input type="checkbox" className="w-3 h-3 rounded" />
                             Sales
                           </label>
-                          <label className="flex items-center gap-2 text-[10px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <label className="flex items-center gap-2 text-[10px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                             <input type="checkbox" className="w-3 h-3 rounded" />
                             Marketing
                           </label>
-                          <label className="flex items-center gap-2 text-[10px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <label className="flex items-center gap-2 text-[10px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                             <input type="checkbox" className="w-3 h-3 rounded" />
                             Operations
                           </label>
@@ -3855,8 +3860,8 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                         onClick={() => setMarketplaceSelectedDataset({ ...dataset, displayTitle })}
                         className={`border rounded-lg p-4 cursor-pointer transition-all ${
                           isSelected 
-                            ? 'border-blue-500 bg-blue-50 shadow-md' 
-                            : 'border-[#E5E7EB] hover:border-blue-300 hover:shadow-sm bg-white'
+                            ? 'border-brand bg-brand-subtle shadow-md' 
+                            : 'border-[var(--border)] hover:border-brand/40 hover:shadow-sm bg-white'
                         }`}
                       >
                         {/* Tag */}
@@ -3868,7 +3873,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                         
                         {/* Title */}
                         <div className="flex items-start gap-2 mb-2">
-                          <h4 className="text-[13px] font-semibold text-[#111827] flex-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <h4 className="text-[13px] font-semibold text-[var(--foreground)] flex-1" style={{ fontFamily: 'Inter, sans-serif' }}>
                             {displayTitle}
                           </h4>
                           {dataset.certified_flag && (
@@ -3879,26 +3884,26 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                         </div>
                         
                         {/* Description */}
-                        <p className="text-[11px] text-[#6B7280] mb-3 line-clamp-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        <p className="text-[11px] text-[var(--muted-foreground)] mb-3 line-clamp-2" style={{ fontFamily: 'Inter, sans-serif' }}>
                           {displayDescription}
                         </p>
                         
                         {/* Metadata */}
                         <div className="space-y-1 mb-3">
-                          <p className="text-[10px] text-[#9CA3AF]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <p className="text-[10px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                             Published on {dataset.last_updated_ts ? new Date(dataset.last_updated_ts).toLocaleDateString() : 'N/A'}
                           </p>
-                          <p className="text-[10px] text-[#9CA3AF]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <p className="text-[10px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                             {displayRefreshCadence}
                           </p>
                         </div>
                         
                         {/* Action Icons */}
                         <div className="flex items-center gap-3">
-                          <button className="text-[#9CA3AF] hover:text-[#6B7280] transition-colors">
+                          <button className="text-[var(--muted-foreground)] hover:text-[var(--muted-foreground)] transition-colors">
                             <Database className="w-3.5 h-3.5" />
                           </button>
-                          <button className="text-[#9CA3AF] hover:text-[#6B7280] transition-colors">
+                          <button className="text-[var(--muted-foreground)] hover:text-[var(--muted-foreground)] transition-colors">
                             <ExternalLink className="w-3.5 h-3.5" />
                           </button>
                         </div>
@@ -3908,7 +3913,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex items-center gap-3 pt-3 border-t border-[#E5E7EB]">
+                <div className="flex items-center gap-3 pt-3 border-t border-[var(--border)]">
                   <button
                     onClick={() => {
                       if (marketplaceSelectedDataset) {
@@ -3918,7 +3923,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                       }
                     }}
                     disabled={!marketplaceSelectedDataset}
-                    className="px-5 py-2.5 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg text-[13px] font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-5 py-2.5 bg-[var(--foreground)] hover:bg-[var(--primary)] text-white rounded-lg text-[13px] font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ fontFamily: 'Inter, sans-serif' }}
                   >
                     Use selected dataset
@@ -3930,7 +3935,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                       setMarketplaceSelectedDataset(null);
                       setMarketplaceSearchQuery('');
                     }}
-                    className="px-5 py-2.5 bg-white hover:bg-gray-50 border border-[#E5E7EB] text-[#111827] rounded-lg text-[13px] font-medium transition-colors"
+                    className="px-5 py-2.5 bg-white hover:bg-gray-50 border border-[var(--border)] text-[var(--foreground)] rounded-lg text-[13px] font-medium transition-colors"
                     style={{ fontFamily: 'Inter, sans-serif' }}
                   >
                     Back
@@ -3943,15 +3948,15 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
             {message.renderType === 'dimensions_with_filters' && message.data && (
               <div className="mt-4 space-y-5">
                 {/* Selected Dimensions Display */}
-                <div className="bg-white border border-[#E5E7EB] rounded-lg p-4">
-                  <p className="text-[11px] font-medium text-[#6B7280] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <div className="bg-white border border-[var(--border)] rounded-lg p-4">
+                  <p className="text-[11px] font-medium text-[var(--muted-foreground)] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
                     Selected Dimensions:
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {message.data.selectedDimensions?.map((dim: string, idx: number) => (
                       <span
                         key={idx}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#111827] text-white rounded-full text-[12px]"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--foreground)] text-white rounded-full text-[12px]"
                         style={{ fontFamily: 'Inter, sans-serif' }}
                       >
                         {dim}
@@ -3961,13 +3966,13 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                 </div>
 
                 {/* Filter Builder */}
-                <div className="bg-white border border-[#E5E7EB] rounded-lg p-5">
+                <div className="bg-white border border-[var(--border)] rounded-lg p-5">
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h4 className="text-[13px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <h4 className="text-[13px] font-semibold text-[var(--foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                         Selection Criteria (Optional)
                       </h4>
-                      <p className="text-[11px] text-[#6B7280] mt-0.5" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <p className="text-[11px] text-[var(--muted-foreground)] mt-0.5" style={{ fontFamily: 'Inter, sans-serif' }}>
                         Limit the data shown in this report
                       </p>
                     </div>
@@ -3984,7 +3989,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                             updated[idx].dimension = e.target.value;
                             setReportFilters(updated);
                           }}
-                          className="flex-1 px-3 py-2 text-[12px] border border-[#E5E7EB] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="flex-1 px-3 py-2 text-[12px] border border-[var(--border)] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-ring"
                           style={{ fontFamily: 'Inter, sans-serif' }}
                         >
                           <option value="">Select dimension...</option>
@@ -4000,7 +4005,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                             updated[idx].operator = e.target.value;
                             setReportFilters(updated);
                           }}
-                          className="w-32 px-3 py-2 text-[12px] border border-[#E5E7EB] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-32 px-3 py-2 text-[12px] border border-[var(--border)] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-ring"
                           style={{ fontFamily: 'Inter, sans-serif' }}
                         >
                           <option value="">Operator...</option>
@@ -4019,7 +4024,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                             setReportFilters(updated);
                           }}
                           placeholder="Value..."
-                          className="flex-1 px-3 py-2 text-[12px] border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="flex-1 px-3 py-2 text-[12px] border border-[var(--border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
                           style={{ fontFamily: 'Inter, sans-serif' }}
                         />
                         
@@ -4027,7 +4032,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                           onClick={() => {
                             setReportFilters(reportFilters.filter((_, i) => i !== idx));
                           }}
-                          className="p-2 text-[#9CA3AF] hover:text-red-600 transition-colors"
+                          className="p-2 text-[var(--muted-foreground)] hover:text-red-600 transition-colors"
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -4043,7 +4048,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                         { id: `filter-${Date.now()}`, dimension: '', operator: '', value: '' }
                       ]);
                     }}
-                    className="px-4 py-2 text-[12px] text-blue-600 hover:text-blue-700 font-medium transition-colors flex items-center gap-1.5"
+                    className="px-4 py-2 text-[12px] text-brand hover:text-brand-hover font-medium transition-colors flex items-center gap-1.5"
                     style={{ fontFamily: 'Inter, sans-serif' }}
                   >
                     <Plus className="w-4 h-4" />
@@ -4052,40 +4057,40 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                 </div>
 
                 {/* Report Scope Summary */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h4 className="text-[13px] font-semibold text-[#111827] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <div className="bg-brand-subtle border border-brand/20 rounded-lg p-4">
+                  <h4 className="text-[13px] font-semibold text-[var(--foreground)] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
                     Report Scope Summary
                   </h4>
                   
                   <div className="space-y-2">
                     <div>
-                      <p className="text-[10px] text-[#6B7280] uppercase tracking-wide mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <p className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-wide mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
                         Dataset
                       </p>
-                      <p className="text-[12px] text-[#111827] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <p className="text-[12px] text-[var(--foreground)] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
                         {message.data.selectedDataset?.dataset_name || 'Not selected'}
                       </p>
                     </div>
                     
                     <div>
-                      <p className="text-[10px] text-[#6B7280] uppercase tracking-wide mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <p className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-wide mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
                         Dimensions
                       </p>
-                      <p className="text-[12px] text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <p className="text-[12px] text-[var(--foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                         {message.data.selectedDimensions?.join(', ') || 'None'}
                       </p>
                     </div>
                     
                     {reportFilters.length > 0 && (
                       <div>
-                        <p className="text-[10px] text-[#6B7280] uppercase tracking-wide mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        <p className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-wide mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
                           Active Filters
                         </p>
                         <div className="space-y-1">
                           {reportFilters
                             .filter(f => f.dimension && f.operator && f.value)
                             .map((filter, idx) => (
-                              <p key={idx} className="text-[12px] text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                              <p key={idx} className="text-[12px] text-[var(--foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                                 • {filter.dimension} {filter.operator} {filter.value}
                               </p>
                             ))}
@@ -4099,7 +4104,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                 <div className="flex items-center gap-3 pt-2">
                   <button
                     onClick={handleContinueFromDimensions}
-                    className="px-5 py-2.5 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg text-[13px] font-medium transition-colors"
+                    className="px-5 py-2.5 bg-[var(--foreground)] hover:bg-[var(--primary)] text-white rounded-lg text-[13px] font-medium transition-colors"
                     style={{ fontFamily: 'Inter, sans-serif' }}
                   >
                     Continue to usage details
@@ -4110,7 +4115,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                       setCreateReportState({ ...createReportState, step: 'marketplace_dataset_grid' });
                       setReportFilters([]);
                     }}
-                    className="px-5 py-2.5 bg-white hover:bg-gray-50 border border-[#E5E7EB] text-[#111827] rounded-lg text-[13px] font-medium transition-colors"
+                    className="px-5 py-2.5 bg-white hover:bg-gray-50 border border-[var(--border)] text-[var(--foreground)] rounded-lg text-[13px] font-medium transition-colors"
                     style={{ fontFamily: 'Inter, sans-serif' }}
                   >
                     Edit dataset selection
@@ -4123,12 +4128,12 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
             {message.renderType === 'usage_selection' && message.data && (
               <div className="mt-4 space-y-5">
                 {/* User Volume Selection */}
-                <div className="bg-white border border-[#E5E7EB] rounded-lg p-5">
+                <div className="bg-white border border-[var(--border)] rounded-lg p-5">
                   <div className="mb-4">
-                    <h4 className="text-[13px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <h4 className="text-[13px] font-semibold text-[var(--foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                       How many people are expected to use this report?
                     </h4>
-                    <p className="text-[11px] text-[#6B7280] mt-0.5" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <p className="text-[11px] text-[var(--muted-foreground)] mt-0.5" style={{ fontFamily: 'Inter, sans-serif' }}>
                       This helps us plan performance and delivery.
                     </p>
                   </div>
@@ -4140,8 +4145,8 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                         onClick={() => setSelectedUserVolume(option)}
                         className={`px-4 py-3 rounded-lg text-[12px] font-medium transition-all border-2 ${
                           selectedUserVolume === option
-                            ? 'bg-[#111827] text-white border-[#111827]'
-                            : 'bg-white text-[#111827] border-[#E5E7EB] hover:border-[#9CA3AF]'
+                            ? 'bg-[var(--foreground)] text-white border-[var(--foreground)]'
+                            : 'bg-white text-[var(--foreground)] border-[var(--border)] hover:border-[var(--muted-foreground)]'
                         }`}
                         style={{ fontFamily: 'Inter, sans-serif' }}
                       >
@@ -4150,19 +4155,19 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                     ))}
                   </div>
                   
-                  <p className="text-[10px] text-[#9CA3AF] mt-3 italic" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <p className="text-[10px] text-[var(--muted-foreground)] mt-3 italic" style={{ fontFamily: 'Inter, sans-serif' }}>
                     This is an estimate, not a commitment.
                   </p>
                 </div>
 
                 {/* View Frequency (shown after user volume is selected) */}
                 {selectedUserVolume && (
-                  <div className="bg-white border border-[#E5E7EB] rounded-lg p-5">
+                  <div className="bg-white border border-[var(--border)] rounded-lg p-5">
                     <div className="mb-4">
-                      <h4 className="text-[13px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <h4 className="text-[13px] font-semibold text-[var(--foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                         How often will this report be viewed?
                       </h4>
-                      <p className="text-[11px] text-[#6B7280] mt-0.5" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <p className="text-[11px] text-[var(--muted-foreground)] mt-0.5" style={{ fontFamily: 'Inter, sans-serif' }}>
                         Approximate frequency is sufficient.
                       </p>
                     </div>
@@ -4174,8 +4179,8 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                           onClick={() => setSelectedViewFrequency(option)}
                           className={`px-4 py-2 rounded-full text-[12px] font-medium transition-all ${
                             selectedViewFrequency === option
-                              ? 'bg-[#111827] text-white'
-                              : 'bg-white text-[#111827] border border-[#E5E7EB] hover:bg-gray-50'
+                              ? 'bg-[var(--foreground)] text-white'
+                              : 'bg-white text-[var(--foreground)] border border-[var(--border)] hover:bg-gray-50'
                           }`}
                           style={{ fontFamily: 'Inter, sans-serif' }}
                         >
@@ -4189,32 +4194,32 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                 {/* Usage Summary (shown after both are selected) */}
                 {selectedUserVolume && selectedViewFrequency && (
                   <>
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <h4 className="text-[13px] font-semibold text-[#111827] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <div className="bg-brand-subtle border border-brand/20 rounded-lg p-4">
+                      <h4 className="text-[13px] font-semibold text-[var(--foreground)] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
                         Usage Summary
                       </h4>
                       
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <p className="text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <p className="text-[11px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                             Expected users:
                           </p>
-                          <p className="text-[12px] text-[#111827] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <p className="text-[12px] text-[var(--foreground)] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
                             {selectedUserVolume}
                           </p>
                         </div>
                         
                         <div className="flex items-center justify-between">
-                          <p className="text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <p className="text-[11px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                             View frequency:
                           </p>
-                          <p className="text-[12px] text-[#111827] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <p className="text-[12px] text-[var(--foreground)] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
                             {selectedViewFrequency}
                           </p>
                         </div>
                       </div>
                       
-                      <p className="text-[10px] text-[#6B7280] mt-3 pt-3 border-t border-blue-200" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <p className="text-[10px] text-[var(--muted-foreground)] mt-3 pt-3 border-t border-brand/20" style={{ fontFamily: 'Inter, sans-serif' }}>
                         These inputs are used for performance optimization and cost-aware routing.
                       </p>
                     </div>
@@ -4233,7 +4238,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                     <div className="flex items-center gap-3 pt-2">
                       <button
                         onClick={handleContinueFromUsage}
-                        className="px-5 py-2.5 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg text-[13px] font-medium transition-colors"
+                        className="px-5 py-2.5 bg-[var(--foreground)] hover:bg-[var(--primary)] text-white rounded-lg text-[13px] font-medium transition-colors"
                         style={{ fontFamily: 'Inter, sans-serif' }}
                       >
                         Continue to layout & visuals
@@ -4245,7 +4250,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                           setSelectedUserVolume('');
                           setSelectedViewFrequency('');
                         }}
-                        className="px-5 py-2.5 bg-white hover:bg-gray-50 border border-[#E5E7EB] text-[#111827] rounded-lg text-[13px] font-medium transition-colors"
+                        className="px-5 py-2.5 bg-white hover:bg-gray-50 border border-[var(--border)] text-[var(--foreground)] rounded-lg text-[13px] font-medium transition-colors"
                         style={{ fontFamily: 'Inter, sans-serif' }}
                       >
                         Edit report scope
@@ -4261,9 +4266,9 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
               <div className="mt-4 space-y-5">
                 {/* Layout Type Selection */}
                 {!layoutType && (
-                  <div className="bg-white border border-[#E5E7EB] rounded-lg p-5">
+                  <div className="bg-white border border-[var(--border)] rounded-lg p-5">
                     <div className="mb-4">
-                      <p className="text-[11px] text-[#6B7280] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <p className="text-[11px] text-[var(--muted-foreground)] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
                         {message.data.helperText}
                       </p>
                     </div>
@@ -4271,17 +4276,17 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                     <div className="grid grid-cols-3 gap-4">
                       <button
                         onClick={() => setLayoutType('template')}
-                        className="group p-5 bg-white border-2 border-[#E5E7EB] rounded-lg hover:border-[#111827] hover:shadow-md transition-all text-left"
+                        className="group p-5 bg-white border-2 border-[var(--border)] rounded-lg hover:border-[var(--foreground)] hover:shadow-md transition-all text-left"
                       >
                         <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                            <Layers className="w-5 h-5 text-blue-600" />
+                          <div className="w-10 h-10 bg-brand-subtle rounded-lg flex items-center justify-center flex-shrink-0">
+                            <Layers className="w-5 h-5 text-brand" />
                           </div>
                           <div>
-                            <h4 className="text-[13px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                            <h4 className="text-[13px] font-semibold text-[var(--foreground)] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
                               Template-based
                             </h4>
-                            <p className="text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                            <p className="text-[11px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                               Start with a recommended layout
                             </p>
                           </div>
@@ -4290,17 +4295,17 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
 
                       <button
                         onClick={() => setLayoutType('custom')}
-                        className="group p-5 bg-white border-2 border-[#E5E7EB] rounded-lg hover:border-[#111827] hover:shadow-md transition-all text-left"
+                        className="group p-5 bg-white border-2 border-[var(--border)] rounded-lg hover:border-[var(--foreground)] hover:shadow-md transition-all text-left"
                       >
                         <div className="flex items-start gap-3">
                           <div className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center flex-shrink-0">
                             <Edit2 className="w-5 h-5 text-purple-600" />
                           </div>
                           <div>
-                            <h4 className="text-[13px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                            <h4 className="text-[13px] font-semibold text-[var(--foreground)] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
                               Custom (Drag & drop)
                             </h4>
-                            <p className="text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                            <p className="text-[11px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                               Build your own layout
                             </p>
                           </div>
@@ -4309,17 +4314,17 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
 
                       <button
                         onClick={() => setLayoutType('reference')}
-                        className="group p-5 bg-white border-2 border-[#E5E7EB] rounded-lg hover:border-[#111827] hover:shadow-md transition-all text-left"
+                        className="group p-5 bg-white border-2 border-[var(--border)] rounded-lg hover:border-[var(--foreground)] hover:shadow-md transition-all text-left"
                       >
                         <div className="flex items-start gap-3">
                           <div className="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center flex-shrink-0">
                             <Link2 className="w-5 h-5 text-green-600" />
                           </div>
                           <div>
-                            <h4 className="text-[13px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                            <h4 className="text-[13px] font-semibold text-[var(--foreground)] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
                               Reference an existing report
                             </h4>
-                            <p className="text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                            <p className="text-[11px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                               Use another report as a visual or layout reference
                             </p>
                           </div>
@@ -4341,14 +4346,14 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
 
                 {/* Template Selection */}
                 {layoutType === 'template' && !selectedTemplate && (
-                  <div className="bg-white border border-[#E5E7EB] rounded-lg p-5">
+                  <div className="bg-white border border-[var(--border)] rounded-lg p-5">
                     <div className="mb-4 flex items-center justify-between">
-                      <h4 className="text-[13px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <h4 className="text-[13px] font-semibold text-[var(--foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                         Choose a template
                       </h4>
                       <button
                         onClick={() => setLayoutType(null)}
-                        className="text-[11px] text-[#6B7280] hover:text-[#111827] underline"
+                        className="text-[11px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] underline"
                         style={{ fontFamily: 'Inter, sans-serif' }}
                       >
                         Back
@@ -4365,16 +4370,16 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                         <button
                           key={template.id}
                           onClick={() => setSelectedTemplate(template.id)}
-                          className="group p-4 bg-white border-2 border-[#E5E7EB] rounded-lg hover:border-[#111827] hover:shadow-sm transition-all text-left"
+                          className="group p-4 bg-white border-2 border-[var(--border)] rounded-lg hover:border-[var(--foreground)] hover:shadow-sm transition-all text-left"
                         >
                           {/* Template wireframe preview */}
                           <div className="mb-3">
                             <TemplatePreview templateId={template.id} />
                           </div>
-                          <h5 className="text-[12px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <h5 className="text-[12px] font-semibold text-[var(--foreground)] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
                             {template.label}
                           </h5>
-                          <p className="text-[10px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <p className="text-[10px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                             {template.desc}
                           </p>
                         </button>
@@ -4385,9 +4390,9 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
 
                 {/* Custom Layout Builder */}
                 {layoutType === 'custom' && (
-                  <div className="bg-white border border-[#E5E7EB] rounded-lg p-5">
+                  <div className="bg-white border border-[var(--border)] rounded-lg p-5">
                     <div className="mb-4 flex items-center justify-between">
-                      <h4 className="text-[13px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <h4 className="text-[13px] font-semibold text-[var(--foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                         Build your layout
                       </h4>
                       <button
@@ -4395,7 +4400,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                           setLayoutType(null);
                           setCustomLayoutComponents([]);
                         }}
-                        className="text-[11px] text-[#6B7280] hover:text-[#111827] underline"
+                        className="text-[11px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] underline"
                         style={{ fontFamily: 'Inter, sans-serif' }}
                       >
                         Back
@@ -4412,13 +4417,13 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
 
                 {/* Reference Report Panel */}
                 {layoutType === 'reference' && (
-                  <div className="bg-white border-2 border-[#E5E7EB] rounded-lg p-5">
+                  <div className="bg-white border-2 border-[var(--border)] rounded-lg p-5">
                     <div className="mb-4 flex items-center justify-between">
                       <div>
-                        <h4 className="text-[13px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        <h4 className="text-[13px] font-semibold text-[var(--foreground)] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
                           Reference an existing report for layout
                         </h4>
-                        <p className="text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        <p className="text-[11px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                           Use another report as a visual or layout reference.
                         </p>
                       </div>
@@ -4429,7 +4434,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                           setReferenceLayoutApplied(false);
                           setReferenceReportName('');
                         }}
-                        className="text-[11px] text-[#6B7280] hover:text-[#111827] underline"
+                        className="text-[11px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] underline"
                         style={{ fontFamily: 'Inter, sans-serif' }}
                       >
                         Back
@@ -4444,7 +4449,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                             value={referenceReportLink}
                             onChange={(e) => setReferenceReportLink(e.target.value)}
                             placeholder="Paste link to existing report"
-                            className="w-full px-4 py-2.5 border border-[#E5E7EB] rounded-lg text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full px-4 py-2.5 border border-[var(--border)] rounded-lg text-[13px] focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
                             style={{ fontFamily: 'Inter, sans-serif' }}
                           />
                           
@@ -4461,7 +4466,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                             disabled={!referenceReportLink.trim()}
                             className={`px-5 py-2.5 rounded-lg text-[13px] font-medium transition-colors ${
                               referenceReportLink.trim()
-                                ? 'bg-[#111827] hover:bg-[#0F172A] text-white'
+                                ? 'bg-[var(--foreground)] hover:bg-[var(--primary)] text-white'
                                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                             }`}
                             style={{ fontFamily: 'Inter, sans-serif' }}
@@ -4470,7 +4475,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                           </button>
                         </div>
 
-                        <p className="text-[10px] text-[#9CA3AF] mt-3 italic" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        <p className="text-[10px] text-[var(--muted-foreground)] mt-3 italic" style={{ fontFamily: 'Inter, sans-serif' }}>
                           The report will be used as a visual reference only. Data and metrics are not reused.
                         </p>
                       </>
@@ -4518,27 +4523,27 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                 {/* Layout Summary & Actions */}
                 {(selectedTemplate || (layoutType === 'custom' && customLayoutComponents.length > 0) || (layoutType === 'reference' && referenceLayoutApplied)) && (
                   <>
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <h4 className="text-[13px] font-semibold text-[#111827] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <div className="bg-brand-subtle border border-brand/20 rounded-lg p-4">
+                      <h4 className="text-[13px] font-semibold text-[var(--foreground)] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
                         Layout Summary
                       </h4>
                       
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <p className="text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <p className="text-[11px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                             Layout source:
                           </p>
-                          <p className="text-[12px] text-[#111827] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <p className="text-[12px] text-[var(--foreground)] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
                             {layoutType === 'template' ? 'Template-based' : layoutType === 'custom' ? 'Custom' : 'Referenced report'}
                           </p>
                         </div>
                         
                         {layoutType === 'template' && selectedTemplate && (
                           <div className="flex items-center justify-between">
-                            <p className="text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                            <p className="text-[11px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                               Template:
                             </p>
-                            <p className="text-[12px] text-[#111827] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                            <p className="text-[12px] text-[var(--foreground)] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
                               {selectedTemplate.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
                             </p>
                           </div>
@@ -4546,10 +4551,10 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                         
                         {layoutType === 'custom' && (
                           <div className="flex items-center justify-between">
-                            <p className="text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                            <p className="text-[11px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                               Components:
                             </p>
-                            <p className="text-[12px] text-[#111827] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                            <p className="text-[12px] text-[var(--foreground)] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
                               {customLayoutComponents.length} element{customLayoutComponents.length !== 1 ? 's' : ''}
                             </p>
                           </div>
@@ -4557,17 +4562,17 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                         
                         {layoutType === 'reference' && referenceReportName && (
                           <div className="flex items-center justify-between">
-                            <p className="text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                            <p className="text-[11px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                               Reference:
                             </p>
-                            <p className="text-[12px] text-[#111827] font-medium truncate max-w-[200px]" style={{ fontFamily: 'Inter, sans-serif' }} title={referenceReportName}>
+                            <p className="text-[12px] text-[var(--foreground)] font-medium truncate max-w-[200px]" style={{ fontFamily: 'Inter, sans-serif' }} title={referenceReportName}>
                               {referenceReportName}
                             </p>
                           </div>
                         )}
                       </div>
                       
-                      <p className="text-[10px] text-[#6B7280] mt-3 pt-3 border-t border-blue-200" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <p className="text-[10px] text-[var(--muted-foreground)] mt-3 pt-3 border-t border-brand/20" style={{ fontFamily: 'Inter, sans-serif' }}>
                         This layout will be used to structure your report visualization.
                       </p>
                     </div>
@@ -4645,7 +4650,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                             }, 400);
                           }, 800);
                         }}
-                        className="px-5 py-2.5 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg text-[13px] font-medium transition-colors"
+                        className="px-5 py-2.5 bg-[var(--foreground)] hover:bg-[var(--primary)] text-white rounded-lg text-[13px] font-medium transition-colors"
                         style={{ fontFamily: 'Inter, sans-serif' }}
                       >
                         Generate report preview
@@ -4660,7 +4665,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                           setReferenceLayoutApplied(false);
                           setReferenceReportName('');
                         }}
-                        className="px-5 py-2.5 bg-white hover:bg-gray-50 border border-[#E5E7EB] text-[#111827] rounded-lg text-[13px] font-medium transition-colors"
+                        className="px-5 py-2.5 bg-white hover:bg-gray-50 border border-[var(--border)] text-[var(--foreground)] rounded-lg text-[13px] font-medium transition-colors"
                         style={{ fontFamily: 'Inter, sans-serif' }}
                       >
                         Edit usage details
@@ -4807,10 +4812,10 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
               <div className="mt-4 bg-amber-50 border-2 border-amber-200 rounded-lg p-5">
                 {/* Header */}
                 <div className="mb-4">
-                  <h4 className="text-[14px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <h4 className="text-[14px] font-semibold text-[var(--foreground)] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
                     Similar reports already exist
                   </h4>
-                  <p className="text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <p className="text-[11px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                     To reduce duplication and keep data consistent, consider using or enhancing an existing report.
                   </p>
                 </div>
@@ -4834,17 +4839,17 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              <h5 className="text-[13px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                              <h5 className="text-[13px] font-semibold text-[var(--foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                                 {report.report_name}
                               </h5>
                               {report.source_application && (
-                                <span className="inline-flex items-center px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] rounded border border-blue-200 font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                                <span className="inline-flex items-center px-2 py-0.5 bg-brand-subtle text-brand text-[10px] rounded border border-brand/20 font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
                                   {report.source_application}
                                 </span>
                               )}
                             </div>
                             {report.primary_use_case && (
-                              <p className="text-[11px] text-[#6B7280] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+                              <p className="text-[11px] text-[var(--muted-foreground)] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
                                 {report.primary_use_case}
                               </p>
                             )}
@@ -4853,10 +4858,10 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
 
                         {/* Report Owner */}
                         <div className="flex items-center gap-1.5 mb-2">
-                          <span className="text-[10px] text-[#9CA3AF] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <span className="text-[10px] text-[var(--muted-foreground)] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
                             Owner:
                           </span>
-                          <span className="text-[10px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <span className="text-[10px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                             {report.owner || report.created_by || 'Alex Morgan (Analytics Admin)'}
                           </span>
                         </div>
@@ -4864,7 +4869,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                         {/* Access Restriction Notice */}
                         <div className="flex items-start gap-1.5 mb-3 px-2 py-1.5 bg-gray-50 rounded">
                           <Info className="w-3 h-3 text-gray-500 flex-shrink-0 mt-0.5" />
-                          <p className="text-[10px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <p className="text-[10px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                             You don't have access to this report. You must request approval to view or modify it.
                           </p>
                         </div>
@@ -4872,7 +4877,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                         {/* Key Dimensions */}
                         {report.primary_dimensions && report.primary_dimensions.length > 0 && (
                           <div className="flex items-center gap-1.5 mb-2">
-                            <span className="text-[10px] text-[#9CA3AF] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                            <span className="text-[10px] text-[var(--muted-foreground)] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
                               Dimensions:
                             </span>
                             {report.primary_dimensions.map((dim: string, idx: number) => (
@@ -4888,7 +4893,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                         )}
 
                         {/* Metadata Row */}
-                        <div className="flex items-center gap-3 mb-3 text-[10px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        <div className="flex items-center gap-3 mb-3 text-[10px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                           <span className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
                             Updated {formatRelativeTime(report.last_updated_ts)}
@@ -4914,7 +4919,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                                 );
                               }, 600);
                             }}
-                            className="w-full px-3 py-2 bg-[#111827] hover:bg-[#0F172A] text-white rounded text-[12px] font-medium transition-colors"
+                            className="w-full px-3 py-2 bg-[var(--foreground)] hover:bg-[var(--primary)] text-white rounded text-[12px] font-medium transition-colors"
                             style={{ fontFamily: 'Inter, sans-serif' }}
                           >
                             Request access
@@ -4963,7 +4968,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                         }, 800);
                       }, 600);
                     }}
-                    className="text-[13px] text-[#111827] hover:text-[#0F172A] underline font-medium"
+                    className="text-[13px] text-[var(--foreground)] hover:text-[var(--primary)] underline font-medium"
                     style={{ fontFamily: 'Inter, sans-serif' }}
                   >
                     None of these meet my needs — create a new report
@@ -4981,13 +4986,13 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                 {/* Open Source Default Path */}
                 <div className={`bg-white border-2 rounded-lg p-5 transition-all ${
                   selectedExecutionPath === 'open_source' 
-                    ? 'border-blue-500 shadow-md' 
-                    : 'border-[#E5E7EB]'
+                    ? 'border-brand shadow-md' 
+                    : 'border-[var(--border)]'
                 }`}>
                   <div className="flex items-start gap-3 mb-3">
                     <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
                       selectedExecutionPath === 'open_source'
-                        ? 'border-blue-500 bg-blue-500'
+                        ? 'border-brand bg-brand-subtle0'
                         : 'border-gray-300'
                     }`}>
                       {selectedExecutionPath === 'open_source' && (
@@ -4995,23 +5000,23 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                       )}
                     </div>
                     <div className="flex-1">
-                      <h4 className="text-[14px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <h4 className="text-[14px] font-semibold text-[var(--foreground)] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
                         Generated using Report Hub (Open Source)
                       </h4>
-                      <p className="text-[11px] text-[#6B7280] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <p className="text-[11px] text-[var(--muted-foreground)] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
                         This report can be handled efficiently without enterprise BI tools.
                       </p>
                       
                       <ul className="space-y-1.5">
-                        <li className="flex items-center gap-2 text-[11px] text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        <li className="flex items-center gap-2 text-[11px] text-[var(--foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                           <CheckCircle2 className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
                           Meets visualization and performance needs
                         </li>
-                        <li className="flex items-center gap-2 text-[11px] text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        <li className="flex items-center gap-2 text-[11px] text-[var(--foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                           <CheckCircle2 className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
                           No additional licensing cost
                         </li>
-                        <li className="flex items-center gap-2 text-[11px] text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        <li className="flex items-center gap-2 text-[11px] text-[var(--foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                           <CheckCircle2 className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
                           Consistent experience within Report Hub
                         </li>
@@ -5024,7 +5029,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                 {!showAdvancedOptions && (
                   <button
                     onClick={() => setShowAdvancedOptions(true)}
-                    className="text-[12px] text-[#6B7280] hover:text-[#111827] underline font-medium"
+                    className="text-[12px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] underline font-medium"
                     style={{ fontFamily: 'Inter, sans-serif' }}
                   >
                     View advanced options
@@ -5037,7 +5042,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                     <div className={`bg-white border-2 rounded-lg p-5 transition-all ${
                       selectedExecutionPath === 'enterprise_bi' 
                         ? 'border-purple-500 shadow-md' 
-                        : 'border-[#E5E7EB]'
+                        : 'border-[var(--border)]'
                     }`}>
                       <div className="flex items-start gap-3 mb-3">
                         <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
@@ -5050,16 +5055,16 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                           )}
                         </div>
                         <div className="flex-1">
-                          <h4 className="text-[14px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <h4 className="text-[14px] font-semibold text-[var(--foreground)] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
                             Use Enterprise BI
                           </h4>
-                          <p className="text-[11px] text-[#6B7280] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <p className="text-[11px] text-[var(--muted-foreground)] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
                             Required only for advanced capabilities or high-scale workloads.
                           </p>
 
                           {/* Platform Selection */}
                           <div className="mb-3">
-                            <p className="text-[11px] text-[#6B7280] mb-2 font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                            <p className="text-[11px] text-[var(--muted-foreground)] mb-2 font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
                               Select platform:
                             </p>
                             <div className="flex gap-2">
@@ -5086,28 +5091,28 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                           {/* Expected Usage Summary (from Step 3) */}
                           {selectedEnterprisePlatform && (
                             <div className="pt-3 border-t border-gray-200">
-                              <h5 className="text-[11px] text-[#6B7280] mb-2 font-semibold" style={{ fontFamily: 'Inter, sans-serif' }}>
+                              <h5 className="text-[11px] text-[var(--muted-foreground)] mb-2 font-semibold" style={{ fontFamily: 'Inter, sans-serif' }}>
                                 Expected usage
                               </h5>
                               <div className="bg-gray-50 rounded-lg p-3 space-y-2">
                                 <div className="flex items-center justify-between">
-                                  <span className="text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                                  <span className="text-[11px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                                     Users:
                                   </span>
-                                  <span className="text-[12px] text-[#111827] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                                  <span className="text-[12px] text-[var(--foreground)] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
                                     {selectedUserVolume || 'Not specified'}
                                   </span>
                                 </div>
                                 <div className="flex items-center justify-between">
-                                  <span className="text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                                  <span className="text-[11px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                                     Views:
                                   </span>
-                                  <span className="text-[12px] text-[#111827] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                                  <span className="text-[12px] text-[var(--foreground)] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
                                     {selectedViewFrequency || 'Not specified'}
                                   </span>
                                 </div>
                               </div>
-                              <p className="text-[10px] text-[#9CA3AF] mt-2 italic" style={{ fontFamily: 'Inter, sans-serif' }}>
+                              <p className="text-[10px] text-[var(--muted-foreground)] mt-2 italic" style={{ fontFamily: 'Inter, sans-serif' }}>
                                 Based on the usage you provided earlier.
                               </p>
                             </div>
@@ -5122,10 +5127,10 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                         <div className="flex items-start gap-2 mb-3">
                           <Info className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
                           <div className="flex-1">
-                            <h5 className="text-[13px] font-semibold text-[#111827] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+                            <h5 className="text-[13px] font-semibold text-[var(--foreground)] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
                               Cost implications
                             </h5>
-                            <ul className="space-y-1 text-[11px] text-[#6B7280] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+                            <ul className="space-y-1 text-[11px] text-[var(--muted-foreground)] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
                               <li>• Enterprise BI usage incurs additional licensing costs</li>
                               <li>• Costs scale with users and views</li>
                             </ul>
@@ -5143,7 +5148,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                             onChange={(e) => setEnterpriseCostAcknowledged(e.target.checked)}
                             className="mt-0.5 w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                           />
-                          <span className="text-[11px] text-[#111827] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <span className="text-[11px] text-[var(--foreground)] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
                             I understand and approve the use of Enterprise BI for this report
                           </span>
                         </label>
@@ -5193,7 +5198,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                           }, 800);
                         }, 800);
                       }}
-                      className="px-5 py-2.5 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg text-[13px] font-medium transition-colors"
+                      className="px-5 py-2.5 bg-[var(--foreground)] hover:bg-[var(--primary)] text-white rounded-lg text-[13px] font-medium transition-colors"
                       style={{ fontFamily: 'Inter, sans-serif' }}
                     >
                       Publish report
@@ -5266,7 +5271,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                           setSelectedEnterprisePlatform(null);
                           setEnterpriseCostAcknowledged(false);
                         }}
-                        className="px-5 py-2.5 bg-white hover:bg-gray-50 border border-[#E5E7EB] text-[#111827] rounded-lg text-[13px] font-medium transition-colors"
+                        className="px-5 py-2.5 bg-white hover:bg-gray-50 border border-[var(--border)] text-[var(--foreground)] rounded-lg text-[13px] font-medium transition-colors"
                         style={{ fontFamily: 'Inter, sans-serif' }}
                       >
                         Go back and use Open Source instead
@@ -5281,14 +5286,14 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
             {message.renderType === 'Report' && message.data && (
               <div className="mt-4 space-y-6">
                 {/* Report Header */}
-                <div className="bg-white border border-[#E5E7EB] rounded-xl p-5 shadow-sm border-l-4 border-l-rose-500">
+                <div className="bg-white border border-[var(--border)] rounded-xl p-5 shadow-sm border-l-4 border-l-rose-500">
                   <div className="flex items-center gap-2 mb-2">
                     <Sparkles className="w-5 h-5 text-rose-500" />
-                    <h3 className="text-[16px] font-bold text-[#111827]">
+                    <h3 className="text-[16px] font-bold text-[var(--foreground)]">
                       {message.data?.props?.title || 'Analytical Report'}
                     </h3>
                   </div>
-                  <p className="text-[13px] text-[#6B7280] leading-relaxed">
+                  <p className="text-[13px] text-[var(--muted-foreground)] leading-relaxed">
                     {message.data?.props?.description || 'Automated data analysis.'}
                   </p>
                   
@@ -5321,7 +5326,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                     <div key={sIdx} className="space-y-4">
                       <div className="flex items-center gap-2 px-1">
                         <div className="h-px flex-1 bg-gray-100"></div>
-                        <h4 className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.1em]">
+                        <h4 className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase tracking-[0.1em]">
                           {section?.type === 'summary' ? 'Overview' : section?.type === 'analysis' ? 'Detailed Analysis' : 'Data Details'}
                         </h4>
                         <div className="h-px flex-1 bg-gray-100"></div>
@@ -5331,13 +5336,13 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                         {(section?.components || []).map((comp: any, cIdx: number) => {
                           if (comp?.renderType === 'KPI') {
                             return (
-                              <div key={cIdx} className="bg-white border border-[#E5E7EB] rounded-xl p-4 shadow-sm hover:shadow-md transition-all group">
+                              <div key={cIdx} className="bg-white border border-[var(--border)] rounded-xl p-4 shadow-sm hover:shadow-md transition-all group">
                                 <div className="flex justify-between items-start mb-1">
-                                  <p className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wider">{comp?.props?.title || 'Metric'}</p>
+                                  <p className="text-[11px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wider">{comp?.props?.title || 'Metric'}</p>
                                   <Info className="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-400 transition-colors" />
                                 </div>
                                 <div className="flex items-baseline gap-2">
-                                  <h4 className="text-[24px] font-bold text-[#111827] tabular-nums">
+                                  <h4 className="text-[24px] font-bold text-[var(--foreground)] tabular-nums">
                                     {typeof comp?.props?.value === 'number' ? new Intl.NumberFormat('en-US').format(comp.props.value) : (comp?.props?.value || '0')}
                                   </h4>
                                   {comp?.props?.trend && (
@@ -5351,9 +5356,9 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                           }
                           if (comp?.renderType === 'BarChart' || comp?.renderType === 'LineChart') {
                             return (
-                              <div key={cIdx} className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all">
-                                <div className="px-4 py-3 border-b border-[#E5E7EB] flex justify-between items-center">
-                                  <h5 className="text-[13px] font-bold text-[#111827]">{comp?.props?.title || 'Visualization'}</h5>
+                              <div key={cIdx} className="bg-white border border-[var(--border)] rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all">
+                                <div className="px-4 py-3 border-b border-[var(--border)] flex justify-between items-center">
+                                  <h5 className="text-[13px] font-bold text-[var(--foreground)]">{comp?.props?.title || 'Visualization'}</h5>
                                   <div className="flex gap-1">
                                     <div className="w-2 h-2 rounded-full bg-rose-500"></div>
                                     <div className="w-2 h-2 rounded-full bg-gray-200"></div>
@@ -5397,12 +5402,12 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                 <div className="flex gap-3 pt-2">
                   <button 
                     onClick={() => handleSaveReport(message.data)}
-                    className="flex-1 px-4 py-2.5 bg-[#111827] text-white rounded-lg text-[13px] font-bold shadow-lg shadow-gray-200 hover:bg-black transition-all flex items-center justify-center gap-2"
+                    className="flex-1 px-4 py-2.5 bg-[var(--foreground)] text-white rounded-lg text-[13px] font-bold shadow-lg shadow-gray-200 hover:bg-black transition-all flex items-center justify-center gap-2"
                   >
                     <Plus className="w-4 h-4" />
                     Save to Dashboard
                   </button>
-                  <button className="px-4 py-2.5 border border-[#E5E7EB] bg-white text-[#374151] rounded-lg text-[13px] font-bold hover:bg-gray-50 transition-all flex items-center justify-center gap-2">
+                  <button className="px-4 py-2.5 border border-[var(--border)] bg-white text-[#374151] rounded-lg text-[13px] font-bold hover:bg-gray-50 transition-all flex items-center justify-center gap-2">
                     <ExternalLink className="w-4 h-4" />
                     Open in Editor
                   </button>
@@ -5418,7 +5423,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                     {message.data.opener}
                   </p>
                 )}
-                <p className="text-[13px] font-medium text-[#111827] leading-relaxed">
+                <p className="text-[13px] font-medium text-[var(--foreground)] leading-relaxed">
                   {message.data.currentQuestion.question}
                 </p>
                 {message.data.currentQuestion.options?.length > 0 && (
@@ -5451,7 +5456,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                     ))}
                   </div>
                 )}
-                <p className="text-[11px] text-[#9CA3AF]">Pick an option above or type your own answer below.</p>
+                <p className="text-[11px] text-[var(--muted-foreground)]">Pick an option above or type your own answer below.</p>
               </div>
             )}
 
@@ -5463,18 +5468,41 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
               <div className="mt-4 space-y-4">
                 {message.data?.meta && (
                   <div className="mb-1">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-rose-500" />
-                      <h3 className="text-[15px] font-bold text-[#111827]">{message.data.meta.title}</h3>
-                      {message.isStreaming && (
-                        <span className="text-xs text-muted-foreground animate-pulse">Generating...</span>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Sparkles className="w-4 h-4 text-brand flex-shrink-0" />
+                        <h3 className="text-[15px] font-bold text-[var(--foreground)] truncate">{message.data.meta.title}</h3>
+                        {message.isStreaming && (
+                          <span className="text-xs text-muted-foreground animate-pulse">Generating...</span>
+                        )}
+                      </div>
+                      {/* Export — available once the report finishes; works for any provider */}
+                      {!message.isStreaming && (message.data?.components?.length ?? 0) > 0 && (
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <button
+                            onClick={() => exportReportPDF(message.data.meta, message.data.components)}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[12px] font-medium rounded-lg border border-border text-foreground hover:bg-accent hover:border-brand/40 transition-colors"
+                            title="Download as PDF"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            PDF
+                          </button>
+                          <button
+                            onClick={() => exportReportExcel(message.data.meta, message.data.components)}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[12px] font-medium rounded-lg border border-border text-foreground hover:bg-accent hover:border-brand/40 transition-colors"
+                            title="Download as Excel"
+                          >
+                            <FileSpreadsheet className="w-3.5 h-3.5" />
+                            Excel
+                          </button>
+                        </div>
                       )}
                     </div>
                     {message.data.meta.description && (
-                      <p className="text-[13px] text-[#6B7280] mt-1 ml-6">{message.data.meta.description}</p>
+                      <p className="text-[13px] text-[var(--muted-foreground)] mt-1 ml-6">{message.data.meta.description}</p>
                     )}
                     {message.data.meta.rowCount && (
-                      <p className="text-[11px] text-[#9CA3AF] mt-0.5 ml-6">{message.data.meta.rowCount} rows from BigQuery</p>
+                      <p className="text-[11px] text-[var(--muted-foreground)] mt-0.5 ml-6">{message.data.meta.rowCount} rows from BigQuery</p>
                     )}
                   </div>
                 )}
@@ -5487,7 +5515,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                       <button
                         key={i}
                         onClick={() => { setInputValue(fu.intent); }}
-                        className="px-3 py-1.5 text-[12px] font-medium bg-white border border-[#E5E7EB] rounded-full text-[#374151] hover:bg-gray-50 hover:border-gray-300 transition-all text-left"
+                        className="px-3 py-1.5 text-[12px] font-medium bg-white border border-[var(--border)] rounded-full text-[#374151] hover:bg-gray-50 hover:border-gray-300 transition-all text-left"
                       >
                         {fu.intent}
                       </button>
@@ -5506,10 +5534,10 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                       <CheckCircle2 className="w-5 h-5 text-green-600" />
                     </div>
                     <div className="flex-1">
-                      <h4 className="text-[14px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <h4 className="text-[14px] font-semibold text-[var(--foreground)] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
                         {message.data.reportName}
                       </h4>
-                      <p className="text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <p className="text-[11px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                         {message.data.executionPath === 'enterprise_bi' 
                           ? `Submitted to ${message.data.platform} • Pending approval`
                           : 'Published • Ready to view'}
@@ -5522,7 +5550,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                       // Navigate directly to Customer Churn report detail page
                       navigate('/reports/RPT-CHURN-001');
                     }}
-                    className="w-full px-5 py-3 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg text-[13px] font-semibold transition-colors flex items-center justify-center gap-2"
+                    className="w-full px-5 py-3 bg-[var(--foreground)] hover:bg-[var(--primary)] text-white rounded-lg text-[13px] font-semibold transition-colors flex items-center justify-center gap-2"
                     style={{ fontFamily: 'Inter, sans-serif' }}
                   >
                     {message.data.executionPath === 'enterprise_bi' ? 'Go to report' : 'View report'}
@@ -5543,7 +5571,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                       // All dataset selections now go through create report flow
                       console.warn('option_chips clicked - this should not happen in new flow');
                     }}
-                    className="px-4 py-2 bg-white hover:bg-gray-50 border border-[#E5E7EB] rounded-full text-[12px] text-[#111827] transition-colors shadow-sm hover:shadow"
+                    className="px-4 py-2 bg-white hover:bg-gray-50 border border-[var(--border)] rounded-full text-[12px] text-[var(--foreground)] transition-colors shadow-sm hover:shadow"
                     style={{ fontFamily: 'Inter, sans-serif' }}
                   >
                     {option}
@@ -5559,12 +5587,12 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                   <div
                     key={dataset.dataset_id}
                     onClick={() => handleMigrationDatasetSelect(dataset)}
-                    className="bg-white border border-[#E5E7EB] rounded-xl p-4 hover:border-blue-400 hover:shadow-md transition-all cursor-pointer"
+                    className="bg-white border border-[var(--border)] rounded-xl p-4 hover:border-brand/50 hover:shadow-md transition-all cursor-pointer"
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <h4 className="text-[14px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <h4 className="text-[14px] font-semibold text-[var(--foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                             {dataset.dataset_name}
                           </h4>
                           {dataset.source_system && (
@@ -5573,13 +5601,13 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        <p className="text-[11px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                           {dataset.domain} • {dataset.data_owner}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
                         {dataset.certified_flag && (
-                          <span className="bg-blue-50 text-blue-700 text-[10px] font-medium px-2 py-0.5 rounded" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <span className="bg-brand-subtle text-brand text-[10px] font-medium px-2 py-0.5 rounded" style={{ fontFamily: 'Inter, sans-serif' }}>
                             Certified
                           </span>
                         )}
@@ -5594,7 +5622,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <div className="flex items-center gap-4 text-[11px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                       <span className="flex items-center gap-1">
                         <div className={`w-2 h-2 rounded-full ${dataset.dataset_health?.freshness_status === 'Current' ? 'bg-green-500' : 'bg-orange-500'}`} />
                         {dataset.dataset_health?.freshness_status || 'Unknown'}
@@ -5614,7 +5642,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
               return (
                 <div className="space-y-4 mt-3">
                   {/* Section Header */}
-                  <h3 className="text-[14px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <h3 className="text-[14px] font-semibold text-[var(--foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                     Choose one option to continue
                   </h3>
 
@@ -5625,14 +5653,14 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                       onClick={() => setSelectedIntent('create_new')}
                       className={`bg-white border-2 rounded-xl p-4 cursor-pointer transition-all ${
                         selectedIntent === 'create_new'
-                          ? 'border-blue-500 ring-2 ring-blue-100 shadow-md bg-blue-50/30'
-                          : 'border-[#E5E7EB] hover:border-blue-300 hover:shadow-sm'
+                          ? 'border-brand ring-2 ring-brand/20 shadow-md bg-brand-subtle/40'
+                          : 'border-[var(--border)] hover:border-brand/40 hover:shadow-sm'
                       }`}
                     >
                       <div className="flex items-start gap-3">
                         <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${
                           selectedIntent === 'create_new'
-                            ? 'border-blue-500 bg-blue-500'
+                            ? 'border-brand bg-brand-subtle0'
                             : 'border-gray-400 bg-white'
                         }`}>
                           {selectedIntent === 'create_new' && (
@@ -5640,10 +5668,10 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                           )}
                         </div>
                         <div className="flex-1">
-                          <h4 className="text-[14px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <h4 className="text-[14px] font-semibold text-[var(--foreground)] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
                             Create a new report in the destination
                           </h4>
-                          <p className="text-[12px] text-[#6B7280] leading-relaxed" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <p className="text-[12px] text-[var(--muted-foreground)] leading-relaxed" style={{ fontFamily: 'Inter, sans-serif' }}>
                             Start fresh using governed data and certified metrics in Report Hub.
                           </p>
                         </div>
@@ -5655,14 +5683,14 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                       onClick={() => setSelectedIntent('migrate_existing')}
                       className={`bg-white border-2 rounded-xl p-4 cursor-pointer transition-all ${
                         selectedIntent === 'migrate_existing'
-                          ? 'border-blue-500 ring-2 ring-blue-100 shadow-md bg-blue-50/30'
-                          : 'border-[#E5E7EB] hover:border-blue-300 hover:shadow-sm'
+                          ? 'border-brand ring-2 ring-brand/20 shadow-md bg-brand-subtle/40'
+                          : 'border-[var(--border)] hover:border-brand/40 hover:shadow-sm'
                       }`}
                     >
                       <div className="flex items-start gap-3">
                         <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${
                           selectedIntent === 'migrate_existing'
-                            ? 'border-blue-500 bg-blue-500'
+                            ? 'border-brand bg-brand-subtle0'
                             : 'border-gray-400 bg-white'
                         }`}>
                           {selectedIntent === 'migrate_existing' && (
@@ -5670,10 +5698,10 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                           )}
                         </div>
                         <div className="flex-1">
-                          <h4 className="text-[14px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <h4 className="text-[14px] font-semibold text-[var(--foreground)] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
                             Migrate an existing report
                           </h4>
-                          <p className="text-[12px] text-[#6B7280] leading-relaxed" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <p className="text-[12px] text-[var(--muted-foreground)] leading-relaxed" style={{ fontFamily: 'Inter, sans-serif' }}>
                             Rebuild an existing Tableau report using governed definitions and optimized routing.
                           </p>
                         </div>
@@ -5692,7 +5720,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                       disabled={!selectedIntent}
                       className={`px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all shadow-sm ${
                         selectedIntent 
-                          ? 'bg-[#111827] hover:bg-[#0F172A] text-white cursor-pointer' 
+                          ? 'bg-[var(--foreground)] hover:bg-[var(--primary)] text-white cursor-pointer' 
                           : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                       }`}
                       style={{ fontFamily: 'Inter, sans-serif' }}
@@ -5709,7 +5737,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                           'text'
                         );
                       }}
-                      className="text-[#6B7280] hover:text-[#111827] text-[13px] font-medium transition-colors underline self-start"
+                      className="text-[var(--muted-foreground)] hover:text-[var(--foreground)] text-[13px] font-medium transition-colors underline self-start"
                       style={{ fontFamily: 'Inter, sans-serif' }}
                     >
                       View migration overview
@@ -5737,24 +5765,24 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                           onClick={() => setSelectedPlatform(platform.name)}
                           className={`relative bg-white border-2 rounded-xl p-4 transition-all cursor-pointer ${
                             isSelected
-                              ? 'border-blue-500 ring-2 ring-blue-100 shadow-md bg-blue-50/30'
+                              ? 'border-brand ring-2 ring-brand/20 shadow-md bg-brand-subtle/40'
                               : isRecommended 
-                                ? 'border-blue-400 ring-2 ring-blue-100' 
-                                : 'border-[#E5E7EB] hover:border-blue-300 hover:shadow-sm'
+                                ? 'border-brand/50 ring-2 ring-brand/20' 
+                                : 'border-[var(--border)] hover:border-brand/40 hover:shadow-sm'
                           }`}
                         >
                           {isRecommended && !isSelected && (
-                            <div className="absolute -top-2 -right-2 bg-blue-600 text-white text-[9px] font-semibold px-2 py-1 rounded-full shadow-sm" style={{ fontFamily: 'Inter, sans-serif' }}>
+                            <div className="absolute -top-2 -right-2 bg-brand text-white text-[9px] font-semibold px-2 py-1 rounded-full shadow-sm" style={{ fontFamily: 'Inter, sans-serif' }}>
                               RECOMMENDED
                             </div>
                           )}
                           <div className="flex items-start gap-3">
                             <div className="text-2xl">{platform.icon}</div>
                             <div className="flex-1">
-                              <h4 className="text-[14px] font-semibold text-[#111827] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                              <h4 className="text-[14px] font-semibold text-[var(--foreground)] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
                                 {platform.name}
                               </h4>
-                              <p className="text-[11px] text-[#6B7280] leading-relaxed" style={{ fontFamily: 'Inter, sans-serif' }}>
+                              <p className="text-[11px] text-[var(--muted-foreground)] leading-relaxed" style={{ fontFamily: 'Inter, sans-serif' }}>
                                 {platform.description}
                               </p>
                             </div>
@@ -5766,13 +5794,13 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                   
                   {/* Recommendation Reason (only for target platform) */}
                   {!isSourceSelection && message.data.recommendationReason && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
-                      <Sparkles className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div className="bg-brand-subtle border border-brand/20 rounded-lg p-3 flex items-start gap-2">
+                      <Sparkles className="w-4 h-4 text-brand flex-shrink-0 mt-0.5" />
                       <div>
-                        <p className="text-[11px] font-semibold text-blue-900 mb-0.5" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        <p className="text-[11px] font-semibold text-brand mb-0.5" style={{ fontFamily: 'Inter, sans-serif' }}>
                           Why we recommend {message.data.recommendedPlatform}
                         </p>
-                        <p className="text-[11px] text-blue-800" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        <p className="text-[11px] text-brand" style={{ fontFamily: 'Inter, sans-serif' }}>
                           {message.data.recommendationReason}
                         </p>
                       </div>
@@ -5794,7 +5822,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                       }}
                       className={`px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all shadow-sm ${
                         selectedPlatform 
-                          ? 'bg-[#111827] hover:bg-[#0F172A] text-white cursor-pointer' 
+                          ? 'bg-[var(--foreground)] hover:bg-[var(--primary)] text-white cursor-pointer' 
                           : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                       }`}
                       style={{ fontFamily: 'Inter, sans-serif' }}
@@ -5813,7 +5841,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                   <button
                     key={`${message.id}-migration-pill-${idx}`}
                     onClick={() => handleMigrationPillClick(pill)}
-                    className="px-4 py-2 bg-white hover:bg-gray-50 border border-[#E5E7EB] rounded-full text-[12px] text-[#111827] transition-all shadow-sm hover:shadow-md"
+                    className="px-4 py-2 bg-white hover:bg-gray-50 border border-[var(--border)] rounded-full text-[12px] text-[var(--foreground)] transition-all shadow-sm hover:shadow-md"
                     style={{ fontFamily: 'Inter, sans-serif' }}
                   >
                     {pill}
@@ -5828,14 +5856,14 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
               const targetPlatform = message.data.targetPlatform || dataset.migration_target_recommendation || 'Snowflake';
               const readiness = dataset.migration_readiness || {};
               return (
-                <div className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden mt-3">
+                <div className="bg-white border border-[var(--border)] rounded-xl overflow-hidden mt-3">
                   {/* Header with Share Button */}
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-5 py-3 border-b border-[#E5E7EB] flex items-center justify-between">
+                  <div className="bg-gradient-to-r from-brand-subtle to-accent px-5 py-3 border-b border-[var(--border)] flex items-center justify-between">
                     <div>
-                      <h4 className="text-[14px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <h4 className="text-[14px] font-semibold text-[var(--foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                         Migration Plan
                       </h4>
-                      <p className="text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <p className="text-[11px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                         {dataset.dataset_name} → {targetPlatform} • Generated {new Date().toLocaleDateString()}
                       </p>
                     </div>
@@ -5845,7 +5873,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                         navigator.clipboard.writeText(link);
                         addAssistantMessage('✅ Migration plan link copied to clipboard!', 'text');
                       }}
-                      className="flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-gray-50 border border-[#E5E7EB] rounded-lg text-[12px] text-[#111827] transition-all shadow-sm hover:shadow"
+                      className="flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-gray-50 border border-[var(--border)] rounded-lg text-[12px] text-[var(--foreground)] transition-all shadow-sm hover:shadow"
                       style={{ fontFamily: 'Inter, sans-serif' }}
                     >
                       <Link2 className="w-3.5 h-3.5" />
@@ -5856,11 +5884,11 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                   <div className="p-5 space-y-4">
                     {/* Target Platform */}
                     <div>
-                    <h5 className="text-[12px] font-semibold text-[#6B7280] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <h5 className="text-[12px] font-semibold text-[var(--muted-foreground)] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
                       TARGET PLATFORM
                     </h5>
                     <div className="flex items-center gap-2">
-                      <span className="bg-blue-50 text-blue-700 text-[13px] font-medium px-3 py-1.5 rounded" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <span className="bg-brand-subtle text-brand text-[13px] font-medium px-3 py-1.5 rounded" style={{ fontFamily: 'Inter, sans-serif' }}>
                         {targetPlatform}
                       </span>
                     </div>
@@ -5874,10 +5902,10 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
 
                   {/* Schema Mapping */}
                   <div>
-                    <h5 className="text-[12px] font-semibold text-[#6B7280] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <h5 className="text-[12px] font-semibold text-[var(--muted-foreground)] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
                       SCHEMA MAPPING SUMMARY
                     </h5>
-                    <div className="text-[12px] text-[#111827] space-y-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <div className="text-[12px] text-[var(--foreground)] space-y-1" style={{ fontFamily: 'Inter, sans-serif' }}>
                       <p>• {dataset.schema_tables_count || 3} tables will be migrated</p>
                       <p>• {dataset.field_count || 0} fields mapped automatically</p>
                       <p>• 0 custom transformations required</p>
@@ -5886,17 +5914,17 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
 
                   {/* Downtime Window */}
                   <div>
-                    <h5 className="text-[12px] font-semibold text-[#6B7280] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <h5 className="text-[12px] font-semibold text-[var(--muted-foreground)] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
                       EXPECTED DOWNTIME WINDOW
                     </h5>
-                    <p className="text-[12px] text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <p className="text-[12px] text-[var(--foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                       {readiness.migration_window_recommendation || 'Off-peak hours recommended'}
                     </p>
                   </div>
 
                   {/* Pre-checklist */}
                   <div>
-                    <h5 className="text-[12px] font-semibold text-[#6B7280] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <h5 className="text-[12px] font-semibold text-[var(--muted-foreground)] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
                       PRE-MIGRATION CHECKLIST
                     </h5>
                     <div className="space-y-1.5">
@@ -5906,7 +5934,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                         'Notify stakeholders of migration window',
                         'Review schema mappings',
                       ].map((item, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-[12px] text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        <div key={idx} className="flex items-center gap-2 text-[12px] text-[var(--foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                           <CheckCircle2 className="w-4 h-4 text-green-600" />
                           {item}
                         </div>
@@ -5940,7 +5968,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                         <h5 className="text-[14px] font-semibold" style={{ fontFamily: 'Inter, sans-serif' }}>
                           {passed && !hasWarnings ? 'Validation Passed' : hasWarnings ? 'Passed with Warnings' : 'Validation Failed'}
                         </h5>
-                        <p className="text-[12px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        <p className="text-[12px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                           Readiness Score: {dataset.migration_readiness?.readiness_score || 0}/100
                         </p>
                       </div>
@@ -5948,15 +5976,15 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                   </div>
 
                   {/* Validation Checks */}
-                  <div className="bg-white border border-[#E5E7EB] rounded-xl p-5 space-y-4">
+                  <div className="bg-white border border-[var(--border)] rounded-xl p-5 space-y-4">
                     {/* Freshness Check */}
                     <div className="flex items-start gap-3">
                       <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
                       <div>
-                        <h6 className="text-[12px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        <h6 className="text-[12px] font-semibold text-[var(--foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                           Freshness Check
                         </h6>
-                        <p className="text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        <p className="text-[11px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                           Data is {dataset.dataset_health?.freshness_status?.toLowerCase()}. Last refresh: {formatRelativeTime(dataset.last_refresh_ts)}
                         </p>
                       </div>
@@ -5966,10 +5994,10 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                     <div className="flex items-start gap-3">
                       <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
                       <div>
-                        <h6 className="text-[12px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        <h6 className="text-[12px] font-semibold text-[var(--foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                           Schema Compatibility
                         </h6>
-                        <p className="text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        <p className="text-[11px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                           All field types are compatible with target platform
                         </p>
                       </div>
@@ -5978,12 +6006,12 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                     {/* PII Flag */}
                     {dataset.pii_flag && (
                       <div className="flex items-start gap-3">
-                        <Shield className="w-5 h-5 text-blue-600 mt-0.5" />
+                        <Shield className="w-5 h-5 text-brand mt-0.5" />
                         <div>
-                          <h6 className="text-[12px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <h6 className="text-[12px] font-semibold text-[var(--foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                             PII Detected
                           </h6>
-                          <p className="text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <p className="text-[11px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                             This dataset contains personally identifiable information. Extra security measures required.
                           </p>
                         </div>
@@ -6002,25 +6030,25 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                     <div
                       key={report.report_id}
                       onClick={(e) => handleReportCardClick(report, e)}
-                      className="bg-white border border-[#E5E7EB] rounded-lg p-4 hover:border-blue-400 hover:shadow-sm transition-all cursor-pointer group"
+                      className="bg-white border border-[var(--border)] rounded-lg p-4 hover:border-brand/50 hover:shadow-sm transition-all cursor-pointer group"
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
-                            <h3 className="text-[14px] font-semibold text-[#111827] group-hover:text-blue-700 transition-colors" style={{ fontFamily: 'Inter, sans-serif' }}>
+                            <h3 className="text-[14px] font-semibold text-[var(--foreground)] group-hover:text-brand-hover transition-colors" style={{ fontFamily: 'Inter, sans-serif' }}>
                               {report.report_name}
                             </h3>
                             <span className={`inline-block text-[9px] font-medium px-2 py-0.5 rounded ${report.source_application ? getSourceAppColor(report.source_application) : 'bg-gray-100 text-gray-700'}`}>
                               {report.source_application || 'Open Source Analytics'}
                             </span>
                           </div>
-                          <div className="flex items-center gap-3 text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <div className="flex items-center gap-3 text-[11px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                             <span>{report.domain}</span>
                             <span>•</span>
                             <span>Last viewed: {formatRelativeTime(report.last_updated_ts)}</span>
                           </div>
                         </div>
-                        <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-blue-600 transition-colors flex-shrink-0 ml-3" />
+                        <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-brand transition-colors flex-shrink-0 ml-3" />
                       </div>
                     </div>
                   ))}
@@ -6030,7 +6058,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                 {message.data.showActions && (
                   <button
                     onClick={() => navigate('/reports')}
-                    className="mt-3 text-[12px] text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                    className="mt-3 text-[12px] text-brand hover:text-brand-hover font-medium transition-colors"
                     style={{ fontFamily: 'Inter, sans-serif' }}
                   >
                     View all reports →
@@ -6039,7 +6067,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
 
                 {/* Post-Reports Actions */}
                 {message.data.showActions && (
-                  <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-[#E5E7EB]">
+                  <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-[var(--border)]">
                     {[
                       'Ask a question about a report',
                       'Create a new report',
@@ -6047,7 +6075,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                       <button
                         key={`${message.id}-action-${idx}`}
                         onClick={() => handlePostReportAction(action)}
-                        className="px-4 py-2 bg-white hover:bg-gray-50 border border-[#E5E7EB] rounded-full text-[12px] text-[#111827] transition-colors shadow-sm hover:shadow"
+                        className="px-4 py-2 bg-white hover:bg-gray-50 border border-[var(--border)] rounded-full text-[12px] text-[var(--foreground)] transition-colors shadow-sm hover:shadow"
                         style={{ fontFamily: 'Inter, sans-serif' }}
                       >
                         {action}
@@ -6066,12 +6094,12 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                     <div
                       key={dataset.dataset_id}
                       onClick={() => handleDatasetClick(dataset)}
-                      className="bg-white border border-[#E5E7EB] rounded-lg p-4 hover:border-blue-400 hover:shadow-sm transition-all cursor-pointer group"
+                      className="bg-white border border-[var(--border)] rounded-lg p-4 hover:border-brand/50 hover:shadow-sm transition-all cursor-pointer group"
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
-                            <h3 className="text-[14px] font-semibold text-[#111827] group-hover:text-blue-700 transition-colors" style={{ fontFamily: 'Inter, sans-serif' }}>
+                            <h3 className="text-[14px] font-semibold text-[var(--foreground)] group-hover:text-brand-hover transition-colors" style={{ fontFamily: 'Inter, sans-serif' }}>
                               {dataset.dataset_name}
                             </h3>
                             {dataset.source_system && (
@@ -6085,13 +6113,13 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                               </div>
                             )}
                           </div>
-                          <div className="flex items-center gap-3 text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <div className="flex items-center gap-3 text-[11px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                             <span>{dataset.domain}</span>
                             <span>•</span>
                             <span>Refreshed: {formatRelativeTime(dataset.last_refresh_ts)}</span>
                           </div>
                         </div>
-                        <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-blue-600 transition-colors flex-shrink-0 ml-3" />
+                        <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-brand transition-colors flex-shrink-0 ml-3" />
                       </div>
                     </div>
                   ))}
@@ -6100,7 +6128,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                 {/* View All Datasets Link */}
                 <button
                   onClick={() => navigate('/datasets')}
-                  className="mt-3 text-[12px] text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                  className="mt-3 text-[12px] text-brand hover:text-brand-hover font-medium transition-colors"
                   style={{ fontFamily: 'Inter, sans-serif' }}
                 >
                   View all datasets →
@@ -6119,8 +6147,8 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                     onClick={() => handleActionButtonClick(action)}
                     className={`px-4 py-2 rounded-lg text-[12px] font-medium transition-colors ${
                       idx === 0
-                        ? 'bg-[#111827] hover:bg-[#0F172A] text-white'
-                        : 'bg-white hover:bg-gray-50 border border-[#E5E7EB] text-[#111827]'
+                        ? 'bg-[var(--foreground)] hover:bg-[var(--primary)] text-white'
+                        : 'bg-white hover:bg-gray-50 border border-[var(--border)] text-[var(--foreground)]'
                     }`}
                     style={{ fontFamily: 'Inter, sans-serif' }}
                   >
@@ -6138,7 +6166,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                     <button
                       key={`${message.id}-prompt-${idx}`}
                       onClick={() => handleReportContextPrompt(prompt)}
-                      className="px-3 py-2 bg-white hover:bg-gray-50 border border-[#E5E7EB] rounded-full text-[12px] text-[#111827] transition-colors shadow-sm hover:shadow"
+                      className="px-3 py-2 bg-white hover:bg-gray-50 border border-[var(--border)] rounded-full text-[12px] text-[var(--foreground)] transition-colors shadow-sm hover:shadow"
                       style={{ fontFamily: 'Inter, sans-serif' }}
                     >
                       {prompt}
@@ -6146,7 +6174,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                   ))}
                 </div>
                 {/* Freedom Disclaimer */}
-                <p className="text-[11px] text-[#9CA3AF] italic leading-relaxed" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <p className="text-[11px] text-[var(--muted-foreground)] italic leading-relaxed" style={{ fontFamily: 'Inter, sans-serif' }}>
                   You're not restricted to these suggestions. You can ask anything about this {activeDatasetContext ? 'dataset' : 'report'} using the chat below.
                 </p>
               </div>
@@ -6183,9 +6211,9 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                     <div className="ml-8 p-2.5 bg-white border border-emerald-100 rounded-lg">
                       <div className="flex items-center gap-2">
                         <FileText className="w-4 h-4 text-emerald-600" />
-                        <span className="text-[12px] font-medium text-[#111827]">{addToReportTarget.report_name || addToReportTarget.name}</span>
+                        <span className="text-[12px] font-medium text-[var(--foreground)]">{addToReportTarget.report_name || addToReportTarget.name}</span>
                       </div>
-                      <p className="text-[11px] text-[#6B7280] mt-1 ml-6">
+                      <p className="text-[11px] text-[var(--muted-foreground)] mt-1 ml-6">
                         {message.data.chartType} chart &middot; {message.data.title}
                       </p>
                     </div>
@@ -6195,22 +6223,22 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                 {/* Add to Report Dropdown */}
                 {addToReportChartId === message.id && !showAddToReportConfirmation && !addToReportBadge[message.id] && (
                   <div className="mt-3 relative">
-                    <div className="bg-white border border-[#E5E7EB] rounded-xl shadow-lg p-2 max-h-[200px] overflow-y-auto" style={{ fontFamily: 'Inter, sans-serif' }}>
-                      <p className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wider px-3 py-1.5">Select a report</p>
+                    <div className="bg-white border border-[var(--border)] rounded-xl shadow-lg p-2 max-h-[200px] overflow-y-auto" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <p className="text-[11px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wider px-3 py-1.5">Select a report</p>
                       {allReports.slice(0, 5).map((report: any, rIdx: number) => (
                         <button
                           key={`add-report-${rIdx}`}
                           onClick={() => handleSelectReportForChart(report)}
                           className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-lg transition-colors flex items-center gap-2"
                         >
-                          <FileText className="w-3.5 h-3.5 text-[#9CA3AF]" />
-                          <span className="text-[13px] text-[#111827] truncate">{report.report_name || report.name}</span>
+                          <FileText className="w-3.5 h-3.5 text-[var(--muted-foreground)]" />
+                          <span className="text-[13px] text-[var(--foreground)] truncate">{report.report_name || report.name}</span>
                         </button>
                       ))}
                     </div>
                     <button
                       onClick={() => setAddToReportChartId(null)}
-                      className="mt-1.5 text-[11px] text-[#9CA3AF] hover:text-[#6B7280] transition-colors"
+                      className="mt-1.5 text-[11px] text-[var(--muted-foreground)] hover:text-[var(--muted-foreground)] transition-colors"
                       style={{ fontFamily: 'Inter, sans-serif' }}
                     >
                       Cancel
@@ -6222,7 +6250,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                 {!addToReportBadge[message.id] && addToReportChartId !== message.id && (
                   <button
                     onClick={() => handleAddChartToReport(message.id)}
-                    className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-gray-50 border border-[#E5E7EB] rounded-full text-[12px] text-[#111827] transition-all shadow-sm hover:shadow-md"
+                    className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-gray-50 border border-[var(--border)] rounded-full text-[12px] text-[var(--foreground)] transition-all shadow-sm hover:shadow-md"
                     style={{ fontFamily: 'Inter, sans-serif' }}
                   >
                     <Plus className="w-3.5 h-3.5" />
@@ -6243,7 +6271,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                         }
                       }}
                       placeholder="Refine this chart... (e.g., 'switch to bar chart', 'show only Q1')"
-                      className="w-full px-4 py-2.5 border border-[#E5E7EB] rounded-lg text-[12px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                      className="w-full px-4 py-2.5 border border-[var(--border)] rounded-lg text-[12px] focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent bg-white"
                       style={{ fontFamily: 'Inter, sans-serif' }}
                     />
                   </div>
@@ -6254,7 +6282,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                       }
                     }}
                     disabled={!refinementInputs[message.id]?.trim()}
-                    className="px-4 py-2.5 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg text-[12px] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="px-4 py-2.5 bg-[var(--foreground)] hover:bg-[var(--primary)] text-white rounded-lg text-[12px] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{ fontFamily: 'Inter, sans-serif' }}
                   >
                     Refine
@@ -6262,12 +6290,12 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                 </div>
                 {chartRefinements[message.id] && (
                   <div className="mt-2 flex items-center gap-2">
-                    <span className="text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <span className="text-[11px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                       Chart refined
                     </span>
                     <button
                       onClick={() => setChartRefinements(prev => { const next = {...prev}; delete next[message.id]; return next; })}
-                      className="text-[11px] text-blue-600 hover:text-blue-800 underline"
+                      className="text-[11px] text-brand hover:text-brand-hover underline"
                       style={{ fontFamily: 'Inter, sans-serif' }}
                     >
                       Reset to original
@@ -6293,13 +6321,15 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
             <h2 className="text-[16px] font-semibold text-[#2C2B29]" style={{ fontFamily: "'Bricolage Grotesque', sans-serif" }}>
               Talk
             </h2>
-            <button
+            <Button
+              variant="primary"
+              size="sm"
               onClick={handleNewConversation}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#111110] hover:bg-[#2C2B29] text-white border border-[#111110] rounded-[7px] text-[12px] font-medium transition-colors"
+              className="rounded-[7px]"
             >
               <Plus className="w-3.5 h-3.5" />
               New
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -6310,10 +6340,10 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
               onClick={() => handleLoadConversation(conv)}
               onMouseEnter={() => setHoveredConvId(conv.id)}
               onMouseLeave={() => setHoveredConvId(null)}
-              className={`p-3 rounded-lg cursor-pointer transition-colors duration-150 group border-b border-[#F7F5F2] ${
+              className={`p-3 rounded-lg cursor-pointer transition-colors duration-150 group border-b border-border ${
                 activeConversationId === conv.id
-                  ? 'bg-[#F0EDE8] border-b-[#ECEAE6]'
-                  : 'bg-transparent hover:bg-[#F4F2EF]'
+                  ? 'bg-brand-subtle'
+                  : 'bg-transparent hover:bg-accent'
               }`}
             >
               {editingConvId === conv.id ? (
@@ -6363,12 +6393,12 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                         {conv.title}
                       </p>
                       {conv.status === 'planned' && (
-                        <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded" style={{ background: '#EBF0FB', color: '#1A55A0' }}>
+                        <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-brand-subtle text-brand">
                           Planned
                         </span>
                       )}
                       {conv.status === 'draft' && (
-                        <span className="bg-gray-100 text-gray-700 text-[9px] font-medium px-1.5 py-0.5 rounded" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        <span className="bg-muted text-muted-foreground text-[9px] font-medium px-1.5 py-0.5 rounded" style={{ fontFamily: 'Inter, sans-serif' }}>
                           Draft
                         </span>
                       )}
@@ -6432,7 +6462,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
             const trendingAccessible = trendingReportsRaw.slice(0, 5);
             const trendingReports = [...trendingRestricted, ...trendingAccessible];
             const defaultIntentCards = [
-              { title: 'Create a New Report', description: 'Start building insights from your connected datasets', gradient: 'from-blue-500 to-indigo-600', action: 'Help me create a new report' },
+              { title: 'Create a New Report', description: 'Start building insights from your connected datasets', gradient: 'from-brand to-brand-hover', action: 'Help me create a new report' },
               { title: 'Explore Trending Data', description: 'See what reports and datasets are gaining traction', gradient: 'from-purple-500 to-pink-600', action: 'Show me trending reports and datasets' },
               { title: 'Data Quality Overview', description: 'Check freshness and governance status across datasets', gradient: 'from-emerald-500 to-teal-600', action: 'Show me data quality overview' },
               { title: 'Ask a Business Question', description: 'Use conversational analytics to get instant answers', gradient: 'from-orange-500 to-amber-600', action: 'I want to ask a business question' },
@@ -6495,7 +6525,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
 
             // Fixed gradient palette for Quick Summary cards (cycles for >4 cards)
             const cardGradients = [
-              'linear-gradient(148deg, #1E3A8A 0%, #1D4ED8 55%, #3B82F6 100%)',
+              'linear-gradient(148deg, var(--brand-hover) 0%, var(--brand-hover) 55%, var(--brand) 100%)',
               'linear-gradient(148deg, #4C1D95 0%, #6D28D9 55%, #8B5CF6 100%)',
               'linear-gradient(148deg, #134E4A 0%, #0F766E 55%, #14B8A6 100%)',
               'linear-gradient(148deg, #78350F 0%, #B45309 55%, #F59E0B 100%)',
@@ -6624,34 +6654,31 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                         <button
                           key={`starter-${idx}`}
                           onClick={() => handleStarterPillClick(pill)}
-                          className="inline-flex items-center justify-center h-[32px] px-[14px] bg-[#F4F2EF] border border-[#E5E3DF] rounded-[16px] text-[12px] leading-none whitespace-nowrap text-[#2C2B29] transition-all duration-150 hover:bg-[#1A1917] hover:text-white hover:border-[#1A1917] hover:-translate-y-px"
+                          className="inline-flex items-center justify-center h-[32px] px-[14px] bg-secondary border border-border rounded-full text-[12px] leading-none whitespace-nowrap text-secondary-foreground transition-all duration-150 hover:bg-primary hover:text-primary-foreground hover:border-primary hover:-translate-y-px"
                         >
                           {pill}
                         </button>
                       ))}
                     </div>
                     <div className="flex gap-3 items-end">
-                      <textarea
+                      <Textarea
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder="Ask a question, explore your data, or create something new…"
-                        className="flex-1 px-4 border border-[#E8E5E0] rounded-[10px] text-[14px] resize-none bg-[#F9F8F6] text-[#1C1917] placeholder:text-[#8A8785] input-warm-focus"
-                        style={{ minHeight: '48px', maxHeight: '120px', height: '48px', paddingTop: '14px', paddingBottom: '14px' }}
+                        className="flex-1 rounded-[10px] text-[14px] bg-input-background min-h-[48px] max-h-[120px] py-[14px]"
                         rows={1}
                       />
-                      <button
+                      <Button
+                        variant="brand"
                         onClick={handleAsk}
                         disabled={!inputValue.trim() || isGenerating}
                         aria-label="Send message"
-                        className="bg-[#1A1917] text-white text-[14px] font-medium transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D4572A] focus-visible:ring-offset-2"
-                        style={{ height: '48px', padding: '0 24px', borderRadius: '10px', flexShrink: 0 }}
-                        onMouseEnter={(e) => { if (!e.currentTarget.disabled) { e.currentTarget.style.background = '#D4572A'; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(212,87,42,0.30)'; } }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = '#1A1917'; e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = 'none'; }}
+                        className="h-[48px] px-6 rounded-[10px] flex-shrink-0"
                       >
                         <Send className="w-4 h-4" aria-hidden="true" />
                         Ask
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -6714,11 +6741,11 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                           onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04)'; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.borderColor = '#FDA4AF'; }}
                           onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.03)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = '#FFE4E6'; }}
                         >
-                          <div className="text-[12.5px] font-bold text-[#111827] mb-1 line-clamp-1">{report.props.title}</div>
-                          <div className="text-[10.5px] text-[#6B7280] line-clamp-2 mb-2 leading-relaxed">{report.props.description}</div>
+                          <div className="text-[12.5px] font-bold text-[var(--foreground)] mb-1 line-clamp-1">{report.props.title}</div>
+                          <div className="text-[10.5px] text-[var(--muted-foreground)] line-clamp-2 mb-2 leading-relaxed">{report.props.description}</div>
                           <div className="flex items-center justify-between mt-auto pt-2 border-t border-rose-50/50">
                             <span className="text-[9px] text-rose-600 font-bold uppercase tracking-wider">AI Generated</span>
-                            <span className="text-[9px] text-[#9CA3AF]">{new Date(report.savedAt).toLocaleDateString()}</span>
+                            <span className="text-[9px] text-[var(--muted-foreground)]">{new Date(report.savedAt).toLocaleDateString()}</span>
                           </div>
                         </button>
                       ))}
@@ -6738,11 +6765,11 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                   <div className="flex gap-3 overflow-x-auto pb-2" style={scrollbarHideStyle}>
                     {freqReports.map((report: any, idx: number) => {
                       const stripeGradients = [
-                        'linear-gradient(90deg, #2563EB, #60A5FA)',
+                        'linear-gradient(90deg, var(--brand), #60A5FA)',
                         'linear-gradient(90deg, #7C3AED, #A78BFA)',
                         'linear-gradient(90deg, #0F766E, #5EEAD4)',
                         'linear-gradient(90deg, #B45309, #FCD34D)',
-                        'linear-gradient(90deg, #2563EB, #60A5FA)',
+                        'linear-gradient(90deg, var(--brand), #60A5FA)',
                       ];
                       const pillTints = [
                         { bg: '#EBF3FE', color: '#0C447C' },
@@ -6784,11 +6811,11 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                       const hasAccess = idx >= trendingRestricted.length;
                       const isRequested = requestedReportIds.has(report.report_id);
                       const trendStripeGradients = [
-                        'linear-gradient(90deg, #2563EB, #60A5FA)',
+                        'linear-gradient(90deg, var(--brand), #60A5FA)',
                         'linear-gradient(90deg, #7C3AED, #A78BFA)',
                         'linear-gradient(90deg, #0F766E, #5EEAD4)',
                         'linear-gradient(90deg, #B45309, #FCD34D)',
-                        'linear-gradient(90deg, #2563EB, #60A5FA)',
+                        'linear-gradient(90deg, var(--brand), #60A5FA)',
                         'linear-gradient(90deg, #7C3AED, #A78BFA)',
                         'linear-gradient(90deg, #0F766E, #5EEAD4)',
                       ];
@@ -7066,7 +7093,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                           {/* Part A — Key metric pills */}
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                             {[
-                              { value: '+12%', label: 'Overall engagement', bg: '#EFF6FF', color: '#2563EB' },
+                              { value: '+12%', label: 'Overall engagement', bg: '#EFF6FF', color: 'var(--brand)' },
                               { value: '68%',  label: 'Digital engagement',  bg: '#F5F3FF', color: '#7C3AED' },
                               { value: '28.3%',label: 'Email open rate',     bg: '#F0FDFA', color: '#0D9488' },
                               { value: '3.2×', label: 'Spring Refresh ROI',  bg: '#FFFBEB', color: '#D97706' },
@@ -7085,7 +7112,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                               <BarChart
                                 layout="vertical"
                                 data={[
-                                  { channel: 'Digital Channels', value: 68,   display: '68%',       color: '#2563EB' },
+                                  { channel: 'Digital Channels', value: 68,   display: '68%',       color: 'var(--brand)' },
                                   { channel: 'Email',            value: 28.3,  display: '28.3%',     color: '#7C3AED' },
                                   { channel: 'Social Media',     value: 19,    display: '+19% CTR',  color: '#0D9488' },
                                   { channel: 'Spring Refresh',   value: 64,    display: '3.2× ROI',  color: '#D97706' },
@@ -7124,7 +7151,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                                 />
                                 <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={24} isAnimationActive animationDuration={800} animationEasing="ease-out">
                                   {[
-                                    { color: '#2563EB' },
+                                    { color: 'var(--brand)' },
                                     { color: '#7C3AED' },
                                     { color: '#0D9488' },
                                     { color: '#D97706' },
@@ -7149,7 +7176,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                             {[
                               { value: '+23%',  label: 'Digital Natives growth', bg: '#F5F3FF', color: '#7C3AED' },
-                              { value: '142K',  label: 'Segment total users',    bg: '#EFF6FF', color: '#2563EB' },
+                              { value: '142K',  label: 'Segment total users',    bg: '#EFF6FF', color: 'var(--brand)' },
                               { value: '4.7×',  label: 'Engagement vs avg',      bg: '#F0FDFA', color: '#0D9488' },
                               { value: '18%',   label: 'Revenue share',          bg: '#FFFBEB', color: '#D97706' },
                             ].map((m, i) => (
@@ -7181,8 +7208,8 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                                     <stop offset="95%" stopColor="#7C3AED" stopOpacity={0} />
                                   </linearGradient>
                                   <linearGradient id="gradOverall" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%"  stopColor="#2563EB" stopOpacity={0.12} />
-                                    <stop offset="95%" stopColor="#2563EB" stopOpacity={0} />
+                                    <stop offset="5%"  stopColor="var(--brand)" stopOpacity={0.12} />
+                                    <stop offset="95%" stopColor="var(--brand)" stopOpacity={0} />
                                   </linearGradient>
                                 </defs>
                                 <CartesianGrid vertical={false} stroke="#F0EDE8" />
@@ -7204,12 +7231,12 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                                   }}
                                 />
                                 <Area type="monotone" dataKey="digital" stroke="#7C3AED" strokeWidth={2} fill="url(#gradDigital)" dot={false} activeDot={{ r: 4, fill: '#7C3AED' }} />
-                                <Area type="monotone" dataKey="overall" stroke="#2563EB" strokeWidth={1.5} strokeDasharray="4 3" fill="url(#gradOverall)" dot={false} activeDot={{ r: 4, fill: '#2563EB' }} />
+                                <Area type="monotone" dataKey="overall" stroke="var(--brand)" strokeWidth={1.5} strokeDasharray="4 3" fill="url(#gradOverall)" dot={false} activeDot={{ r: 4, fill: 'var(--brand)' }} />
                               </AreaChart>
                             </ResponsiveContainer>
                             <div className="flex items-center gap-4 mt-2">
                               <div className="flex items-center gap-1.5"><div className="w-3 h-[2px] rounded-full bg-[#7C3AED]" /><span className="text-[10.5px] text-[#8A8785]">Digital Natives</span></div>
-                              <div className="flex items-center gap-1.5"><div className="w-3 h-[1.5px] rounded-full bg-[#2563EB] opacity-60" style={{ backgroundImage: 'repeating-linear-gradient(90deg,#2563EB 0,#2563EB 4px,transparent 4px,transparent 7px)' }} /><span className="text-[10.5px] text-[#8A8785]">Overall avg</span></div>
+                              <div className="flex items-center gap-1.5"><div className="w-3 h-[1.5px] rounded-full bg-[var(--brand)] opacity-60" style={{ backgroundImage: 'repeating-linear-gradient(90deg,var(--brand) 0,var(--brand) 4px,transparent 4px,transparent 7px)' }} /><span className="text-[10.5px] text-[#8A8785]">Overall avg</span></div>
                             </div>
                           </div>
 
@@ -7227,7 +7254,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                             {[
                               { value: '3.8%',   label: 'Social conversion rate', bg: '#F5F3FF', color: '#7C3AED' },
                               { value: '2.4%',   label: 'Paid search conversion', bg: '#F0FDFA', color: '#0D9488' },
-                              { value: '1.8%',   label: 'Email conversion rate',  bg: '#EFF6FF', color: '#2563EB' },
+                              { value: '1.8%',   label: 'Email conversion rate',  bg: '#EFF6FF', color: 'var(--brand)' },
                               { value: '+9%',    label: 'Projected uplift',        bg: '#FFFBEB', color: '#D97706' },
                             ].map((m, i) => (
                               <div key={i} className="rounded-[10px]" style={{ background: m.bg, padding: '12px 16px' }}>
@@ -7277,7 +7304,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                                   {[
                                     { color: '#7C3AED' },
                                     { color: '#0D9488' },
-                                    { color: '#2563EB' },
+                                    { color: 'var(--brand)' },
                                     { color: '#D97706' },
                                   ].map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={entry.color} />
@@ -7303,7 +7330,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                           {/* Part A — Key metric pills */}
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                             {[
-                              { value: '67%',   label: 'Budget deployed',       bg: '#EFF6FF', color: '#2563EB' },
+                              { value: '67%',   label: 'Budget deployed',       bg: '#EFF6FF', color: 'var(--brand)' },
                               { value: '$158K', label: 'Remaining this quarter', bg: '#F0FDFA', color: '#0D9488' },
                               { value: '4.1×',  label: 'Influencer ROAS',        bg: '#FFFBEB', color: '#D97706' },
                               { value: '−8%',   label: 'Paid media vs plan',     bg: '#FEF2F2', color: '#B91C1C' },
@@ -7323,7 +7350,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                                 layout="vertical"
                                 data={[
                                   { category: 'Influencer',         pct: 88, target: 100, color: '#D97706' },
-                                  { category: 'Content Marketing',  pct: 71, target: 100, color: '#2563EB' },
+                                  { category: 'Content Marketing',  pct: 71, target: 100, color: 'var(--brand)' },
                                   { category: 'Events',             pct: 70, target: 100, color: '#0D9488' },
                                   { category: 'Paid Media',         pct: 80, target: 88,  color: '#B91C1C' },
                                   { category: 'Other',              pct: 55, target: 100, color: '#7C3AED' },
@@ -7349,7 +7376,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                                 <Bar dataKey="pct" radius={[0, 4, 4, 0]} barSize={22} isAnimationActive animationDuration={800} animationEasing="ease-out">
                                   {[
                                     { color: '#D97706' },
-                                    { color: '#2563EB' },
+                                    { color: 'var(--brand)' },
                                     { color: '#0D9488' },
                                     { color: '#EF4444' },
                                     { color: '#7C3AED' },
@@ -7558,26 +7585,23 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                 }}
               >
                 <div className="max-w-[900px] mx-auto flex gap-3 items-end">
-                  <textarea
+                  <Textarea
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Ask a follow-up, explore more data, or refine your request…"
-                    className="flex-1 px-4 py-3 border border-[#E5E3DF] rounded-lg text-[13px] resize-none bg-[#F4F2EF] text-[#1C1917] placeholder:text-[#8A8785] input-warm-focus"
-                    style={{ fontFamily: 'Inter, sans-serif', minHeight: '52px', maxHeight: '120px' }}
+                    className="flex-1 rounded-lg text-[13px] bg-secondary min-h-[52px] max-h-[120px] py-3"
                     rows={1}
                   />
-                  <button
+                  <Button
+                    variant="brand"
                     onClick={handleAsk}
                     disabled={!inputValue.trim() || isGenerating}
-                    className="px-5 py-3 bg-[#111110] text-white rounded-lg text-[13px] font-medium transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                    style={{ fontFamily: 'Inter, sans-serif', height: '52px' }}
-                    onMouseEnter={(e) => { if (!e.currentTarget.disabled) { e.currentTarget.style.background = '#D4572A'; e.currentTarget.style.boxShadow = '0 2px 6px rgba(212,87,42,0.25)'; } }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = '#111110'; e.currentTarget.style.boxShadow = 'none'; }}
+                    className="h-[52px] px-5 rounded-lg flex-shrink-0"
                   >
                     <Send className="w-4 h-4" />
                     Ask
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -7589,9 +7613,9 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
       {/* SHARED PANEL: Used for both My Reports → Explore Report AND Talk → Create Report (draft) */}
       {/* Draft mode indicated by selectedReport.isDraft flag */}
       {isReportPanelOpen && selectedReport && (
-        <aside className="fixed top-[60px] right-0 bottom-0 w-[480px] bg-white border-l border-[#E5E7EB] z-30 flex flex-col shadow-xl">
+        <aside className="fixed top-[60px] right-0 bottom-0 w-[480px] bg-white border-l border-[var(--border)] z-30 flex flex-col shadow-xl">
           {/* Panel Header */}
-          <div className="p-5 border-b border-[#E5E7EB]">
+          <div className="p-5 border-b border-[var(--border)]">
             <div className="flex items-start justify-between mb-3">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-2">
@@ -7600,12 +7624,12 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                       type="text"
                       value={selectedReport.report_name}
                       onChange={(e) => setSelectedReport({ ...selectedReport, report_name: e.target.value })}
-                      className="text-[16px] font-semibold text-[#111827] bg-transparent border-none focus:outline-none focus:ring-0 p-0 flex-1"
+                      className="text-[16px] font-semibold text-[var(--foreground)] bg-transparent border-none focus:outline-none focus:ring-0 p-0 flex-1"
                       style={{ fontFamily: 'Inter, sans-serif' }}
                       placeholder="Report Name"
                     />
                   ) : (
-                    <h2 className="text-[16px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <h2 className="text-[16px] font-semibold text-[var(--foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                       {selectedReport.report_name}
                     </h2>
                   )}
@@ -7629,7 +7653,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                 <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>
-            <div className="flex items-center gap-3 text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <div className="flex items-center gap-3 text-[11px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
               <span>{selectedReport.domain}</span>
               <span>•</span>
               <span>{selectedReport.isDraft ? 'Created just now' : `Last viewed: ${formatRelativeTime(selectedReport.last_updated_ts)}`}</span>
@@ -7640,9 +7664,9 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
           <div className="flex-1 overflow-y-auto p-5 bg-[#F8F9FB]">
             {/* Draft Configuration */}
             {selectedReport.isDraft && selectedReport.draftConfig && (
-              <div className="bg-white border border-[#E5E7EB] rounded-lg p-4 mb-3">
+              <div className="bg-white border border-[var(--border)] rounded-lg p-4 mb-3">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-[13px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <h3 className="text-[13px] font-semibold text-[var(--foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                     Configuration
                   </h3>
                   <div className={`text-[10px] font-bold px-2 py-0.5 rounded ${selectedReport.source_application ? getSourceAppColor(selectedReport.source_application) : 'bg-gray-100 text-gray-700'}`}>
@@ -7652,26 +7676,26 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                 <div className="space-y-2 text-[12px]" style={{ fontFamily: 'Inter, sans-serif' }}>
                   {selectedReport.primary_use_case && (
                     <div>
-                      <span className="text-[#6B7280]">Intent:</span>{' '}
-                      <span className="text-[#111827] font-medium">{selectedReport.primary_use_case}</span>
+                      <span className="text-[var(--muted-foreground)]">Intent:</span>{' '}
+                      <span className="text-[var(--foreground)] font-medium">{selectedReport.primary_use_case}</span>
                     </div>
                   )}
                   {selectedReport.draftConfig.metrics && selectedReport.draftConfig.metrics.length > 0 && (
                     <div>
-                      <span className="text-[#6B7280]">Metrics:</span>{' '}
-                      <span className="text-[#111827] font-medium">{selectedReport.draftConfig.metrics.join(', ')}</span>
+                      <span className="text-[var(--muted-foreground)]">Metrics:</span>{' '}
+                      <span className="text-[var(--foreground)] font-medium">{selectedReport.draftConfig.metrics.join(', ')}</span>
                     </div>
                   )}
                   {selectedReport.draftConfig.dimensions && selectedReport.draftConfig.dimensions.length > 0 && (
                     <div>
-                      <span className="text-[#6B7280]">Dimensions:</span>{' '}
-                      <span className="text-[#111827] font-medium">{selectedReport.draftConfig.dimensions.join(', ')}</span>
+                      <span className="text-[var(--muted-foreground)]">Dimensions:</span>{' '}
+                      <span className="text-[var(--foreground)] font-medium">{selectedReport.draftConfig.dimensions.join(', ')}</span>
                     </div>
                   )}
                   {selectedReport.draftConfig.visualization && (
                     <div>
-                      <span className="text-[#6B7280]">Visualization:</span>{' '}
-                      <span className="text-[#111827] font-medium">{selectedReport.draftConfig.visualization}</span>
+                      <span className="text-[var(--muted-foreground)]">Visualization:</span>{' '}
+                      <span className="text-[var(--foreground)] font-medium">{selectedReport.draftConfig.visualization}</span>
                     </div>
                   )}
                 </div>
@@ -7680,19 +7704,19 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
 
             {/* Report Overview */}
             {selectedReport.primary_use_case && !selectedReport.isDraft && (
-              <div className="bg-white border border-[#E5E7EB] rounded-lg p-4 mb-3">
-                <h3 className="text-[13px] font-semibold text-[#111827] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <div className="bg-white border border-[var(--border)] rounded-lg p-4 mb-3">
+                <h3 className="text-[13px] font-semibold text-[var(--foreground)] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
                   Overview
                 </h3>
                 <p className="text-[12px] text-[#374151] mb-3" style={{ fontFamily: 'Inter, sans-serif', lineHeight: '1.5' }}>
                   {selectedReport.primary_use_case}
                 </p>
                 {selectedReport.business_owner && (
-                  <div className="pt-2 border-t border-[#E5E7EB]">
-                    <span className="text-[10px] text-[#6B7280] uppercase tracking-wide font-semibold" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <div className="pt-2 border-t border-[var(--border)]">
+                    <span className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-wide font-semibold" style={{ fontFamily: 'Inter, sans-serif' }}>
                       Owner
                     </span>
-                    <p className="text-[12px] text-[#111827] mt-0.5" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <p className="text-[12px] text-[var(--foreground)] mt-0.5" style={{ fontFamily: 'Inter, sans-serif' }}>
                       {selectedReport.business_owner}
                     </p>
                   </div>
@@ -7702,22 +7726,22 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
 
             {/* Key KPIs */}
             {selectedReport.key_kpis && selectedReport.key_kpis.length > 0 && (
-              <div className="bg-white border border-[#E5E7EB] rounded-lg p-4 mb-3">
-                <h3 className="text-[13px] font-semibold text-[#111827] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <div className="bg-white border border-[var(--border)] rounded-lg p-4 mb-3">
+                <h3 className="text-[13px] font-semibold text-[var(--foreground)] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
                   Key KPIs
                 </h3>
                 <div className="space-y-3">
                   {selectedReport.key_kpis.slice(0, 3).map((kpi: any, idx: number) => (
-                    <div key={idx} className="bg-[#F8F9FB] rounded-lg p-3 border border-[#E5E7EB]">
+                    <div key={idx} className="bg-[#F8F9FB] rounded-lg p-3 border border-[var(--border)]">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-[11px] font-medium text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        <span className="text-[11px] font-medium text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                           {kpi.kpi_name}
                         </span>
                         {kpi.trend === 'up' && <TrendingUp className="w-3 h-3 text-green-600" />}
                         {kpi.trend === 'down' && <TrendingDown className="w-3 h-3 text-red-600" />}
                         {kpi.trend === 'flat' && <Minus className="w-3 h-3 text-gray-400" />}
                       </div>
-                      <p className="text-[16px] font-bold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <p className="text-[16px] font-bold text-[var(--foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                         {kpi.current_value}
                       </p>
                       <p className={`text-[10px] ${kpi.trend === 'up' ? 'text-green-600' : kpi.trend === 'down' ? 'text-red-600' : 'text-gray-500'}`} style={{ fontFamily: 'Inter, sans-serif' }}>
@@ -7730,15 +7754,15 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
             )}
 
             {/* Source Dataset */}
-            <div className="bg-white border border-[#E5E7EB] rounded-lg p-4 mb-3">
-              <h3 className="text-[13px] font-semibold text-[#111827] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <div className="bg-white border border-[var(--border)] rounded-lg p-4 mb-3">
+              <h3 className="text-[13px] font-semibold text-[var(--foreground)] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
                 Source Dataset
               </h3>
               <div className="text-[12px]" style={{ fontFamily: 'Inter, sans-serif' }}>
-                <p className="text-[#111827] font-medium mb-1">
+                <p className="text-[var(--foreground)] font-medium mb-1">
                   {catalogDatasets.find(d => d.dataset_id === selectedReport.source_dataset_id)?.dataset_name || 'Unknown'}
                 </p>
-                <p className="text-[#6B7280] text-[11px]">
+                <p className="text-[var(--muted-foreground)] text-[11px]">
                   {selectedReport.domain} · {selectedReport.refresh_frequency || 'Unknown frequency'}
                 </p>
               </div>
@@ -7746,8 +7770,8 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
 
             {/* Key Insights */}
             {selectedReport.top_insights && selectedReport.top_insights.length > 0 && (
-              <div className="bg-white border border-[#E5E7EB] rounded-lg p-4 mb-3">
-                <h3 className="text-[13px] font-semibold text-[#111827] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <div className="bg-white border border-[var(--border)] rounded-lg p-4 mb-3">
+                <h3 className="text-[13px] font-semibold text-[var(--foreground)] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
                   {selectedReport.isDraft ? 'Expected Insights' : 'Key Insights'}
                 </h3>
                 <ul className="space-y-2">
@@ -7764,8 +7788,8 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
             )}
 
             {/* Report Preview Chart */}
-            <div className="bg-white border border-[#E5E7EB] rounded-lg p-4 mb-3">
-              <h3 className="text-[13px] font-semibold text-[#111827] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <div className="bg-white border border-[var(--border)] rounded-lg p-4 mb-3">
+              <h3 className="text-[13px] font-semibold text-[var(--foreground)] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
                 {selectedReport.isDraft ? 'Visualization Preview' : 'Report Preview'}
               </h3>
               <div className="mb-3">
@@ -7780,7 +7804,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                   height={200}
                 />
               </div>
-              <p className="text-[10px] text-[#6B7280] italic" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <p className="text-[10px] text-[var(--muted-foreground)] italic" style={{ fontFamily: 'Inter, sans-serif' }}>
                 {selectedReport.isDraft 
                   ? `Preview using sample data from ${catalogDatasets.find(d => d.dataset_id === selectedReport.source_dataset_id)?.dataset_name || 'selected dataset'}.`
                   : 'Static preview. Full report contains interactive visualizations.'}
@@ -7789,8 +7813,8 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
 
             {/* Related Reports */}
             {selectedReport.related_reports && selectedReport.related_reports.length > 0 && (
-              <div className="bg-white border border-[#E5E7EB] rounded-lg p-4">
-                <h3 className="text-[13px] font-semibold text-[#111827] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <div className="bg-white border border-[var(--border)] rounded-lg p-4">
+                <h3 className="text-[13px] font-semibold text-[var(--foreground)] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
                   Related Reports
                 </h3>
                 <div className="space-y-2">
@@ -7798,13 +7822,13 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                     <button
                       key={idx}
                       onClick={() => navigate(`/reports/${relatedReport.report_id}`)}
-                      className="w-full text-left px-3 py-2 bg-[#F8F9FB] hover:bg-blue-50 border border-[#E5E7EB] hover:border-blue-200 rounded transition-colors group"
+                      className="w-full text-left px-3 py-2 bg-[#F8F9FB] hover:bg-brand-subtle border border-[var(--border)] hover:border-brand/20 rounded transition-colors group"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] text-[#111827] font-medium group-hover:text-[#60A5FA]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        <span className="text-[11px] text-[var(--foreground)] font-medium group-hover:text-[#60A5FA]" style={{ fontFamily: 'Inter, sans-serif' }}>
                           {relatedReport.report_name}
                         </span>
-                        <ArrowRight className="w-3 h-3 text-[#6B7280] group-hover:text-[#60A5FA]" />
+                        <ArrowRight className="w-3 h-3 text-[var(--muted-foreground)] group-hover:text-[#60A5FA]" />
                       </div>
                     </button>
                   ))}
@@ -7814,12 +7838,12 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
           </div>
 
           {/* Panel Footer - Actions */}
-          <div className="p-5 border-t border-[#E5E7EB] bg-white space-y-2">
+          <div className="p-5 border-t border-[var(--border)] bg-white space-y-2">
             {selectedReport.isDraft ? (
               <>
                 <button
                   onClick={handleFinalizeReportCreation}
-                  className="w-full px-4 py-3 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg text-[13px] font-medium transition-colors"
+                  className="w-full px-4 py-3 bg-[var(--foreground)] hover:bg-[var(--primary)] text-white rounded-lg text-[13px] font-medium transition-colors"
                   style={{ fontFamily: 'Inter, sans-serif' }}
                 >
                   Save as report
@@ -7837,7 +7861,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                       }
                     );
                   }}
-                  className="w-full px-4 py-3 bg-white hover:bg-gray-50 border border-[#E5E7EB] text-[#111827] rounded-lg text-[13px] font-medium transition-colors"
+                  className="w-full px-4 py-3 bg-white hover:bg-gray-50 border border-[var(--border)] text-[var(--foreground)] rounded-lg text-[13px] font-medium transition-colors"
                   style={{ fontFamily: 'Inter, sans-serif' }}
                 >
                   Edit configuration
@@ -7851,7 +7875,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                       'text'
                     );
                   }}
-                  className="w-full px-4 py-3 bg-white hover:bg-gray-50 border border-[#E5E7EB] text-[#111827] rounded-lg text-[13px] font-medium transition-colors"
+                  className="w-full px-4 py-3 bg-white hover:bg-gray-50 border border-[var(--border)] text-[var(--foreground)] rounded-lg text-[13px] font-medium transition-colors"
                   style={{ fontFamily: 'Inter, sans-serif' }}
                 >
                   Continue in Talk
@@ -7861,7 +7885,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
               <>
                 <button
                   onClick={() => navigate(`/reports/${selectedReport.report_id}`)}
-                  className="w-full px-4 py-3 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg text-[13px] font-medium transition-colors"
+                  className="w-full px-4 py-3 bg-[var(--foreground)] hover:bg-[var(--primary)] text-white rounded-lg text-[13px] font-medium transition-colors"
                   style={{ fontFamily: 'Inter, sans-serif' }}
                 >
                   Open Full Report
@@ -7871,7 +7895,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                   return platformButton ? (
                     <button
                       onClick={() => window.open(platformButton.url, '_blank')}
-                      className="w-full px-4 py-3 bg-white hover:bg-gray-50 border border-[#E5E7EB] text-[#111827] rounded-lg text-[13px] font-medium transition-colors flex items-center justify-center gap-2"
+                      className="w-full px-4 py-3 bg-white hover:bg-gray-50 border border-[var(--border)] text-[var(--foreground)] rounded-lg text-[13px] font-medium transition-colors flex items-center justify-center gap-2"
                       style={{ fontFamily: 'Inter, sans-serif' }}
                     >
                       {platformButton.label}
@@ -7881,7 +7905,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                 })()}
                 <button
                   onClick={handleCloseReportPanel}
-                  className="w-full px-4 py-3 bg-white hover:bg-gray-50 border border-[#E5E7EB] text-[#111827] rounded-lg text-[13px] font-medium transition-colors"
+                  className="w-full px-4 py-3 bg-white hover:bg-gray-50 border border-[var(--border)] text-[var(--foreground)] rounded-lg text-[13px] font-medium transition-colors"
                   style={{ fontFamily: 'Inter, sans-serif' }}
                 >
                   Continue in Talk
@@ -7894,12 +7918,12 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
 
       {/* DATASET DETAILS PANEL (RIGHT) */}
       {isDatasetPanelOpen && selectedDataset && (
-        <aside className="fixed top-[60px] right-0 bottom-0 w-[480px] bg-white border-l border-[#E5E7EB] z-30 flex flex-col shadow-xl">
+        <aside className="fixed top-[60px] right-0 bottom-0 w-[480px] bg-white border-l border-[var(--border)] z-30 flex flex-col shadow-xl">
           {/* Panel Header */}
-          <div className="p-5 border-b border-[#E5E7EB]">
+          <div className="p-5 border-b border-[var(--border)]">
             <div className="flex items-start justify-between mb-3">
               <div className="flex-1">
-                <h2 className="text-[16px] font-semibold text-[#111827] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <h2 className="text-[16px] font-semibold text-[var(--foreground)] mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
                   {selectedDataset.dataset_name}
                 </h2>
                 <div className="flex items-center gap-2">
@@ -7926,7 +7950,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                 <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>
-            <div className="flex items-center gap-3 text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <div className="flex items-center gap-3 text-[11px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
               <span>{selectedDataset.domain}</span>
               <span>•</span>
               <span>Refreshed: {formatRelativeTime(selectedDataset.last_refresh_ts)}</span>
@@ -7936,39 +7960,39 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
           {/* Panel Content - Dataset Overview */}
           <div className="flex-1 overflow-y-auto p-5 bg-[#F8F9FB]">
             {/* A. Dataset Summary */}
-            <div className="bg-white border border-[#E5E7EB] rounded-lg p-4 mb-4">
-              <h3 className="text-[13px] font-semibold text-[#111827] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <div className="bg-white border border-[var(--border)] rounded-lg p-4 mb-4">
+              <h3 className="text-[13px] font-semibold text-[var(--foreground)] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
                 Dataset Summary
               </h3>
               <div className="space-y-2 text-[11px]" style={{ fontFamily: 'Inter, sans-serif' }}>
                 <div className="flex justify-between">
-                  <span className="text-[#6B7280]">Domain:</span>
-                  <span className="text-[#111827] font-medium">{selectedDataset.domain}</span>
+                  <span className="text-[var(--muted-foreground)]">Domain:</span>
+                  <span className="text-[var(--foreground)] font-medium">{selectedDataset.domain}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[#6B7280]">Source System:</span>
-                  <span className="text-[#111827] font-medium">{selectedDataset.source_system || 'N/A'}</span>
+                  <span className="text-[var(--muted-foreground)]">Source System:</span>
+                  <span className="text-[var(--foreground)] font-medium">{selectedDataset.source_system || 'N/A'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[#6B7280]">Certification:</span>
-                  <span className="text-[#111827] font-medium">
+                  <span className="text-[var(--muted-foreground)]">Certification:</span>
+                  <span className="text-[var(--foreground)] font-medium">
                     {selectedDataset.certified_flag ? '✓ Certified' : 'Pending'}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[#6B7280]">Owner:</span>
-                  <span className="text-[#111827] font-medium text-[10px]">{getDatasetOwner(selectedDataset.dataset_id)}</span>
+                  <span className="text-[var(--muted-foreground)]">Owner:</span>
+                  <span className="text-[var(--foreground)] font-medium text-[10px]">{getDatasetOwner(selectedDataset.dataset_id)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[#6B7280]">Last Refreshed:</span>
-                  <span className="text-[#111827] font-medium">{formatRelativeTime(selectedDataset.last_refresh_ts)}</span>
+                  <span className="text-[var(--muted-foreground)]">Last Refreshed:</span>
+                  <span className="text-[var(--foreground)] font-medium">{formatRelativeTime(selectedDataset.last_refresh_ts)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[#6B7280]">Refresh Frequency:</span>
-                  <span className="text-[#111827] font-medium">{selectedDataset.refresh_frequency}</span>
+                  <span className="text-[var(--muted-foreground)]">Refresh Frequency:</span>
+                  <span className="text-[var(--foreground)] font-medium">{selectedDataset.refresh_frequency}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[#6B7280]">Data Freshness:</span>
+                  <span className="text-[var(--muted-foreground)]">Data Freshness:</span>
                   <span className="text-[11px] font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded">
                     Up to date
                   </span>
@@ -7977,49 +8001,49 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
             </div>
 
             {/* B. Dataset Scale */}
-            <div className="bg-white border border-[#E5E7EB] rounded-lg p-4 mb-4">
-              <h3 className="text-[13px] font-semibold text-[#111827] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <div className="bg-white border border-[var(--border)] rounded-lg p-4 mb-4">
+              <h3 className="text-[13px] font-semibold text-[var(--foreground)] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
                 Dataset Scale
               </h3>
               <div className="grid grid-cols-2 gap-3 mb-3">
                 <div className="bg-[#F8F9FB] rounded-lg p-3">
-                  <p className="text-[10px] text-[#6B7280] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>TOTAL ROWS</p>
-                  <p className="text-[16px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <p className="text-[10px] text-[var(--muted-foreground)] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>TOTAL ROWS</p>
+                  <p className="text-[16px] font-semibold text-[var(--foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                     {selectedDataset.row_count?.toLocaleString() || '1M+'}
                   </p>
                 </div>
                 <div className="bg-[#F8F9FB] rounded-lg p-3">
-                  <p className="text-[10px] text-[#6B7280] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>TOTAL FIELDS</p>
-                  <p className="text-[16px] font-semibold text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <p className="text-[10px] text-[var(--muted-foreground)] mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>TOTAL FIELDS</p>
+                  <p className="text-[16px] font-semibold text-[var(--foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                     {selectedDataset.field_count || '20+'}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center justify-between pt-2 border-t border-[#E5E7EB]">
-                <span className="text-[11px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>Growth Trend:</span>
-                <span className="text-[11px] font-medium text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <div className="flex items-center justify-between pt-2 border-t border-[var(--border)]">
+                <span className="text-[11px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>Growth Trend:</span>
+                <span className="text-[11px] font-medium text-[var(--foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                   {getDatasetGrowthTrend(selectedDataset.dataset_id)}
                 </span>
               </div>
             </div>
 
             {/* C. Schema Snapshot */}
-            <div className="bg-white border border-[#E5E7EB] rounded-lg p-4 mb-4">
-              <h3 className="text-[13px] font-semibold text-[#111827] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <div className="bg-white border border-[var(--border)] rounded-lg p-4 mb-4">
+              <h3 className="text-[13px] font-semibold text-[var(--foreground)] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
                 Schema Snapshot
               </h3>
               <div className="space-y-2.5">
                 {getDatasetSchemaFields(selectedDataset.dataset_id).slice(0, 6).map((field, idx) => (
                   <div key={idx} className="pb-2 border-b border-[#F3F4F6] last:border-0">
                     <div className="flex items-start justify-between mb-0.5">
-                      <span className="text-[11px] font-medium text-[#111827]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <span className="text-[11px] font-medium text-[var(--foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                         {field.field_name}
                       </span>
-                      <span className="text-[9px] font-medium text-[#6B7280] bg-[#F3F4F6] px-1.5 py-0.5 rounded" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <span className="text-[9px] font-medium text-[var(--muted-foreground)] bg-[#F3F4F6] px-1.5 py-0.5 rounded" style={{ fontFamily: 'Inter, sans-serif' }}>
                         {field.data_type}
                       </span>
                     </div>
-                    <p className="text-[10px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <p className="text-[10px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                       {field.description}
                     </p>
                   </div>
@@ -8037,24 +8061,24 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
             </div>
 
             {/* D. Report Usage */}
-            <div className="bg-white border border-[#E5E7EB] rounded-lg p-4">
-              <h3 className="text-[13px] font-semibold text-[#111827] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+            <div className="bg-white border border-[var(--border)] rounded-lg p-4">
+              <h3 className="text-[13px] font-semibold text-[var(--foreground)] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
                 Report Usage
               </h3>
               {(() => {
                 const connectedReports = getReportsByDatasetId(selectedDataset.dataset_id);
                 return connectedReports.length > 0 ? (
                   <>
-                    <p className="text-[11px] text-[#6B7280] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    <p className="text-[11px] text-[var(--muted-foreground)] mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
                       {connectedReports.length} report{connectedReports.length !== 1 ? 's' : ''} connected to this dataset:
                     </p>
                     <div className="space-y-1.5 mb-3">
                       {connectedReports.slice(0, 4).map((report, idx) => (
                         <div key={idx} className="flex items-center justify-between py-1.5 px-2 bg-[#F8F9FB] rounded">
-                          <span className="text-[10px] text-[#111827] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <span className="text-[10px] text-[var(--foreground)] font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
                             {report.report_name}
                           </span>
-                          <span className="text-[9px] text-[#6B7280]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <span className="text-[9px] text-[var(--muted-foreground)]" style={{ fontFamily: 'Inter, sans-serif' }}>
                             {report.domain}
                           </span>
                         </div>
@@ -8071,7 +8095,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                     )}
                   </>
                 ) : (
-                  <p className="text-[11px] text-[#6B7280] italic" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <p className="text-[11px] text-[var(--muted-foreground)] italic" style={{ fontFamily: 'Inter, sans-serif' }}>
                     No reports currently use this dataset
                   </p>
                 );
@@ -8080,10 +8104,10 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
           </div>
 
           {/* Panel Footer - Actions */}
-          <div className="p-5 border-t border-[#E5E7EB] bg-white">
+          <div className="p-5 border-t border-[var(--border)] bg-white">
             <button
               onClick={() => navigate(`/datasets/${selectedDataset.dataset_id}`)}
-              className="w-full px-4 py-3 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg text-[13px] font-medium transition-colors mb-2"
+              className="w-full px-4 py-3 bg-[var(--foreground)] hover:bg-[var(--primary)] text-white rounded-lg text-[13px] font-medium transition-colors mb-2"
               style={{ fontFamily: 'Inter, sans-serif' }}
             >
               View Full Dataset
@@ -8093,7 +8117,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
               return platformButton ? (
                 <button
                   onClick={() => window.open(platformButton.url, '_blank')}
-                  className="w-full px-4 py-3 bg-white hover:bg-gray-50 border border-[#E5E7EB] text-[#111827] rounded-lg text-[13px] font-medium transition-colors mb-2 flex items-center justify-center gap-2"
+                  className="w-full px-4 py-3 bg-white hover:bg-gray-50 border border-[var(--border)] text-[var(--foreground)] rounded-lg text-[13px] font-medium transition-colors mb-2 flex items-center justify-center gap-2"
                   style={{ fontFamily: 'Inter, sans-serif' }}
                 >
                   {platformButton.label}
@@ -8103,7 +8127,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
             })()}
             <button
               onClick={handleCloseDatasetPanel}
-              className="w-full px-4 py-3 bg-white hover:bg-gray-50 border border-[#E5E7EB] text-[#111827] rounded-lg text-[13px] font-medium transition-colors"
+              className="w-full px-4 py-3 bg-white hover:bg-gray-50 border border-[var(--border)] text-[var(--foreground)] rounded-lg text-[13px] font-medium transition-colors"
               style={{ fontFamily: 'Inter, sans-serif' }}
             >
               Continue in Talk

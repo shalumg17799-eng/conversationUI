@@ -44,7 +44,7 @@ function DatasetsIndexView() {
             Governed datasets powering analytics across Report Hub.
           </p>
         </div>
-        <div className="text-[11px] text-muted-foreground bg-blue-50 px-3 py-1.5 rounded-md" style={{ fontFamily: 'var(--font-body)' }}>
+        <div className="text-[11px] text-muted-foreground bg-brand-subtle px-3 py-1.5 rounded-md" style={{ fontFamily: 'var(--font-body)' }}>
           Connected · Governed
         </div>
       </div>
@@ -53,7 +53,7 @@ function DatasetsIndexView() {
       <div className="grid grid-cols-3 gap-6">
         <button
           onClick={() => navigate('/datasets')}
-          className="bg-card rounded-[12px] border border-border p-6 shadow-sm text-left hover:border-[#6B7280] transition-colors"
+          className="bg-card rounded-[12px] border border-border p-6 shadow-sm text-left hover:border-brand/40 transition-colors"
         >
           <div className="text-[32px] font-bold text-foreground mb-2" style={{ fontFamily: 'var(--font-body)' }}>
             {datasetCounts.total}
@@ -68,7 +68,7 @@ function DatasetsIndexView() {
 
         <button
           onClick={() => navigate('/datasets')}
-          className="bg-[#ECFDF3] rounded-[12px] border border-border p-6 shadow-sm text-left hover:border-[#6B7280] transition-colors"
+          className="bg-[#ECFDF3] rounded-[12px] border border-border p-6 shadow-sm text-left hover:border-brand/40 transition-colors"
         >
           <div className="flex items-center justify-between mb-2">
             <div className="text-[32px] font-bold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
@@ -88,7 +88,7 @@ function DatasetsIndexView() {
 
         <button
           onClick={() => navigate('/datasets')}
-          className="bg-card rounded-[12px] border border-border p-6 shadow-sm text-left hover:border-[#6B7280] transition-colors"
+          className="bg-card rounded-[12px] border border-border p-6 shadow-sm text-left hover:border-brand/40 transition-colors"
         >
           <div className="text-[32px] font-bold text-foreground mb-2" style={{ fontFamily: 'var(--font-body)' }}>
             {datasetCounts.domains}
@@ -137,7 +137,7 @@ function DatasetsIndexView() {
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#E5E7EB]">
+            <tbody className="divide-y divide-border">
               {allDatasets.map((dataset) => (
                 <tr 
                   key={dataset.dataset_id}
@@ -187,7 +187,7 @@ function DatasetsIndexView() {
       </div>
 
       {/* SECTION 3: QUICK ACTIONS */}
-      <div className="bg-[#EFF6FF] rounded-[12px] border border-[#BFDBFE] p-6 shadow-sm">
+      <div className="bg-brand-subtle rounded-[12px] border border-brand/20 p-6 shadow-sm">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-[14px] font-semibold text-foreground mb-1" style={{ fontFamily: 'var(--font-body)' }}>
@@ -200,7 +200,7 @@ function DatasetsIndexView() {
           <div className="flex gap-3">
             <button
               onClick={() => navigate('/conversational')}
-              className="px-5 py-2.5 bg-foreground hover:bg-foreground text-white rounded-lg text-[13px] font-medium transition-colors"
+              className="px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-[13px] font-medium transition-colors"
               style={{ fontFamily: 'var(--font-body)' }}
             >
               Ask Questions with Conversational Analytics
@@ -238,7 +238,7 @@ function DatasetDetailView({ datasetId }: { datasetId: string }) {
           </p>
           <button
             onClick={() => navigate('/datasets')}
-            className="px-4 py-2 bg-foreground hover:bg-foreground text-white rounded-lg text-[13px] font-medium"
+            className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-[13px] font-medium"
             style={{ fontFamily: 'var(--font-body)' }}
           >
             Back to Datasets
@@ -279,7 +279,7 @@ function DatasetDetailView({ datasetId }: { datasetId: string }) {
         <div className="flex items-center gap-2 text-[12px]" style={{ fontFamily: 'var(--font-body)' }}>
           <button 
             onClick={() => navigate('/datasets')}
-            className="text-[#60A5FA] hover:text-[#3B82F6] hover:underline"
+            className="text-brand hover:text-brand-hover hover:underline"
           >
             Datasets
           </button>
@@ -386,7 +386,7 @@ function DatasetDetailView({ datasetId }: { datasetId: string }) {
           {metrics.map((metric) => (
             <div 
               key={metric.metric_id} 
-              className="flex items-start justify-between p-3 bg-muted rounded-lg border border-border hover:border-[#6B7280] transition-colors"
+              className="flex items-start justify-between p-3 bg-muted rounded-lg border border-border hover:border-brand/40 transition-colors"
             >
               <div>
                 <h3 className="text-[13px] font-semibold text-foreground mb-1" style={{ fontFamily: 'var(--font-body)' }}>
@@ -420,17 +420,17 @@ function DatasetDetailView({ datasetId }: { datasetId: string }) {
                 dataKey="month" 
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: '#6B7280', fontSize: 11, fontFamily: 'var(--font-body)' }}
+                tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'var(--font-body)' }}
               />
               <YAxis 
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: '#6B7280', fontSize: 11, fontFamily: 'var(--font-body)' }}
+                tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'var(--font-body)' }}
                 domain={[0, 100]}
               />
               <Bar 
                 dataKey="takeRate"
-                fill="#60A5FA"
+                fill="var(--brand)"
                 radius={[6, 6, 0, 0]}
               />
             </BarChart>
@@ -469,7 +469,7 @@ function DatasetDetailView({ datasetId }: { datasetId: string }) {
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#E5E7EB]">
+              <tbody className="divide-y divide-border">
                 {relatedReports.map((report) => (
                   <tr 
                     key={report.report_id}
@@ -486,7 +486,7 @@ function DatasetDetailView({ datasetId }: { datasetId: string }) {
                             Enterprise
                           </span>
                         ) : (
-                          <span className="bg-blue-50 text-blue-700 text-[10px] font-medium px-2 py-1 rounded" style={{ fontFamily: 'var(--font-body)' }}>
+                          <span className="bg-brand-subtle text-brand text-[10px] font-medium px-2 py-1 rounded" style={{ fontFamily: 'var(--font-body)' }}>
                             Standard
                           </span>
                         )}
@@ -508,7 +508,7 @@ function DatasetDetailView({ datasetId }: { datasetId: string }) {
       </div>
 
       {/* SECTION 5: ACTIONS & ROUTING */}
-      <div className="bg-[#EFF6FF] rounded-[12px] border border-[#BFDBFE] p-5 shadow-sm">
+      <div className="bg-brand-subtle rounded-[12px] border border-brand/20 p-5 shadow-sm">
         <div className="flex items-center justify-between mb-3">
           <p className="text-[12px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
             Report Hub manages where insights live — not where users work.
@@ -518,7 +518,7 @@ function DatasetDetailView({ datasetId }: { datasetId: string }) {
         <div className="flex items-center justify-between">
           <button
             onClick={() => navigate('/datasets')}
-            className="text-[13px] text-[#60A5FA] hover:text-[#3B82F6] hover:underline font-medium"
+            className="text-[13px] text-brand hover:text-brand-hover hover:underline font-medium"
             style={{ fontFamily: 'var(--font-body)' }}
           >
             ← Back to Datasets
@@ -527,7 +527,7 @@ function DatasetDetailView({ datasetId }: { datasetId: string }) {
           <div className="flex gap-3">
             <button
               onClick={() => navigate('/conversational')}
-              className="px-5 py-2.5 bg-foreground hover:bg-foreground text-white rounded-lg text-[13px] font-medium"
+              className="px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-[13px] font-medium"
               style={{ fontFamily: 'var(--font-body)' }}
             >
               Ask a question using this dataset
@@ -551,10 +551,10 @@ function DatasetDetailView({ datasetId }: { datasetId: string }) {
           </div>
         </div>
 
-        <div className="mt-3 pt-3 border-t border-[#BFDBFE]">
+        <div className="mt-3 pt-3 border-t border-brand/20">
           <button
             onClick={() => navigate('/talk/migration')}
-            className="text-[12px] text-[#60A5FA] hover:text-[#3B82F6] hover:underline"
+            className="text-[12px] text-brand hover:text-brand-hover hover:underline"
             style={{ fontFamily: 'var(--font-body)' }}
           >
             Request Migration →

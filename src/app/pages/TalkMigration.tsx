@@ -77,10 +77,10 @@ function IntentSelectionUI({ msgId, msgContent, onIntentSelect, onViewOverview }
         <div className="grid grid-cols-1 gap-3">
           <div
             onClick={() => setSelectedIntent('migrate_existing')}
-            className="bg-white border-2 border-blue-500 ring-2 ring-blue-100 shadow-md bg-blue-50/30 rounded-xl p-4 cursor-pointer transition-all"
+            className="bg-white border-2 border-brand ring-2 ring-brand/20 shadow-md bg-brand-subtle/40 rounded-xl p-4 cursor-pointer transition-all"
           >
             <div className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full border-2 border-blue-500 bg-blue-500 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all">
+              <div className="w-6 h-6 rounded-full border-2 border-brand bg-brand-subtle0 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all">
                 <div className="w-3 h-3 rounded-full bg-white" />
               </div>
               <div className="flex-1">
@@ -99,7 +99,7 @@ function IntentSelectionUI({ msgId, msgContent, onIntentSelect, onViewOverview }
         <div className="flex flex-col gap-3">
           <button
             onClick={onIntentSelect}
-            className="px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all shadow-sm bg-[#111827] hover:bg-[#0F172A] text-white cursor-pointer"
+            className="px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all shadow-sm bg-[var(--foreground)] hover:bg-[var(--primary)] text-white cursor-pointer"
             style={{ fontFamily: 'var(--font-body)' }}
           >
             Continue
@@ -147,15 +147,15 @@ function SourcePlatformSelectionUI({ msgId, onContinue }: SourcePlatformSelectio
               onClick={() => setSelectedPlatform(platform.id)}
               className={`bg-white border-2 rounded-xl p-4 cursor-pointer transition-all ${
                 selectedPlatform === platform.id
-                  ? 'border-blue-500 ring-2 ring-blue-100 shadow-md bg-blue-50/30'
-                  : 'border-border hover:border-blue-300 hover:shadow-sm'
+                  ? 'border-brand ring-2 ring-brand/20 shadow-md bg-brand-subtle/40'
+                  : 'border-border hover:border-brand/40 hover:shadow-sm'
               }`}
             >
               <div className="flex items-start gap-3">
                 {/* Radio Button */}
                 <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${
                   selectedPlatform === platform.id
-                    ? 'border-blue-500 bg-blue-500'
+                    ? 'border-brand bg-brand-subtle0'
                     : 'border-gray-400 bg-white'
                 }`}>
                   {selectedPlatform === platform.id && (
@@ -187,7 +187,7 @@ function SourcePlatformSelectionUI({ msgId, onContinue }: SourcePlatformSelectio
             disabled={!selectedPlatform}
             className={`px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all shadow-sm ${
               selectedPlatform 
-                ? 'bg-[#111827] hover:bg-[#0F172A] text-white cursor-pointer' 
+                ? 'bg-[var(--foreground)] hover:bg-[var(--primary)] text-white cursor-pointer' 
                 : 'bg-border text-muted-foreground cursor-not-allowed'
             }`}
             style={{ fontFamily: 'var(--font-body)' }}
@@ -297,7 +297,7 @@ function ReportSelectionUI({ msgId, sourcePlatform, onContinue, onReportSelect }
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search reports by name or owner"
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-[13px] focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
               style={{ fontFamily: 'var(--font-body)' }}
             />
           </div>
@@ -331,15 +331,15 @@ function ReportSelectionUI({ msgId, sourcePlatform, onContinue, onReportSelect }
               onClick={() => handleReportSelect(report)}
               className={`bg-white border-2 rounded-xl p-4 cursor-pointer transition-all ${
                 selectedReportId === report.id
-                  ? 'border-blue-500 ring-2 ring-blue-100 shadow-md bg-blue-50/30'
-                  : 'border-border hover:border-blue-300 hover:shadow-sm'
+                  ? 'border-brand ring-2 ring-brand/20 shadow-md bg-brand-subtle/40'
+                  : 'border-border hover:border-brand/40 hover:shadow-sm'
               }`}
             >
               <div className="flex items-start gap-3">
                 {/* Radio Indicator */}
                 <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${
                   selectedReportId === report.id
-                    ? 'border-blue-500 bg-blue-500'
+                    ? 'border-brand bg-brand-subtle0'
                     : 'border-gray-400 bg-white'
                 }`}>
                   {selectedReportId === report.id && (
@@ -410,7 +410,7 @@ function ReportSelectionUI({ msgId, sourcePlatform, onContinue, onReportSelect }
             disabled={!selectedReportId}
             className={`px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all shadow-sm ${
               selectedReportId 
-                ? 'bg-[#111827] hover:bg-[#0F172A] text-white cursor-pointer' 
+                ? 'bg-[var(--foreground)] hover:bg-[var(--primary)] text-white cursor-pointer' 
                 : 'bg-border text-muted-foreground cursor-not-allowed'
             }`}
             style={{ fontFamily: 'var(--font-body)' }}
@@ -492,15 +492,15 @@ function DestinationPlatformSelectionUI({
       {/* Destination Selection */}
       <div className="space-y-4 max-w-[90%]">
         {/* Source vs Destination Context */}
-        <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-[12px]" style={{ fontFamily: 'var(--font-body)' }}>
+        <div className="flex items-center justify-between bg-brand-subtle border border-brand/20 rounded-lg px-4 py-2 text-[12px]" style={{ fontFamily: 'var(--font-body)' }}>
           <div className="flex items-center gap-2">
             <span className="text-muted-foreground font-medium">SOURCE:</span>
             <span className="text-foreground font-semibold">{platformNames[sourcePlatform]}</span>
           </div>
-          <ArrowRight className="w-4 h-4 text-blue-500" />
+          <ArrowRight className="w-4 h-4 text-brand" />
           <div className="flex items-center gap-2">
             <span className="text-muted-foreground font-medium">DESTINATION:</span>
-            <span className="text-blue-600 font-semibold">Select below</span>
+            <span className="text-brand font-semibold">Select below</span>
           </div>
         </div>
 
@@ -522,15 +522,15 @@ function DestinationPlatformSelectionUI({
               onClick={() => handleDestinationSelect(option.id)}
               className={`bg-white border-2 rounded-xl p-4 cursor-pointer transition-all ${
                 selectedDestination === option.id
-                  ? 'border-blue-500 ring-2 ring-blue-100 shadow-md bg-blue-50/30'
-                  : 'border-border hover:border-blue-300 hover:shadow-sm'
+                  ? 'border-brand ring-2 ring-brand/20 shadow-md bg-brand-subtle/40'
+                  : 'border-border hover:border-brand/40 hover:shadow-sm'
               }`}
             >
               <div className="flex items-start gap-3">
                 {/* Radio Button */}
                 <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${
                   selectedDestination === option.id
-                    ? 'border-blue-500 bg-blue-500'
+                    ? 'border-brand bg-brand-subtle0'
                     : 'border-gray-400 bg-white'
                 }`}>
                   {selectedDestination === option.id && (
@@ -567,7 +567,7 @@ function DestinationPlatformSelectionUI({
         <div className="flex flex-col gap-3">
           <button
             onClick={() => onContinue(selectedDestination)}
-            className="px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all shadow-sm bg-[#111827] hover:bg-[#0F172A] text-white cursor-pointer"
+            className="px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all shadow-sm bg-[var(--foreground)] hover:bg-[var(--primary)] text-white cursor-pointer"
             style={{ fontFamily: 'var(--font-body)' }}
           >
             Continue
@@ -654,15 +654,15 @@ function VisualConfigurationUI({ msgId, reportName, sourcePlatform = 'tableau', 
               }}
               className={`bg-white border-2 rounded-xl p-4 cursor-pointer transition-all ${
                 layoutOption === 'keep_current'
-                  ? 'border-blue-500 ring-2 ring-blue-100 shadow-md bg-blue-50/30'
-                  : 'border-border hover:border-blue-300 hover:shadow-sm'
+                  ? 'border-brand ring-2 ring-brand/20 shadow-md bg-brand-subtle/40'
+                  : 'border-border hover:border-brand/40 hover:shadow-sm'
               }`}
             >
               <div className="flex items-start gap-3">
                 {/* Radio Button */}
                 <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${
                   layoutOption === 'keep_current'
-                    ? 'border-blue-500 bg-blue-500'
+                    ? 'border-brand bg-brand-subtle0'
                     : 'border-gray-400 bg-white'
                 }`}>
                   {layoutOption === 'keep_current' && (
@@ -675,7 +675,7 @@ function VisualConfigurationUI({ msgId, reportName, sourcePlatform = 'tableau', 
                     <h4 className="text-[14px] font-semibold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
                       Keep the current report layout
                     </h4>
-                    <span className="inline-flex items-center bg-blue-100 text-blue-700 text-[10px] font-semibold px-2 py-0.5 rounded">
+                    <span className="inline-flex items-center bg-brand-subtle text-brand text-[10px] font-semibold px-2 py-0.5 rounded">
                       Default
                     </span>
                   </div>
@@ -695,15 +695,15 @@ function VisualConfigurationUI({ msgId, reportName, sourcePlatform = 'tableau', 
               }}
               className={`bg-white border-2 rounded-xl p-4 cursor-pointer transition-all ${
                 layoutOption === 'template'
-                  ? 'border-blue-500 ring-2 ring-blue-100 shadow-md bg-blue-50/30'
-                  : 'border-border hover:border-blue-300 hover:shadow-sm'
+                  ? 'border-brand ring-2 ring-brand/20 shadow-md bg-brand-subtle/40'
+                  : 'border-border hover:border-brand/40 hover:shadow-sm'
               }`}
             >
               <div className="flex items-start gap-3">
                 {/* Radio Button */}
                 <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${
                   layoutOption === 'template'
-                    ? 'border-blue-500 bg-blue-500'
+                    ? 'border-brand bg-brand-subtle0'
                     : 'border-gray-400 bg-white'
                 }`}>
                   {layoutOption === 'template' && (
@@ -730,15 +730,15 @@ function VisualConfigurationUI({ msgId, reportName, sourcePlatform = 'tableau', 
               }}
               className={`bg-white border-2 rounded-xl p-4 cursor-pointer transition-all ${
                 layoutOption === 'custom'
-                  ? 'border-blue-500 ring-2 ring-blue-100 shadow-md bg-blue-50/30'
-                  : 'border-border hover:border-blue-300 hover:shadow-sm'
+                  ? 'border-brand ring-2 ring-brand/20 shadow-md bg-brand-subtle/40'
+                  : 'border-border hover:border-brand/40 hover:shadow-sm'
               }`}
             >
               <div className="flex items-start gap-3">
                 {/* Radio Button */}
                 <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${
                   layoutOption === 'custom'
-                    ? 'border-blue-500 bg-blue-500'
+                    ? 'border-brand bg-brand-subtle0'
                     : 'border-gray-400 bg-white'
                 }`}>
                   {layoutOption === 'custom' && (
@@ -765,15 +765,15 @@ function VisualConfigurationUI({ msgId, reportName, sourcePlatform = 'tableau', 
               }}
               className={`bg-white border-2 rounded-xl p-4 cursor-pointer transition-all ${
                 layoutOption === 'reference_existing'
-                  ? 'border-blue-500 ring-2 ring-blue-100 shadow-md bg-blue-50/30'
-                  : 'border-border hover:border-blue-300 hover:shadow-sm'
+                  ? 'border-brand ring-2 ring-brand/20 shadow-md bg-brand-subtle/40'
+                  : 'border-border hover:border-brand/40 hover:shadow-sm'
               }`}
             >
               <div className="flex items-start gap-3">
                 {/* Radio Button */}
                 <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${
                   layoutOption === 'reference_existing'
-                    ? 'border-blue-500 bg-blue-500'
+                    ? 'border-brand bg-brand-subtle0'
                     : 'border-gray-400 bg-white'
                 }`}>
                   {layoutOption === 'reference_existing' && (
@@ -798,7 +798,7 @@ function VisualConfigurationUI({ msgId, reportName, sourcePlatform = 'tableau', 
                           value={referenceReportUrl}
                           onChange={(e) => setReferenceReportUrl(e.target.value)}
                           placeholder="Paste link to existing report"
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-[13px] focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
                           style={{ fontFamily: 'var(--font-body)' }}
                         />
                         <button
@@ -851,8 +851,8 @@ function VisualConfigurationUI({ msgId, reportName, sourcePlatform = 'tableau', 
                   onClick={() => setSelectedTemplate(template.id)}
                   className={`group p-4 bg-white border-2 rounded-lg hover:shadow-sm transition-all text-left ${
                     selectedTemplate === template.id
-                      ? 'border-blue-500 ring-2 ring-blue-100'
-                      : 'border-border hover:border-[#111827]'
+                      ? 'border-brand ring-2 ring-brand/20'
+                      : 'border-border hover:border-[var(--foreground)]'
                   }`}
                 >
                   {/* Template wireframe preview */}
@@ -911,7 +911,7 @@ function VisualConfigurationUI({ msgId, reportName, sourcePlatform = 'tableau', 
               id={`${msgId}-summary`}
               checked={includeSummary}
               onChange={(e) => setIncludeSummary(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              className="w-4 h-4 rounded border-gray-300 text-brand focus:ring-2 focus:ring-ring cursor-pointer"
             />
             <label htmlFor={`${msgId}-summary`} className="text-[13px] text-foreground cursor-pointer" style={{ fontFamily: 'var(--font-body)' }}>
               Include summary view
@@ -925,7 +925,7 @@ function VisualConfigurationUI({ msgId, reportName, sourcePlatform = 'tableau', 
               id={`${msgId}-filters`}
               checked={preserveFilters}
               onChange={(e) => setPreserveFilters(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              className="w-4 h-4 rounded border-gray-300 text-brand focus:ring-2 focus:ring-ring cursor-pointer"
             />
             <label htmlFor={`${msgId}-filters`} className="text-[13px] text-foreground cursor-pointer" style={{ fontFamily: 'var(--font-body)' }}>
               Preserve filters from source report
@@ -939,7 +939,7 @@ function VisualConfigurationUI({ msgId, reportName, sourcePlatform = 'tableau', 
               id={`${msgId}-theme`}
               checked={useStandardTheme}
               onChange={(e) => setUseStandardTheme(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              className="w-4 h-4 rounded border-gray-300 text-brand focus:ring-2 focus:ring-ring cursor-pointer"
             />
             <label htmlFor={`${msgId}-theme`} className="text-[13px] text-foreground cursor-pointer" style={{ fontFamily: 'var(--font-body)' }}>
               Use standard Report Hub color theme
@@ -951,7 +951,7 @@ function VisualConfigurationUI({ msgId, reportName, sourcePlatform = 'tableau', 
         <div className="flex flex-col gap-3">
           <button
             onClick={handleContinue}
-            className="px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all shadow-sm bg-[#111827] hover:bg-[#0F172A] text-white cursor-pointer"
+            className="px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all shadow-sm bg-[var(--foreground)] hover:bg-[var(--primary)] text-white cursor-pointer"
             style={{ fontFamily: 'var(--font-body)' }}
           >
             Continue
@@ -1094,7 +1094,7 @@ function MigrationExecutionUI({ msgId, sourcePlatform, destinationPlatform, repo
           <div className="flex flex-col gap-3 pt-2">
             <button
               onClick={handleRunMigration}
-              className="px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all shadow-sm bg-[#111827] hover:bg-[#0F172A] text-white cursor-pointer"
+              className="px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all shadow-sm bg-[var(--foreground)] hover:bg-[var(--primary)] text-white cursor-pointer"
               style={{ fontFamily: 'var(--font-body)' }}
             >
               Run migration
@@ -1133,7 +1133,7 @@ function MigrationExecutionUI({ msgId, sourcePlatform, destinationPlatform, repo
             </div>
             <div className="w-full bg-border rounded-full h-2">
               <div
-                className="bg-blue-500 h-2 rounded-full transition-all duration-500"
+                className="bg-brand-subtle0 h-2 rounded-full transition-all duration-500"
                 style={{ width: `${progressPercentage}%` }}
               />
             </div>
@@ -1155,8 +1155,8 @@ function MigrationExecutionUI({ msgId, sourcePlatform, destinationPlatform, repo
                       </div>
                     )}
                     {status === 'in-progress' && (
-                      <div className="w-6 h-6 rounded-full border-2 border-blue-500 flex items-center justify-center bg-white">
-                        <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                      <div className="w-6 h-6 rounded-full border-2 border-brand flex items-center justify-center bg-white">
+                        <div className="w-2 h-2 rounded-full bg-brand-subtle0 animate-pulse" />
                       </div>
                     )}
                     {status === 'pending' && (
@@ -1168,7 +1168,7 @@ function MigrationExecutionUI({ msgId, sourcePlatform, destinationPlatform, repo
                   <div className="flex-1 min-w-0">
                     <div className={`text-[13px] font-medium ${
                       status === 'completed' ? 'text-foreground' : 
-                      status === 'in-progress' ? 'text-blue-600' : 
+                      status === 'in-progress' ? 'text-brand' : 
                       'text-muted-foreground'
                     }`} style={{ fontFamily: 'var(--font-body)' }}>
                       {step.label}
@@ -1179,7 +1179,7 @@ function MigrationExecutionUI({ msgId, sourcePlatform, destinationPlatform, repo
                       </div>
                     )}
                     {status === 'in-progress' && (
-                      <div className="text-[11px] text-blue-600 mt-0.5" style={{ fontFamily: 'var(--font-body)' }}>
+                      <div className="text-[11px] text-brand mt-0.5" style={{ fontFamily: 'var(--font-body)' }}>
                         In progress
                       </div>
                     )}
@@ -1196,11 +1196,11 @@ function MigrationExecutionUI({ msgId, sourcePlatform, destinationPlatform, repo
         </div>
 
         {/* Reassurance Message */}
-        <div className="flex items-start gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
-          <svg className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="flex items-start gap-2 px-3 py-2 bg-brand-subtle border border-brand/20 rounded-lg">
+          <svg className="w-4 h-4 text-brand flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <p className="text-[12px] text-blue-900" style={{ fontFamily: 'var(--font-body)' }}>
+          <p className="text-[12px] text-brand" style={{ fontFamily: 'var(--font-body)' }}>
             Existing reports remain available during migration.
           </p>
         </div>
@@ -1321,7 +1321,7 @@ function MigrationCompletionUI({ msgId, sourcePlatform, reportName }: MigrationC
               // Navigate directly to Customer Churn report detail page
               navigate('/reports/RPT-CHURN-001');
             }}
-            className="px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all shadow-sm bg-[#111827] hover:bg-[#0F172A] text-white cursor-pointer"
+            className="px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all shadow-sm bg-[var(--foreground)] hover:bg-[var(--primary)] text-white cursor-pointer"
             style={{ fontFamily: 'var(--font-body)' }}
           >
             Open report
@@ -1401,15 +1401,15 @@ function DataSourceSelectionUI({ msgId, onContinue, onLearnMore }: DataSourceSel
             onClick={() => setSelectedSource('vdm')}
             className={`bg-white border-2 rounded-xl p-4 cursor-pointer transition-all ${
               selectedSource === 'vdm'
-                ? 'border-blue-500 ring-2 ring-blue-100 shadow-md bg-blue-50/30'
-                : 'border-border hover:border-blue-300 hover:shadow-sm'
+                ? 'border-brand ring-2 ring-brand/20 shadow-md bg-brand-subtle/40'
+                : 'border-border hover:border-brand/40 hover:shadow-sm'
             }`}
           >
             <div className="flex items-start gap-3">
               {/* Radio Button */}
               <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${
                 selectedSource === 'vdm'
-                  ? 'border-blue-500 bg-blue-500'
+                  ? 'border-brand bg-brand-subtle0'
                   : 'border-gray-400 bg-white'
               }`}>
                 {selectedSource === 'vdm' && (
@@ -1424,7 +1424,7 @@ function DataSourceSelectionUI({ msgId, onContinue, onLearnMore }: DataSourceSel
                   </h4>
                   {/* Badges */}
                   <div className="flex items-center gap-1.5">
-                    <span className="inline-flex items-center bg-blue-100 text-blue-700 text-[10px] font-semibold px-2 py-0.5 rounded">
+                    <span className="inline-flex items-center bg-brand-subtle text-brand text-[10px] font-semibold px-2 py-0.5 rounded">
                       Preferred
                     </span>
                     <span className="inline-flex items-center bg-green-100 text-green-700 text-[10px] font-semibold px-2 py-0.5 rounded">
@@ -1447,15 +1447,15 @@ function DataSourceSelectionUI({ msgId, onContinue, onLearnMore }: DataSourceSel
             onClick={() => setSelectedSource('other')}
             className={`bg-white border-2 rounded-xl p-4 cursor-pointer transition-all ${
               selectedSource === 'other'
-                ? 'border-blue-500 ring-2 ring-blue-100 shadow-md bg-blue-50/30'
-                : 'border-border hover:border-blue-300 hover:shadow-sm'
+                ? 'border-brand ring-2 ring-brand/20 shadow-md bg-brand-subtle/40'
+                : 'border-border hover:border-brand/40 hover:shadow-sm'
             }`}
           >
             <div className="flex items-start gap-3">
               {/* Radio Button */}
               <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${
                 selectedSource === 'other'
-                  ? 'border-blue-500 bg-blue-500'
+                  ? 'border-brand bg-brand-subtle0'
                   : 'border-gray-400 bg-white'
               }`}>
                 {selectedSource === 'other' && (
@@ -1480,9 +1480,9 @@ function DataSourceSelectionUI({ msgId, onContinue, onLearnMore }: DataSourceSel
         </div>
 
         {/* System Guidance Callout */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3" style={{ fontFamily: 'var(--font-body)' }}>
+        <div className="bg-brand-subtle border border-brand/20 rounded-lg p-3" style={{ fontFamily: 'var(--font-body)' }}>
           <div className="flex items-start gap-2">
-            <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+            <Info className="w-4 h-4 text-brand flex-shrink-0 mt-0.5" />
             <p className="text-[12px] text-foreground leading-relaxed">
               Virtual Data Marketplace provides a semantic layer with certified metrics, shared definitions, and built-in governance.
             </p>
@@ -1493,7 +1493,7 @@ function DataSourceSelectionUI({ msgId, onContinue, onLearnMore }: DataSourceSel
         <div className="flex flex-col gap-3">
           <button
             onClick={() => onContinue(selectedSource)}
-            className="px-6 py-2.5 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg text-[13px] font-medium transition-colors shadow-sm self-start"
+            className="px-6 py-2.5 bg-[var(--foreground)] hover:bg-[var(--primary)] text-white rounded-lg text-[13px] font-medium transition-colors shadow-sm self-start"
             style={{ fontFamily: 'var(--font-body)' }}
           >
             Continue
@@ -1600,7 +1600,7 @@ function CatalogSelectionUI({ msgId, onContinue, onViewLineage }: CatalogSelecti
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search metrics, dimensions, or data products"
-            className="w-full px-4 py-2.5 border border-border rounded-lg text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-4 py-2.5 border border-border rounded-lg text-[13px] focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
             style={{ fontFamily: 'var(--font-body)' }}
           />
         </div>
@@ -1615,7 +1615,7 @@ function CatalogSelectionUI({ msgId, onContinue, onViewLineage }: CatalogSelecti
                 onClick={() => toggleFilter(filter)}
                 className={`px-3 py-1 rounded-full text-[11px] font-medium transition-all ${
                   selectedFilters.includes(filter)
-                    ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                    ? 'bg-brand-subtle text-brand border border-brand/40'
                     : 'bg-muted text-muted-foreground border border-gray-300 hover:bg-border'
                 }`}
               >
@@ -1633,8 +1633,8 @@ function CatalogSelectionUI({ msgId, onContinue, onViewLineage }: CatalogSelecti
               onClick={() => setSelectedCatalogItem(item.id)}
               className={`bg-white border-2 rounded-xl p-4 cursor-pointer transition-all ${
                 selectedCatalogItem === item.id
-                  ? 'border-blue-200 bg-blue-50/20 hover:border-blue-300 hover:shadow-sm'
-                  : 'border-border hover:border-blue-300 hover:shadow-sm'
+                  ? 'border-brand/20 bg-brand-subtle/20 hover:border-brand/40 hover:shadow-sm'
+                  : 'border-border hover:border-brand/40 hover:shadow-sm'
               }`}
             >
               <div className="flex items-start justify-between mb-2">
@@ -1678,7 +1678,7 @@ function CatalogSelectionUI({ msgId, onContinue, onViewLineage }: CatalogSelecti
             disabled={!selectedCatalogItem}
             className={`px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all shadow-sm ${
               selectedCatalogItem 
-                ? 'bg-[#111827] hover:bg-[#0F172A] text-white cursor-pointer' 
+                ? 'bg-[var(--foreground)] hover:bg-[var(--primary)] text-white cursor-pointer' 
                 : 'bg-border text-muted-foreground cursor-not-allowed'
             }`}
             style={{ fontFamily: 'var(--font-body)' }}
@@ -1722,7 +1722,7 @@ function ExecutionRoutingUI({ msgId, decision, metrics, dimensions, onContinue, 
       </div>
       <button
         onClick={onContinue}
-        className="px-6 py-2.5 rounded-lg text-[13px] font-medium bg-[#111827] text-white"
+        className="px-6 py-2.5 rounded-lg text-[13px] font-medium bg-[var(--foreground)] text-white"
         style={{ fontFamily: 'var(--font-body)' }}
       >
         Continue
@@ -1791,7 +1791,7 @@ function ReportReuseDetectionUI({ msgId, onContinue, onViewComparison }: ReportR
               key={report.id}
               className={`border-2 rounded-xl p-4 ${
                 report.isPrimary
-                  ? 'border-blue-200 bg-blue-50/20'
+                  ? 'border-brand/20 bg-brand-subtle/20'
                   : report.statusColor === 'yellow'
                   ? 'border-yellow-200 bg-yellow-50/20'
                   : 'border-border'
@@ -1848,8 +1848,8 @@ function ReportReuseDetectionUI({ msgId, onContinue, onViewComparison }: ReportR
             <label
               className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
                 selectedDecision === 'reuse'
-                  ? 'border-blue-500 bg-blue-50/30 ring-2 ring-blue-100'
-                  : 'border-border hover:border-blue-300 hover:bg-muted'
+                  ? 'border-brand bg-brand-subtle/40 ring-2 ring-brand/20'
+                  : 'border-border hover:border-brand/40 hover:bg-muted'
               }`}
             >
               <input
@@ -1858,12 +1858,12 @@ function ReportReuseDetectionUI({ msgId, onContinue, onViewComparison }: ReportR
                 value="reuse"
                 checked={selectedDecision === 'reuse'}
                 onChange={() => setSelectedDecision('reuse')}
-                className="w-5 h-5 mt-0.5 accent-blue-600 cursor-pointer"
+                className="w-5 h-5 mt-0.5 accent-brand cursor-pointer"
               />
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-[13px] font-semibold text-foreground">Reuse an existing report</span>
-                  <span className="text-[10px] font-semibold text-blue-600 bg-blue-100 px-2 py-0.5 rounded">
+                  <span className="text-[10px] font-semibold text-brand bg-brand-subtle px-2 py-0.5 rounded">
                     Recommended
                   </span>
                 </div>
@@ -1880,8 +1880,8 @@ function ReportReuseDetectionUI({ msgId, onContinue, onViewComparison }: ReportR
             <label
               className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
                 selectedDecision === 'enhance'
-                  ? 'border-blue-500 bg-blue-50/30 ring-2 ring-blue-100'
-                  : 'border-border hover:border-blue-300 hover:bg-muted'
+                  ? 'border-brand bg-brand-subtle/40 ring-2 ring-brand/20'
+                  : 'border-border hover:border-brand/40 hover:bg-muted'
               }`}
             >
               <input
@@ -1890,7 +1890,7 @@ function ReportReuseDetectionUI({ msgId, onContinue, onViewComparison }: ReportR
                 value="enhance"
                 checked={selectedDecision === 'enhance'}
                 onChange={() => setSelectedDecision('enhance')}
-                className="w-5 h-5 mt-0.5 accent-blue-600 cursor-pointer"
+                className="w-5 h-5 mt-0.5 accent-brand cursor-pointer"
               />
               <div className="flex-1">
                 <div className="text-[13px] font-semibold text-foreground mb-1">
@@ -1909,8 +1909,8 @@ function ReportReuseDetectionUI({ msgId, onContinue, onViewComparison }: ReportR
             <label
               className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
                 selectedDecision === 'new'
-                  ? 'border-blue-500 bg-blue-50/30 ring-2 ring-blue-100'
-                  : 'border-border hover:border-blue-300 hover:bg-muted'
+                  ? 'border-brand bg-brand-subtle/40 ring-2 ring-brand/20'
+                  : 'border-border hover:border-brand/40 hover:bg-muted'
               }`}
             >
               <input
@@ -1919,7 +1919,7 @@ function ReportReuseDetectionUI({ msgId, onContinue, onViewComparison }: ReportR
                 value="new"
                 checked={selectedDecision === 'new'}
                 onChange={() => setSelectedDecision('new')}
-                className="w-5 h-5 mt-0.5 accent-blue-600 cursor-pointer"
+                className="w-5 h-5 mt-0.5 accent-brand cursor-pointer"
               />
               <div className="flex-1">
                 <div className="text-[13px] font-semibold text-foreground mb-1">
@@ -1944,7 +1944,7 @@ function ReportReuseDetectionUI({ msgId, onContinue, onViewComparison }: ReportR
           disabled={!selectedDecision}
           className={`px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all shadow-sm self-start ${
             selectedDecision
-              ? 'bg-[#111827] hover:bg-[#0F172A] text-white cursor-pointer'
+              ? 'bg-[var(--foreground)] hover:bg-[var(--primary)] text-white cursor-pointer'
               : 'bg-border text-muted-foreground cursor-not-allowed'
           }`}
           style={{ fontFamily: 'var(--font-body)' }}
@@ -2097,7 +2097,7 @@ function MigrationPlanValidationUI({
       </div>
 
       {/* Risk & Impact Summary */}
-      <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-5 mb-4 max-w-[90%]" style={{ fontFamily: 'var(--font-body)' }}>
+      <div className="bg-brand-subtle border-2 border-brand/20 rounded-xl p-5 mb-4 max-w-[90%]" style={{ fontFamily: 'var(--font-body)' }}>
         <h3 className="text-[14px] font-semibold text-foreground mb-4">
           Impact summary
         </h3>
@@ -2125,7 +2125,7 @@ function MigrationPlanValidationUI({
           disabled={!allChecksPassed}
           className={`px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all shadow-sm self-start ${
             allChecksPassed
-              ? 'bg-[#111827] hover:bg-[#0F172A] text-white cursor-pointer'
+              ? 'bg-[var(--foreground)] hover:bg-[var(--primary)] text-white cursor-pointer'
               : 'bg-gray-300 text-muted-foreground cursor-not-allowed'
           }`}
           style={{ fontFamily: 'var(--font-body)' }}
@@ -2212,26 +2212,26 @@ function FinalValidationReadinessUI({
       </div>
 
       {/* What Happens Next */}
-      <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-5 mb-4 max-w-[90%]" style={{ fontFamily: 'var(--font-body)' }}>
+      <div className="bg-brand-subtle border-2 border-brand/20 rounded-xl p-5 mb-4 max-w-[90%]" style={{ fontFamily: 'var(--font-body)' }}>
         <h3 className="text-[14px] font-semibold text-foreground mb-3">
           What happens next
         </h3>
 
         <ul className="space-y-2 text-[13px] text-foreground">
           <li className="flex items-start gap-2">
-            <span className="text-blue-600 mt-0.5">•</span>
+            <span className="text-brand mt-0.5">•</span>
             <span>Migration will run in the background</span>
           </li>
           <li className="flex items-start gap-2">
-            <span className="text-blue-600 mt-0.5">•</span>
+            <span className="text-brand mt-0.5">•</span>
             <span>No downtime expected</span>
           </li>
           <li className="flex items-start gap-2">
-            <span className="text-blue-600 mt-0.5">•</span>
+            <span className="text-brand mt-0.5">•</span>
             <span>Existing Tableau report remains available until migration completes</span>
           </li>
           <li className="flex items-start gap-2">
-            <span className="text-blue-600 mt-0.5">•</span>
+            <span className="text-brand mt-0.5">•</span>
             <span>Users will be automatically routed through Report Hub</span>
           </li>
         </ul>
@@ -2244,7 +2244,7 @@ function FinalValidationReadinessUI({
           disabled={!allChecksPassed}
           className={`px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all shadow-sm self-start ${
             allChecksPassed
-              ? 'bg-[#111827] hover:bg-[#0F172A] text-white cursor-pointer'
+              ? 'bg-[var(--foreground)] hover:bg-[var(--primary)] text-white cursor-pointer'
               : 'bg-gray-300 text-muted-foreground cursor-not-allowed'
           }`}
           style={{ fontFamily: 'var(--font-body)' }}
@@ -2347,7 +2347,7 @@ function MigrationExecutionProgressUI({
           </div>
           <div className="w-full bg-border rounded-full h-2.5">
             <div 
-              className="bg-blue-600 h-2.5 rounded-full transition-all duration-500"
+              className="bg-brand h-2.5 rounded-full transition-all duration-500"
               style={{ width: `${progressPercentage}%` }}
             ></div>
           </div>
@@ -2365,8 +2365,8 @@ function MigrationExecutionProgressUI({
                   </div>
                 )}
                 {step.status === 'in_progress' && (
-                  <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
-                    <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                  <div className="w-6 h-6 bg-brand-subtle rounded-full flex items-center justify-center">
+                    <div className="w-3 h-3 border-2 border-brand border-t-transparent rounded-full animate-spin"></div>
                   </div>
                 )}
                 {step.status === 'pending' && (
@@ -2390,7 +2390,7 @@ function MigrationExecutionProgressUI({
       </div>
 
       {/* Safety Reassurance Callout */}
-      <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-4 max-w-[90%]" style={{ fontFamily: 'var(--font-body)' }}>
+      <div className="bg-brand-subtle border-2 border-brand/20 rounded-xl p-4 mb-4 max-w-[90%]" style={{ fontFamily: 'var(--font-body)' }}>
         <p className="text-[13px] text-foreground">
           Existing Tableau reports remain available during migration. If an issue is detected, Report Hub can roll back safely.
         </p>
@@ -2411,7 +2411,7 @@ function MigrationExecutionProgressUI({
         <div className="flex gap-4">
           <button
             onClick={onViewLogs}
-            className="text-foreground hover:text-[#0F172A] text-[13px] font-medium transition-colors underline"
+            className="text-foreground hover:text-[var(--primary)] text-[13px] font-medium transition-colors underline"
             style={{ fontFamily: 'var(--font-body)' }}
           >
             View detailed logs
@@ -2524,7 +2524,7 @@ function MigrationCompletionSuccessUI({
           {/* Primary Button */}
           <button
             onClick={onViewReport}
-            className="px-6 py-2.5 bg-[#111827] text-white rounded-lg hover:bg-[#1F2937] active:bg-[#0F172A] transition-colors shadow-sm text-[13px] font-medium"
+            className="px-6 py-2.5 bg-[var(--foreground)] text-white rounded-lg hover:bg-[var(--foreground)] active:bg-[var(--primary)] transition-colors shadow-sm text-[13px] font-medium"
             style={{ fontFamily: 'var(--font-body)' }}
           >
             Open report
@@ -2551,7 +2551,7 @@ function MigrationCompletionSuccessUI({
       </div>
 
       {/* Legacy Report Notice */}
-      <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-4 max-w-[90%]" style={{ fontFamily: 'var(--font-body)' }}>
+      <div className="bg-brand-subtle border-2 border-brand/20 rounded-xl p-4 mb-4 max-w-[90%]" style={{ fontFamily: 'var(--font-body)' }}>
         <div className="text-[13px] font-semibold text-foreground mb-1">
           About the legacy report
         </div>
@@ -2564,7 +2564,7 @@ function MigrationCompletionSuccessUI({
       <div className="max-w-[80%]">
         <button
           onClick={onStartAnother}
-          className="text-foreground hover:text-[#0F172A] text-[13px] font-medium transition-colors underline"
+          className="text-foreground hover:text-[var(--primary)] text-[13px] font-medium transition-colors underline"
           style={{ fontFamily: 'var(--font-body)' }}
         >
           Start another migration
@@ -2612,15 +2612,15 @@ function CreateNewDataSourceSelectionUI({
             onClick={() => setSelectedSource('vdm')}
             className={`bg-white border-2 rounded-xl p-4 cursor-pointer transition-all ${
               selectedSource === 'vdm'
-                ? 'border-blue-500 ring-2 ring-blue-100 shadow-md'
-                : 'border-border hover:border-blue-300 hover:shadow-sm'
+                ? 'border-brand ring-2 ring-brand/20 shadow-md'
+                : 'border-border hover:border-brand/40 hover:shadow-sm'
             }`}
           >
             <div className="flex items-start gap-3">
               {/* Radio Button */}
               <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${
                 selectedSource === 'vdm'
-                  ? 'border-blue-500 bg-blue-500'
+                  ? 'border-brand bg-brand-subtle0'
                   : 'border-gray-400 bg-white'
               }`}>
                 {selectedSource === 'vdm' && (
@@ -2634,7 +2634,7 @@ function CreateNewDataSourceSelectionUI({
                     Virtual Data Marketplace (Recommended)
                   </h4>
                   <div className="flex items-center gap-1.5">
-                    <span className="inline-flex items-center bg-blue-100 text-blue-700 text-[10px] font-semibold px-2 py-0.5 rounded">
+                    <span className="inline-flex items-center bg-brand-subtle text-brand text-[10px] font-semibold px-2 py-0.5 rounded">
                       Preferred
                     </span>
                     <span className="inline-flex items-center bg-green-100 text-green-700 text-[10px] font-semibold px-2 py-0.5 rounded">
@@ -2654,15 +2654,15 @@ function CreateNewDataSourceSelectionUI({
             onClick={() => setSelectedSource('other')}
             className={`bg-white border-2 rounded-xl p-4 cursor-pointer transition-all ${
               selectedSource === 'other'
-                ? 'border-blue-500 ring-2 ring-blue-100 shadow-md'
-                : 'border-border hover:border-blue-300 hover:shadow-sm'
+                ? 'border-brand ring-2 ring-brand/20 shadow-md'
+                : 'border-border hover:border-brand/40 hover:shadow-sm'
             }`}
           >
             <div className="flex items-start gap-3">
               {/* Radio Button */}
               <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${
                 selectedSource === 'other'
-                  ? 'border-blue-500 bg-blue-500'
+                  ? 'border-brand bg-brand-subtle0'
                   : 'border-gray-400 bg-white'
               }`}>
                 {selectedSource === 'other' && (
@@ -2690,7 +2690,7 @@ function CreateNewDataSourceSelectionUI({
       <div className="flex flex-col gap-3 max-w-[90%]">
         <button
           onClick={() => onContinue(selectedSource)}
-          className="px-6 py-2.5 bg-[#111827] text-white rounded-lg hover:bg-[#1F2937] active:bg-[#0F172A] transition-colors shadow-sm text-[13px] font-medium w-fit"
+          className="px-6 py-2.5 bg-[var(--foreground)] text-white rounded-lg hover:bg-[var(--foreground)] active:bg-[var(--primary)] transition-colors shadow-sm text-[13px] font-medium w-fit"
           style={{ fontFamily: 'var(--font-body)' }}
         >
           Continue
@@ -2699,7 +2699,7 @@ function CreateNewDataSourceSelectionUI({
         {/* Optional Secondary Link */}
         <button
           onClick={onLearnMore}
-          className="text-foreground hover:text-[#0F172A] text-[13px] font-medium transition-colors underline text-left w-fit"
+          className="text-foreground hover:text-[var(--primary)] text-[13px] font-medium transition-colors underline text-left w-fit"
           style={{ fontFamily: 'var(--font-body)' }}
         >
           Why Virtual Data Marketplace is recommended
@@ -2754,7 +2754,7 @@ function CreateNewVDMConfirmationUI({
               <span className="inline-flex items-center bg-green-100 text-green-700 text-[10px] font-semibold px-2 py-0.5 rounded">
                 Governed
               </span>
-              <span className="inline-flex items-center bg-blue-100 text-blue-700 text-[10px] font-semibold px-2 py-0.5 rounded">
+              <span className="inline-flex items-center bg-brand-subtle text-brand text-[10px] font-semibold px-2 py-0.5 rounded">
                 Certified Metrics
               </span>
             </div>
@@ -2765,7 +2765,7 @@ function CreateNewVDMConfirmationUI({
       {/* Continue Button */}
       <button
         onClick={onContinue}
-        className="px-6 py-2.5 bg-[#111827] text-white rounded-lg hover:bg-[#1F2937] active:bg-[#0F172A] transition-colors shadow-sm text-[13px] font-medium w-fit"
+        className="px-6 py-2.5 bg-[var(--foreground)] text-white rounded-lg hover:bg-[var(--foreground)] active:bg-[var(--primary)] transition-colors shadow-sm text-[13px] font-medium w-fit"
         style={{ fontFamily: 'var(--font-body)' }}
       >
         Continue
@@ -2819,14 +2819,14 @@ function CreateNewUsageExpectationsUI({
                   onClick={() => setAudience(option)}
                   className={`border-2 rounded-lg p-3 cursor-pointer transition-all ${
                     audience === option
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-blue-300'
+                      ? 'border-brand bg-brand-subtle'
+                      : 'border-gray-200 hover:border-brand/40'
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
                       audience === option
-                        ? 'border-blue-500 bg-blue-500'
+                        ? 'border-brand bg-brand-subtle0'
                         : 'border-gray-400'
                     }`}>
                       {audience === option && (
@@ -2852,14 +2852,14 @@ function CreateNewUsageExpectationsUI({
                   onClick={() => setUsers(option)}
                   className={`border-2 rounded-lg p-3 cursor-pointer transition-all ${
                     users === option
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-blue-300'
+                      ? 'border-brand bg-brand-subtle'
+                      : 'border-gray-200 hover:border-brand/40'
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
                       users === option
-                        ? 'border-blue-500 bg-blue-500'
+                        ? 'border-brand bg-brand-subtle0'
                         : 'border-gray-400'
                     }`}>
                       {users === option && (
@@ -2885,14 +2885,14 @@ function CreateNewUsageExpectationsUI({
                   onClick={() => setViews(option)}
                   className={`border-2 rounded-lg p-3 cursor-pointer transition-all ${
                     views === option
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-blue-300'
+                      ? 'border-brand bg-brand-subtle'
+                      : 'border-gray-200 hover:border-brand/40'
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
                       views === option
-                        ? 'border-blue-500 bg-blue-500'
+                        ? 'border-brand bg-brand-subtle0'
                         : 'border-gray-400'
                     }`}>
                       {views === option && (
@@ -2908,7 +2908,7 @@ function CreateNewUsageExpectationsUI({
         </div>
 
         {/* Helper Text */}
-        <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+        <div className="mt-4 p-3 bg-brand-subtle rounded-lg">
           <p className="text-[11px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
             This helps Report Hub choose the most cost-effective execution path.
           </p>
@@ -2918,7 +2918,7 @@ function CreateNewUsageExpectationsUI({
       {/* Continue Button */}
       <button
         onClick={() => onContinue({ audience, users, views })}
-        className="px-6 py-2.5 bg-[#111827] text-white rounded-lg hover:bg-[#1F2937] active:bg-[#0F172A] transition-colors shadow-sm text-[13px] font-medium w-fit"
+        className="px-6 py-2.5 bg-[var(--foreground)] text-white rounded-lg hover:bg-[var(--foreground)] active:bg-[var(--primary)] transition-colors shadow-sm text-[13px] font-medium w-fit"
         style={{ fontFamily: 'var(--font-body)' }}
       >
         Continue
@@ -2974,7 +2974,7 @@ function CreateNewExecutionRoutingUI({
             
             {/* Badges */}
             <div className="flex items-center gap-2 mb-3">
-              <span className="inline-flex items-center bg-blue-100 text-blue-700 text-[10px] font-semibold px-2 py-0.5 rounded">
+              <span className="inline-flex items-center bg-brand-subtle text-brand text-[10px] font-semibold px-2 py-0.5 rounded">
                 Recommended
               </span>
               <span className="inline-flex items-center bg-green-100 text-green-700 text-[10px] font-semibold px-2 py-0.5 rounded">
@@ -3023,7 +3023,7 @@ function CreateNewExecutionRoutingUI({
               </p>
             </div>
 
-            <div className="bg-blue-50 rounded-lg p-3">
+            <div className="bg-brand-subtle rounded-lg p-3">
               <p className="text-[11px] text-muted-foreground">
                 <strong>Example triggers:</strong> Advanced analytics, high concurrency, real-time dashboards
               </p>
@@ -3033,9 +3033,9 @@ function CreateNewExecutionRoutingUI({
       </div>
 
       {/* Summary Note */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 max-w-[90%]" style={{ fontFamily: 'var(--font-body)' }}>
+      <div className="bg-brand-subtle border border-brand/20 rounded-lg p-3 mb-4 max-w-[90%]" style={{ fontFamily: 'var(--font-body)' }}>
         <div className="flex items-start gap-2">
-          <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+          <Info className="w-4 h-4 text-brand flex-shrink-0 mt-0.5" />
           <p className="text-[12px] text-foreground">
             <strong>New reports never start in Tableau.</strong> All new work uses governed data and Report Hub execution routing.
           </p>
@@ -3046,7 +3046,7 @@ function CreateNewExecutionRoutingUI({
       <div className="flex flex-col gap-3 max-w-[90%]">
         <button
           onClick={onContinue}
-          className="px-6 py-2.5 bg-[#111827] text-white rounded-lg hover:bg-[#1F2937] active:bg-[#0F172A] transition-colors shadow-sm text-[13px] font-medium w-fit"
+          className="px-6 py-2.5 bg-[var(--foreground)] text-white rounded-lg hover:bg-[var(--foreground)] active:bg-[var(--primary)] transition-colors shadow-sm text-[13px] font-medium w-fit"
           style={{ fontFamily: 'var(--font-body)' }}
         >
           Continue
@@ -3054,7 +3054,7 @@ function CreateNewExecutionRoutingUI({
 
         <button
           onClick={onLearnMore}
-          className="text-foreground hover:text-[#0F172A] text-[13px] font-medium transition-colors underline text-left w-fit"
+          className="text-foreground hover:text-[var(--primary)] text-[13px] font-medium transition-colors underline text-left w-fit"
           style={{ fontFamily: 'var(--font-body)' }}
         >
           Learn more about execution routing
@@ -3443,7 +3443,7 @@ export function TalkMigrationPage() {
     if (msg.type === 'user') {
       return (
         <div key={msg.id} className="flex justify-end mb-4">
-          <div className="bg-[#111827] text-white px-4 py-3 rounded-xl max-w-[80%]" style={{ fontFamily: 'var(--font-body)' }}>
+          <div className="bg-[var(--foreground)] text-white px-4 py-3 rounded-xl max-w-[80%]" style={{ fontFamily: 'var(--font-body)' }}>
             <p className="text-[13px]">{msg.content}</p>
           </div>
         </div>
@@ -3935,7 +3935,7 @@ export function TalkMigrationPage() {
                   );
                 }, 800);
               }}
-              className="px-6 py-2.5 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg text-[13px] font-medium transition-colors shadow-sm"
+              className="px-6 py-2.5 bg-[var(--foreground)] hover:bg-[var(--primary)] text-white rounded-lg text-[13px] font-medium transition-colors shadow-sm"
               style={{ fontFamily: 'var(--font-body)' }}
             >
               Continue
@@ -3957,7 +3957,7 @@ export function TalkMigrationPage() {
                   );
                 }, 800);
               }}
-              className="text-[13px] text-blue-600 hover:underline font-medium"
+              className="text-[13px] text-brand hover:underline font-medium"
               style={{ fontFamily: 'var(--font-body)' }}
             >
               View migration overview
@@ -4014,7 +4014,7 @@ export function TalkMigrationPage() {
                 <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
                   Migration path
                 </div>
-                <ArrowRight className="w-8 h-8 text-blue-600" strokeWidth={2.5} />
+                <ArrowRight className="w-8 h-8 text-brand" strokeWidth={2.5} />
               </div>
 
               {/* RIGHT SIDE - DESTINATION (Ranked) */}
@@ -4024,9 +4024,9 @@ export function TalkMigrationPage() {
                 </div>
                 <div className="space-y-3">
                   {/* Option 1: Report Hub */}
-                  <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
+                  <div className="bg-brand-subtle border-2 border-brand/20 rounded-xl p-4">
                     <div className="flex items-start gap-2 mb-2">
-                      <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-[11px] font-bold flex-shrink-0">
+                      <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-brand text-white text-[11px] font-bold flex-shrink-0">
                         1
                       </span>
                       <div className="flex-1">
@@ -4088,9 +4088,9 @@ export function TalkMigrationPage() {
           </div>
 
           {/* SYSTEM GUIDANCE CALLOUT */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 max-w-[90%]" style={{ fontFamily: 'var(--font-body)' }}>
+          <div className="bg-brand-subtle border border-brand/20 rounded-lg p-3 mb-4 max-w-[90%]" style={{ fontFamily: 'var(--font-body)' }}>
             <div className="flex items-start gap-2">
-              <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+              <Info className="w-4 h-4 text-brand flex-shrink-0 mt-0.5" />
               <p className="text-[12px] text-foreground leading-relaxed">
                 Report Hub determines the final execution platform based on usage, complexity, and cost — not by default tool selection.
               </p>
@@ -4119,7 +4119,7 @@ export function TalkMigrationPage() {
                   );
                 }, 800);
               }}
-              className="px-6 py-2.5 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg text-[13px] font-medium transition-colors shadow-sm self-start"
+              className="px-6 py-2.5 bg-[var(--foreground)] hover:bg-[var(--primary)] text-white rounded-lg text-[13px] font-medium transition-colors shadow-sm self-start"
               style={{ fontFamily: 'var(--font-body)' }}
             >
               Continue
@@ -4749,7 +4749,7 @@ export function TalkMigrationPage() {
               <div
                 key={dataset.dataset_id}
                 onClick={() => handleDatasetClick(dataset)}
-                className="bg-white border border-border rounded-xl p-4 hover:border-blue-400 hover:shadow-md transition-all cursor-pointer"
+                className="bg-white border border-border rounded-xl p-4 hover:border-brand/50 hover:shadow-md transition-all cursor-pointer"
               >
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1">
@@ -4761,7 +4761,7 @@ export function TalkMigrationPage() {
                     </p>
                   </div>
                   {dataset.certified_flag && (
-                    <Shield className="w-5 h-5 text-blue-600" />
+                    <Shield className="w-5 h-5 text-brand" />
                   )}
                 </div>
                 {dataset.migration_readiness && (
@@ -4795,7 +4795,7 @@ export function TalkMigrationPage() {
               <button
                 key={idx}
                 onClick={() => handlePillClick(pill)}
-                className="px-4 py-2 bg-white border border-border rounded-lg text-[13px] text-foreground hover:border-blue-400 hover:bg-blue-50 transition-all"
+                className="px-4 py-2 bg-white border border-border rounded-lg text-[13px] text-foreground hover:border-brand/50 hover:bg-brand-subtle transition-all"
                 style={{ fontFamily: 'var(--font-body)' }}
               >
                 {pill}
@@ -4826,7 +4826,7 @@ export function TalkMigrationPage() {
           <div className="p-4 border-b border-border">
             <button
               onClick={handleNewSession}
-              className="w-full px-4 py-2.5 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg text-[13px] font-medium transition-colors flex items-center justify-center gap-2"
+              className="w-full px-4 py-2.5 bg-[var(--foreground)] hover:bg-[var(--primary)] text-white rounded-lg text-[13px] font-medium transition-colors flex items-center justify-center gap-2"
             >
               <Plus className="w-4 h-4" />
               New Migration
@@ -4842,8 +4842,8 @@ export function TalkMigrationPage() {
                   onClick={() => handleLoadSession(session)}
                   className={`p-3 rounded-lg cursor-pointer transition-all ${
                     activeSessionId === session.session_id
-                      ? 'bg-blue-50 border-2 border-blue-200'
-                      : 'bg-white border border-border hover:border-blue-300 hover:shadow-sm'
+                      ? 'bg-brand-subtle border-2 border-brand/20'
+                      : 'bg-white border border-border hover:border-brand/40 hover:shadow-sm'
                   }`}
                 >
                   {editingSessionId === session.session_id ? (
@@ -4857,7 +4857,7 @@ export function TalkMigrationPage() {
                           if (e.key === 'Enter') handleSaveTitle(session.session_id);
                           if (e.key === 'Escape') setEditingSessionId(null);
                         }}
-                        className="w-full px-2 py-1 text-[13px] border border-blue-400 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-2 py-1 text-[13px] border border-brand/50 rounded focus:outline-none focus:ring-2 focus:ring-ring"
                         autoFocus
                       />
                     </div>
@@ -4885,7 +4885,7 @@ export function TalkMigrationPage() {
                       <div className="flex items-center gap-2">
                         <span className={`text-[10px] font-medium px-2 py-0.5 rounded ${
                           session.status === 'completed' ? 'bg-green-100 text-green-700' :
-                          session.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+                          session.status === 'in_progress' ? 'bg-brand-subtle text-brand' :
                           session.status === 'planned' ? 'bg-yellow-100 text-yellow-700' :
                           'bg-muted text-muted-foreground'
                         }`}>
@@ -4943,14 +4943,14 @@ export function TalkMigrationPage() {
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Ask about migration..."
-                  className="w-full px-4 py-3 pr-12 border border-border rounded-xl text-[13px] resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 pr-12 border border-border rounded-xl text-[13px] resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
                   style={{ fontFamily: 'var(--font-body)', minHeight: '48px', maxHeight: '120px' }}
                   rows={1}
                 />
                 <button
                   onClick={handleAsk}
                   disabled={!inputValue.trim() || isGenerating}
-                  className="absolute right-2 top-2 p-2 bg-[#111827] hover:bg-[#0F172A] text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="absolute right-2 top-2 p-2 bg-[var(--foreground)] hover:bg-[var(--primary)] text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   <Send className="w-4 h-4" />
                 </button>

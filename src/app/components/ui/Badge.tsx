@@ -2,21 +2,26 @@ import React from 'react';
 import { cn } from "../../../lib/utils";
 
 interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
-  variant?: 'default' | 'outline' | 'secondary' | 'accent';
+  variant?: 'default' | 'outline' | 'secondary' | 'accent' | 'brand' | 'success' | 'warning' | 'destructive';
 }
 
+// Token-driven badge / status pill. `brand`/`accent` = terracotta tint.
 export function Badge({ className, variant = 'default', ...props }: BadgeProps) {
   const variants = {
-    default: "bg-gray-100 text-gray-800",
-    outline: "border border-gray-200 text-gray-600",
-    secondary: "bg-blue-50 text-blue-700",
-    accent: "bg-rose-50 text-rose-700",
+    default: "bg-muted text-foreground",
+    outline: "border border-border text-muted-foreground",
+    secondary: "bg-secondary text-secondary-foreground",
+    accent: "bg-brand-subtle text-brand",
+    brand: "bg-brand-subtle text-brand",
+    success: "bg-[color-mix(in_srgb,var(--success)_14%,transparent)] text-success",
+    warning: "bg-[color-mix(in_srgb,var(--warning)_16%,transparent)] text-warning",
+    destructive: "bg-[color-mix(in_srgb,var(--destructive)_12%,transparent)] text-destructive",
   };
 
   return (
     <span
       className={cn(
-        "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
+        "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium",
         variants[variant],
         className
       )}

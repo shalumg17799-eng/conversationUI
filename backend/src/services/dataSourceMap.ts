@@ -83,6 +83,55 @@ export const DATA_SOURCES: DataSource[] = [
   },
 ];
 
+// ── Report angles ─────────────────────────────────────────────────────────────
+// Multiple distinct reports per domain, each built from an available table. A single
+// table can power many reports — the descriptive label drives what the LLM generates
+// (e.g. "Take Rate by Territory" vs "Revenue Trend Over Time" from the same rows).
+// Used by the Sonnet (client) flow to offer a real menu of reports per domain.
+export interface ReportAngle {
+  domain: string;
+  label: string;   // shown as a clarification option AND fed into report generation
+  table: string;   // must be an available table at runtime
+}
+
+export const REPORT_ANGLES: ReportAngle[] = [
+  // Sales — all from the monthly rollup, different lenses
+  { domain: 'Sales', label: 'Revenue Trend Over Time', table: 'fact_sug_monthly_rollup' },
+  { domain: 'Sales', label: 'Take Rate by Territory', table: 'fact_sug_monthly_rollup' },
+  { domain: 'Sales', label: 'Return Rate Analysis', table: 'fact_sug_monthly_rollup' },
+  { domain: 'Sales', label: 'Top & Bottom Territories by Revenue', table: 'fact_sug_monthly_rollup' },
+
+  // Network — spans its three tables
+  { domain: 'Network', label: 'Churn & Retention Metrics', table: 'fact_sug_monthly_rollup' },
+  { domain: 'Network', label: 'Network KPI Trends', table: 'fact_network_kpi_points' },
+  { domain: 'Network', label: 'Signal Strength & Latency', table: 'fact_network_kpi_points' },
+  { domain: 'Network', label: 'Dynamic Score Rankings', table: 'fact_dynamic_scores' },
+
+  // Contact Center
+  { domain: 'Contact Center', label: 'Agent Performance Overview', table: 'fact_contact_center_metrics' },
+  { domain: 'Contact Center', label: 'Average Handle Time by Agent', table: 'fact_contact_center_metrics' },
+  { domain: 'Contact Center', label: 'Box Close Rate Analysis', table: 'fact_contact_center_metrics' },
+
+  // Customer Experience — retention lenses on the monthly rollup
+  { domain: 'Customer Experience', label: 'RIS Score by Territory', table: 'fact_sug_monthly_rollup' },
+  { domain: 'Customer Experience', label: 'Return Rate & Retention Trend', table: 'fact_sug_monthly_rollup' },
+  { domain: 'Customer Experience', label: 'Customer Experience Health Scorecard', table: 'fact_sug_monthly_rollup' },
+];
+
+export function getAnglesByDomain(domain: string): ReportAngle[] {
+  return REPORT_ANGLES.filter(a => a.domain.toLowerCase() === domain.toLowerCase());
+}
+
+// Find an angle the user explicitly named/selected (exact label match, case-insensitive,
+// or the label appearing verbatim in the query). Returns all matches.
+export function findAnglesByLabel(texts: string[]): ReportAngle[] {
+  const lc = texts.map(t => t.trim().toLowerCase());
+  return REPORT_ANGLES.filter(a => {
+    const label = a.label.toLowerCase();
+    return lc.some(t => t === label || t.includes(label));
+  });
+}
+
 export const ALL_DOMAINS = [...new Set(DATA_SOURCES.map(ds => ds.domain))];
 
 export const ALL_TABLES = [...new Set(DATA_SOURCES.map(ds => ds.table))];

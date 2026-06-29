@@ -13,6 +13,8 @@ import {
 } from '@/lib/dataModel';
 import { ChevronRight, TrendingUp, TrendingDown, Minus, ArrowRight, ExternalLink, Plus, X, Check, Star, Share2, MoreVertical, Download } from 'lucide-react';
 import { jsPDF } from 'jspdf';
+import { PageHeader, StatusBadge } from '../components/shared';
+import { Button } from '../components/ui/Button';
 
 export function ReportsPage() {
   const { reportId } = useParams();
@@ -115,19 +117,19 @@ function ReportsIndexView() {
 
       {/* Success Banner - Created Report */}
       {showCreateSuccessBanner && createdReportInfo && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 flex items-start justify-between" style={{ fontFamily: 'var(--font-body)' }}>
+        <div className="bg-brand-subtle border border-brand/20 rounded-xl p-4 mb-6 flex items-start justify-between" style={{ fontFamily: 'var(--font-body)' }}>
           <div className="flex items-start gap-3 flex-1">
             <div className="flex-shrink-0 mt-0.5">
-              <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
-                <Check className="w-3 h-3 text-white" />
+              <div className="w-5 h-5 rounded-full bg-brand flex items-center justify-center">
+                <Check className="w-3 h-3 text-brand-foreground" />
               </div>
             </div>
             <div>
-              <p className="text-[13px] text-blue-900 font-medium">
+              <p className="text-[13px] text-brand font-medium">
                 Report created: {createdReportInfo.reportName}
               </p>
-              <p className="text-[11px] text-blue-700 mt-1">
-                {createdReportInfo.executionPath === 'enterprise_bi' 
+              <p className="text-[11px] text-brand/80 mt-1">
+                {createdReportInfo.executionPath === 'enterprise_bi'
                   ? `Submitted to ${createdReportInfo.platform} • Pending approval`
                   : 'Published • Ready to view'}
               </p>
@@ -135,7 +137,7 @@ function ReportsIndexView() {
           </div>
           <button
             onClick={() => setShowCreateSuccessBanner(false)}
-            className="flex-shrink-0 text-blue-600 hover:text-blue-800 transition-colors"
+            className="flex-shrink-0 text-brand hover:text-brand-hover transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -143,35 +145,26 @@ function ReportsIndexView() {
       )}
 
       {/* PAGE HEADER */}
-      <div className="flex items-start justify-between">
-        <div className="space-y-1">
-          <h1 className="text-[28px] font-semibold text-foreground" style={{ fontFamily: 'var(--font-body)' }}>
-            My Reports
-          </h1>
-          <p className="text-[13px] text-muted-foreground" style={{ fontFamily: 'var(--font-body)' }}>
-            Unified reporting experience across all platforms
-          </p>
-        </div>
-        <div className="flex flex-col items-end gap-3">
-          <button
-            onClick={() => navigate('/report-flow')}
-            className="px-5 py-2.5 bg-foreground hover:bg-foreground text-white rounded-lg text-[13px] font-medium transition-colors shadow-sm flex items-center gap-2"
-            style={{ fontFamily: 'var(--font-body)' }}
-          >
-            <Plus className="w-4 h-4" />
-            Create New Report
-          </button>
-          <div className="text-[11px] text-muted-foreground bg-blue-50 px-3 py-1.5 rounded-md" style={{ fontFamily: 'var(--font-body)' }}>
-            Tool-Agnostic · Unified View
+      <PageHeader
+        title="My Reports"
+        description="Unified reporting experience across all platforms"
+        actions={
+          <div className="flex flex-col items-end gap-2">
+            <Button variant="primary" onClick={() => navigate('/report-flow')}>
+              <Plus className="w-4 h-4" />
+              Create New Report
+            </Button>
+            <StatusBadge tone="brand" dot>Tool-Agnostic · Unified View</StatusBadge>
           </div>
-        </div>
-      </div>
+        }
+      />
+      <div className="h-2" />
 
       {/* SECTION 1: REPORTS OVERVIEW (Summary Tiles) */}
       <div className="grid grid-cols-3 gap-6">
         <button
           onClick={() => navigate('/reports')}
-          className="bg-card rounded-[12px] border border-border p-6 shadow-sm text-left hover:border-[#6B7280] transition-colors"
+          className="bg-card rounded-[12px] border border-border p-6 shadow-sm text-left hover:border-brand/40 hover:shadow-md transition-all"
         >
           <div className="text-[32px] font-bold text-foreground mb-2" style={{ fontFamily: 'var(--font-body)' }}>
             {reportCounts.total}
@@ -186,7 +179,7 @@ function ReportsIndexView() {
 
         <button
           onClick={() => navigate('/reports')}
-          className="bg-card rounded-[12px] border border-border p-6 shadow-sm text-left hover:border-[#6B7280] transition-colors"
+          className="bg-card rounded-[12px] border border-border p-6 shadow-sm text-left hover:border-brand/40 hover:shadow-md transition-all"
         >
           <div className="text-[32px] font-bold text-foreground mb-2" style={{ fontFamily: 'var(--font-body)' }}>
             {reportCounts.standard}
@@ -201,7 +194,7 @@ function ReportsIndexView() {
 
         <button
           onClick={() => navigate('/reports')}
-          className="bg-[#FFFBEB] rounded-[12px] border border-border p-6 shadow-sm text-left hover:border-[#6B7280] transition-colors"
+          className="bg-brand-subtle rounded-[12px] border border-border p-6 shadow-sm text-left hover:border-brand/40 hover:shadow-md transition-all"
         >
           <div className="text-[32px] font-bold text-foreground mb-2" style={{ fontFamily: 'var(--font-body)' }}>
             {reportCounts.enterprise}
@@ -239,18 +232,18 @@ function ReportsIndexView() {
                 key={report.report_id}
                 ref={isHighlighted ? highlightedReportRef : null}
                 onClick={() => navigate(`/reports/${report.report_id}`)}
-                className={`bg-white border-2 ${
-                  isHighlighted 
-                    ? 'border-blue-400 shadow-lg bg-blue-50' 
-                    : isMigrated 
-                    ? 'border-green-300 shadow-md' 
-                    : 'border-gray-200'
-                } rounded-xl p-5 cursor-pointer transition-all hover:shadow-lg hover:border-gray-300 group relative`}
+                className={`bg-card border-2 ${
+                  isHighlighted
+                    ? 'border-brand/50 shadow-lg bg-brand-subtle'
+                    : isMigrated
+                    ? 'border-success/40 shadow-md'
+                    : 'border-border'
+                } rounded-xl p-5 cursor-pointer transition-all hover:shadow-lg hover:border-brand/40 group relative`}
               >
                 {/* Highlight Badge */}
                 {isHighlighted && (
                   <div className="absolute top-3 right-3">
-                    <span className="bg-blue-500 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1" style={{ fontFamily: 'var(--font-body)' }}>
+                    <span className="bg-brand text-brand-foreground text-[10px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1" style={{ fontFamily: 'var(--font-body)' }}>
                       <Check className="w-3 h-3" />
                       New
                     </span>
@@ -306,7 +299,7 @@ function ReportsIndexView() {
                         Enterprise
                       </span>
                     ) : (
-                      <span className="bg-blue-50 text-blue-700 text-[10px] font-medium px-2 py-1 rounded" style={{ fontFamily: 'var(--font-body)' }}>
+                      <span className="bg-brand-subtle text-brand text-[10px] font-medium px-2 py-1 rounded" style={{ fontFamily: 'var(--font-body)' }}>
                         Standard
                       </span>
                     )}
@@ -359,7 +352,7 @@ function ReportsIndexView() {
       </div>
 
       {/* SECTION 3: QUICK ACTIONS */}
-      <div className="bg-[#EFF6FF] rounded-[12px] border border-[#BFDBFE] p-6 shadow-sm">
+      <div className="bg-brand-subtle rounded-[12px] border border-brand/20 p-6 shadow-sm">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-[14px] font-semibold text-foreground mb-1" style={{ fontFamily: 'var(--font-body)' }}>
@@ -372,7 +365,7 @@ function ReportsIndexView() {
           <div className="flex gap-3">
             <button
               onClick={() => navigate('/conversational')}
-              className="px-5 py-2.5 bg-foreground hover:bg-foreground text-white rounded-lg text-[13px] font-medium transition-colors"
+              className="px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-[13px] font-medium transition-colors"
               style={{ fontFamily: 'var(--font-body)' }}
             >
               Open Conversational Analytics
@@ -397,7 +390,7 @@ const ChurnTooltip = ({ active, payload, metricLabel }: any) => {
     const data = payload[0].payload;
     const change = data.change_vs_previous_month;
     const changeDirection = change > 0 ? '↑' : change < 0 ? '↓' : '→';
-    const changeColor = change > 0 ? '#EF4444' : change < 0 ? '#10B981' : '#6B7280';
+    const changeColor = change > 0 ? '#EF4444' : change < 0 ? '#10B981' : 'var(--muted-foreground)';
     const label = metricLabel || 'Value';
 
     return (
@@ -434,8 +427,8 @@ const ChurnRateChart = React.memo(({ data, reportId }: { data: any[]; reportId: 
         >
           <defs>
             <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#2563EB" />
-              <stop offset="100%" stopColor="#60A5FA" />
+              <stop offset="0%" stopColor="var(--brand)" />
+              <stop offset="100%" stopColor="var(--brand)" stopOpacity={0.55} />
             </linearGradient>
           </defs>
           <XAxis
@@ -443,18 +436,18 @@ const ChurnRateChart = React.memo(({ data, reportId }: { data: any[]; reportId: 
             dataKey="month"
             axisLine={false}
             tickLine={false}
-            tick={{ fill: '#6B7280', fontSize: 11, fontFamily: 'var(--font-body)' }}
+            tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'var(--font-body)' }}
           />
           <YAxis
             key={`yaxis-${reportId}`}
-            label={{ value: yAxisLabel, angle: -90, position: 'insideLeft', style: { fill: '#6B7280', fontSize: 11, fontFamily: 'var(--font-body)' } }}
+            label={{ value: yAxisLabel, angle: -90, position: 'insideLeft', style: { fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'var(--font-body)' } }}
             axisLine={false}
             tickLine={false}
-            tick={{ fill: '#6B7280', fontSize: 11, fontFamily: 'var(--font-body)' }}
+            tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'var(--font-body)' }}
             domain={yDomain}
             tickFormatter={(value) => `${value}%`}
           />
-          <Tooltip key={`tooltip-${reportId}`} content={<ChurnTooltip metricLabel={metricLabel} />} cursor={{ fill: 'rgba(96, 165, 250, 0.08)' }} />
+          <Tooltip key={`tooltip-${reportId}`} content={<ChurnTooltip metricLabel={metricLabel} />} cursor={{ fill: 'rgba(212, 87, 42, 0.08)' }} />
           <Bar
             key={`bar-${reportId}`}
             dataKey="churn_rate"
@@ -500,9 +493,9 @@ function ReportDetailView({ reportId }: { reportId: string }) {
       let y = marginX;
 
       const black = '#111827';
-      const gray = '#6B7280';
-      const accentBlue = '#3B82F6';
-      const lightBg = '#F3F4F6';
+      const gray = 'var(--muted-foreground)';
+      const accentBlue = 'var(--brand)';
+      const lightBg = 'var(--border)';
       const borderCol = '#D1D5DB';
 
       const checkPage = (needed: number) => {
@@ -545,7 +538,7 @@ function ReportDetailView({ reportId }: { reportId: string }) {
           pdf.circle(marginX + 3, y - 0.8, 1, 'F');
           pdf.setFont('helvetica', 'normal');
           pdf.setFontSize(9);
-          pdf.setTextColor('#374151');
+          pdf.setTextColor('var(--foreground)');
           const lines = pdf.splitTextToSize(item, contentW - 10);
           pdf.text(lines, marginX + 7, y);
           y += lines.length * 4 + 3;
@@ -574,7 +567,7 @@ function ReportDetailView({ reportId }: { reportId: string }) {
       y += titleLines.length * 8;
 
       // Badges
-      pdf.setFillColor('#EFF6FF');
+      pdf.setFillColor('var(--brand-subtle)');
       pdf.roundedRect(marginX, y, 22, 6, 1.5, 1.5, 'F');
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(7);
@@ -587,7 +580,7 @@ function ReportDetailView({ reportId }: { reportId: string }) {
         pdf.setTextColor('#92400E');
         pdf.text('Enterprise', marginX + 29, y + 4);
       } else {
-        pdf.setFillColor('#EFF6FF');
+        pdf.setFillColor('var(--brand-subtle)');
         pdf.roundedRect(marginX + 26, y, 20, 6, 1.5, 1.5, 'F');
         pdf.setTextColor(accentBlue);
         pdf.text('Standard', marginX + 29, y + 4);
@@ -745,7 +738,7 @@ function ReportDetailView({ reportId }: { reportId: string }) {
         for (let t = 0; t <= yTicks; t++) {
           const tickVal = t * yStep;
           const tickY = chartTopY + chartAreaH - (tickVal / yAxisMax) * chartAreaH;
-          pdf.setDrawColor('#E5E7EB');
+          pdf.setDrawColor('var(--border)');
           pdf.setLineWidth(0.15);
           pdf.line(chartOriginX, tickY, chartOriginX + chartAreaW, tickY);
           pdf.setFont('helvetica', 'normal');
@@ -768,7 +761,7 @@ function ReportDetailView({ reportId }: { reportId: string }) {
 
           // Rounded-top bar: body + rounded cap
           const radius = Math.min(1.8, barW / 2);
-          pdf.setFillColor('#60A5FA');
+          pdf.setFillColor('var(--brand)');
           if (barH > radius) {
             pdf.rect(bx, by + radius, barW, barH - radius, 'F');
           }
@@ -792,12 +785,12 @@ function ReportDetailView({ reportId }: { reportId: string }) {
         });
 
         // X-axis baseline
-        pdf.setDrawColor('#9CA3AF');
+        pdf.setDrawColor('var(--muted-foreground)');
         pdf.setLineWidth(0.4);
         pdf.line(chartOriginX, chartTopY + chartAreaH, chartOriginX + chartAreaW, chartTopY + chartAreaH);
 
         // Chart frame
-        pdf.setDrawColor('#E5E7EB');
+        pdf.setDrawColor('var(--border)');
         pdf.setLineWidth(0.2);
         pdf.roundedRect(marginX - 1, chartTopY - 5, contentW + 2, chartH + 8, 2, 2, 'S');
 
@@ -817,7 +810,7 @@ function ReportDetailView({ reportId }: { reportId: string }) {
 
         for (const row of previewData) {
           checkPage(7);
-          pdf.setDrawColor('#E5E7EB');
+          pdf.setDrawColor('var(--border)');
           pdf.line(marginX, y - 1, pageW - marginX, y - 1);
           pdf.setFont('helvetica', 'normal');
           pdf.setFontSize(8.5);
@@ -840,7 +833,7 @@ function ReportDetailView({ reportId }: { reportId: string }) {
         checkPage(12);
         pdf.setFont('helvetica', 'normal');
         pdf.setFontSize(9);
-        pdf.setTextColor('#374151');
+        pdf.setTextColor('var(--foreground)');
         const txt = `This report is used by ${report.used_by_roles?.join(', ') || 'key stakeholders'} to support decisions related to ${report.primary_use_case} within the ${report.domain} domain.`;
         const lines = pdf.splitTextToSize(txt, contentW);
         pdf.text(lines, marginX, y);
@@ -886,14 +879,14 @@ function ReportDetailView({ reportId }: { reportId: string }) {
 
       if (report.known_limitations && report.known_limitations.length > 0) {
         drawSectionTitle('Known Limitations');
-        drawBulletList(report.known_limitations, '#9CA3AF');
+        drawBulletList(report.known_limitations, 'var(--muted-foreground)');
       }
 
       // ═══════════════ RECOMMENDED ACTIONS ═══════════════
 
       if (report.recommended_actions && report.recommended_actions.length > 0) {
         drawSectionTitle('Recommended Actions');
-        drawBulletList(report.recommended_actions, '#3B82F6');
+        drawBulletList(report.recommended_actions, 'var(--brand)');
       }
 
       // ═══════════════ RELATED REPORTS ═══════════════
@@ -987,7 +980,7 @@ function ReportDetailView({ reportId }: { reportId: string }) {
           </p>
           <button
             onClick={() => navigate('/reports')}
-            className="px-4 py-2 bg-foreground hover:bg-foreground text-white rounded-lg text-[13px] font-medium"
+            className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-[13px] font-medium"
             style={{ fontFamily: 'var(--font-body)' }}
           >
             Back to Reports
@@ -1035,7 +1028,7 @@ function ReportDetailView({ reportId }: { reportId: string }) {
         <div className="flex items-center gap-2 text-[12px]" style={{ fontFamily: 'var(--font-body)' }}>
           <button 
             onClick={() => navigate('/reports')}
-            className="text-[#60A5FA] hover:text-[#3B82F6] hover:underline"
+            className="text-brand hover:text-brand-hover hover:underline"
           >
             Reports
           </button>
@@ -1050,7 +1043,7 @@ function ReportDetailView({ reportId }: { reportId: string }) {
                 {report.report_name}
               </h1>
               <div 
-                className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-[12px] font-medium"
+                className="px-3 py-1.5 bg-brand-subtle text-brand rounded-full text-[12px] font-medium"
                 style={{ fontFamily: 'var(--font-body)' }}
               >
                 Report Hub
@@ -1103,7 +1096,7 @@ function ReportDetailView({ reportId }: { reportId: string }) {
             </label>
             <button
               onClick={() => navigate(`/datasets/${report.source_dataset_id}`)}
-              className="text-[14px] text-[#60A5FA] hover:text-[#3B82F6] hover:underline font-medium"
+              className="text-[14px] text-brand hover:text-brand-hover hover:underline font-medium"
               style={{ fontFamily: 'var(--font-body)' }}
             >
               {sourceDataset?.dataset_name || 'Unknown'}
@@ -1128,7 +1121,7 @@ function ReportDetailView({ reportId }: { reportId: string }) {
                 Enterprise
               </span>
             ) : (
-              <span className="inline-block bg-blue-50 text-blue-700 text-[11px] font-medium px-3 py-1 rounded" style={{ fontFamily: 'var(--font-body)' }}>
+              <span className="inline-block bg-brand-subtle text-brand text-[11px] font-medium px-3 py-1 rounded" style={{ fontFamily: 'var(--font-body)' }}>
                 Standard
               </span>
             )}
@@ -1144,7 +1137,7 @@ function ReportDetailView({ reportId }: { reportId: string }) {
           </h2>
           <button
             onClick={() => navigate(`/reports/${reportId}/full`)}
-            className="px-4 py-2 bg-foreground hover:bg-foreground text-white rounded-lg text-[13px] font-medium transition-colors"
+            className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-[13px] font-medium transition-colors"
             style={{ fontFamily: 'var(--font-body)' }}
           >
             View Full Report
@@ -1168,7 +1161,7 @@ function ReportDetailView({ reportId }: { reportId: string }) {
             </p>
             <button
               onClick={() => navigate('/enterprise-bi')}
-              className="px-5 py-2.5 bg-foreground hover:bg-foreground text-white rounded-lg text-[13px] font-medium"
+              className="px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-[13px] font-medium"
               style={{ fontFamily: 'var(--font-body)' }}
             >
               Open in Enterprise BI
@@ -1208,7 +1201,7 @@ function ReportDetailView({ reportId }: { reportId: string }) {
         <div className="flex gap-3">
           <button
             onClick={() => navigate('/conversational')}
-            className="px-4 py-2 bg-foreground hover:bg-foreground text-white rounded-lg text-[12px] font-medium"
+            className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-[12px] font-medium"
             style={{ fontFamily: 'var(--font-body)' }}
           >
             Ask a question about this report
@@ -1306,7 +1299,7 @@ function ReportDetailView({ reportId }: { reportId: string }) {
                   {report.primary_dimensions.map((dim, idx) => (
                     <span 
                       key={idx}
-                      className="inline-block bg-blue-50 text-blue-700 text-[12px] font-medium px-3 py-1.5 rounded" 
+                      className="inline-block bg-brand-subtle text-brand text-[12px] font-medium px-3 py-1.5 rounded" 
                       style={{ fontFamily: 'var(--font-body)' }}
                     >
                       {dim}
@@ -1354,7 +1347,7 @@ function ReportDetailView({ reportId }: { reportId: string }) {
               <ul className="space-y-2">
                 {report.known_limitations.map((limitation, idx) => (
                   <li key={idx} className="flex items-start gap-3">
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#6B7280] mt-2 flex-shrink-0" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground mt-2 flex-shrink-0" />
                     <p className="text-[12px] text-muted-foreground italic" style={{ fontFamily: 'var(--font-body)', lineHeight: '1.6' }}>
                       {limitation}
                     </p>
@@ -1385,13 +1378,13 @@ function ReportDetailView({ reportId }: { reportId: string }) {
                     <button
                       key={idx}
                       onClick={() => navigate(`/reports/${relatedReport.report_id}`)}
-                      className="w-full text-left px-4 py-3 bg-muted hover:bg-blue-50 border border-border hover:border-blue-200 rounded-lg transition-colors group"
+                      className="w-full text-left px-4 py-3 bg-muted hover:bg-brand-subtle border border-border hover:border-brand/30 rounded-lg transition-colors group"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-[13px] text-foreground font-medium group-hover:text-[#60A5FA]" style={{ fontFamily: 'var(--font-body)' }}>
+                        <span className="text-[13px] text-foreground font-medium group-hover:text-brand" style={{ fontFamily: 'var(--font-body)' }}>
                           {relatedReport.report_name}
                         </span>
-                        <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-[#60A5FA]" />
+                        <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-brand-hover" />
                       </div>
                     </button>
                   ))}
@@ -1473,7 +1466,7 @@ function ReportDetailView({ reportId }: { reportId: string }) {
 
             <button
               onClick={() => navigate(`/datasets/${report.source_dataset_id}`)}
-              className="px-5 py-2.5 bg-foreground hover:bg-foreground text-white rounded-lg text-[13px] font-medium"
+              className="px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-[13px] font-medium"
               style={{ fontFamily: 'var(--font-body)' }}
             >
               Open Dataset
@@ -1483,11 +1476,11 @@ function ReportDetailView({ reportId }: { reportId: string }) {
       )}
 
       {/* SECTION 5: ESCALATION / NAVIGATION */}
-      <div className="bg-[#EFF6FF] rounded-[12px] border border-[#BFDBFE] p-5 shadow-sm">
+      <div className="bg-brand-subtle rounded-[12px] border border-brand/20 p-5 shadow-sm">
         <div className="flex items-center justify-between">
           <button
             onClick={() => navigate('/reports')}
-            className="text-[13px] text-[#60A5FA] hover:text-[#3B82F6] hover:underline font-medium"
+            className="text-[13px] text-brand hover:text-brand-hover hover:underline font-medium"
             style={{ fontFamily: 'var(--font-body)' }}
           >
             ← Back to Reports
@@ -1497,7 +1490,7 @@ function ReportDetailView({ reportId }: { reportId: string }) {
             {!report.enterprise_flag ? (
               <button
                 onClick={() => navigate('/conversational')}
-                className="px-5 py-2.5 bg-foreground hover:bg-foreground text-white rounded-lg text-[13px] font-medium"
+                className="px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-[13px] font-medium"
                 style={{ fontFamily: 'var(--font-body)' }}
               >
                 Continue in Conversational Analytics
@@ -1505,7 +1498,7 @@ function ReportDetailView({ reportId }: { reportId: string }) {
             ) : (
               <button
                 onClick={() => navigate('/enterprise-bi')}
-                className="px-5 py-2.5 bg-foreground hover:bg-foreground text-white rounded-lg text-[13px] font-medium"
+                className="px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-[13px] font-medium"
                 style={{ fontFamily: 'var(--font-body)' }}
               >
                 Open Enterprise BI
