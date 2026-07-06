@@ -88,6 +88,23 @@ function TrendBadge({ trend, delta }: { trend?: string; delta?: string }) {
 const yFmt = (v: any) =>
   typeof v === 'number' && v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v;
 
+// ── X-axis / category formatter ────────────────────────────────────────────────
+// Turns compact period codes (202504, "2025-04", "202504" as number) into a
+// readable "April 2025" so month and year read as separate words. Any value
+// that isn't a year-month is returned unchanged.
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+const xFmt = (v: any) => {
+  const m = String(v ?? '').trim().match(/^(\d{4})[-/]?(\d{2})$/);
+  if (m) {
+    const mo = Number(m[2]);
+    if (mo >= 1 && mo <= 12) return `${MONTH_NAMES[mo - 1]} ${m[1]}`;
+  }
+  return v;
+};
+
 // ════════════════════════════════════════════════════════════════════════════
 // METRIC COMPONENTS
 // ════════════════════════════════════════════════════════════════════════════
@@ -192,7 +209,7 @@ function BarChartComponent({ data, xKey, yKey, title, explanation }: any) {
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" {...GRID_STYLE} vertical={false} />
-            <XAxis dataKey={xKey} axisLine={false} tickLine={false} tick={AXIS_STYLE} />
+            <XAxis dataKey={xKey} axisLine={false} tickLine={false} tick={AXIS_STYLE} tickFormatter={xFmt} />
             <YAxis axisLine={false} tickLine={false} tick={AXIS_STYLE} tickFormatter={yFmt} width={40} />
             <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(37,99,235,0.05)' }} />
             <Bar dataKey={yKey} fill="url(#barGrad)" radius={[5, 5, 0, 0]} isAnimationActive={false} />
@@ -217,7 +234,7 @@ function LineChartComponent({ data, xKey, yKey, title, explanation }: any) {
         <ResponsiveContainer width="100%" height={240}>
           <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
             <CartesianGrid strokeDasharray="3 3" {...GRID_STYLE} vertical={false} />
-            <XAxis dataKey={xKey} axisLine={false} tickLine={false} tick={AXIS_STYLE} />
+            <XAxis dataKey={xKey} axisLine={false} tickLine={false} tick={AXIS_STYLE} tickFormatter={xFmt} />
             <YAxis axisLine={false} tickLine={false} tick={AXIS_STYLE} tickFormatter={yFmt} width={40} />
             <Tooltip content={<ChartTooltip />} />
             <Line
@@ -253,7 +270,7 @@ function AreaChartComponent({ data, xKey, yKey, title, explanation }: any) {
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" {...GRID_STYLE} vertical={false} />
-            <XAxis dataKey={xKey} axisLine={false} tickLine={false} tick={AXIS_STYLE} />
+            <XAxis dataKey={xKey} axisLine={false} tickLine={false} tick={AXIS_STYLE} tickFormatter={xFmt} />
             <YAxis axisLine={false} tickLine={false} tick={AXIS_STYLE} tickFormatter={yFmt} width={40} />
             <Tooltip content={<ChartTooltip />} />
             <Area
@@ -691,7 +708,7 @@ function ComboChartComponent({ data, xKey, barKey, lineKey, barLabel, lineLabel,
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" {...GRID_STYLE} vertical={false} />
-            <XAxis dataKey={xKey} axisLine={false} tickLine={false} tick={AXIS_STYLE} />
+            <XAxis dataKey={xKey} axisLine={false} tickLine={false} tick={AXIS_STYLE} tickFormatter={xFmt} />
             <YAxis yAxisId="bar" axisLine={false} tickLine={false} tick={AXIS_STYLE} tickFormatter={yFmt} width={40} />
             <YAxis yAxisId="line" orientation="right" axisLine={false} tickLine={false} tick={AXIS_STYLE} tickFormatter={yFmt} width={36} />
             <Tooltip content={<ChartTooltip />} />

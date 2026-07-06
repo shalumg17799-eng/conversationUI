@@ -33,7 +33,7 @@ import { ReportGenerationPreview } from '@/app/components/ReportGenerationPrevie
 import { GenerativeTable } from '@/app/components/GenerativeTable';
 import { ReportSkeleton } from '@/app/components/ReportSkeleton';
 import { UITreeRenderer, type UITreeNode } from '@/app/components/UITreeRenderer';
-import { exportReportPDF, exportReportExcel } from '@/lib/exportReport';
+import { ExportMenu } from '@/app/components/ExportMenu';
 import { 
   Send, 
   Sparkles, 
@@ -58,8 +58,6 @@ import {
   ChevronRight,
   Info,
   Medal,
-  Download,
-  FileSpreadsheet,
 } from 'lucide-react';
 import MedallionIcon from '@/imports/Group5';
 import { usePersona } from '@/app/context/PersonaContext';
@@ -5478,24 +5476,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                       </div>
                       {/* Export — available once the report finishes; works for any provider */}
                       {!message.isStreaming && (message.data?.components?.length ?? 0) > 0 && (
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          <button
-                            onClick={() => exportReportPDF(message.data.meta, message.data.components)}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[12px] font-medium rounded-lg border border-border text-foreground hover:bg-accent hover:border-brand/40 transition-colors"
-                            title="Download as PDF"
-                          >
-                            <Download className="w-3.5 h-3.5" />
-                            PDF
-                          </button>
-                          <button
-                            onClick={() => exportReportExcel(message.data.meta, message.data.components)}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[12px] font-medium rounded-lg border border-border text-foreground hover:bg-accent hover:border-brand/40 transition-colors"
-                            title="Download as Excel"
-                          >
-                            <FileSpreadsheet className="w-3.5 h-3.5" />
-                            Excel
-                          </button>
-                        </div>
+                        <ExportMenu meta={message.data.meta} components={message.data.components} />
                       )}
                     </div>
                     {message.data.meta.description && (
