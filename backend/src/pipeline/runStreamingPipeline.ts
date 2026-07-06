@@ -9,8 +9,16 @@ import {
 } from '../services/llmHandler';
 import { runQueryWithMeta, qualifiedTable } from '../lib/bigqueryClient';
 import { DATA_SOURCES, ALL_DOMAINS, getSourcesByDomain } from '../services/dataSourceMap';
-import { UITypeTree, ShapeSignature } from '../types';
+import { UITypeTree, ShapeSignature, CachedReport } from '../types';
 import { cacheService, generateKey } from '../services/cacheService';
+import { resolveOutputMode } from '../services/outputMode';
+import { recordOutputMode } from '../services/outputModeTelemetry';
+import { shadowValidateCards } from '../services/validationTelemetry';
+import { deriveConstraints } from '../services/componentSelector';
+import { recordConstraints } from '../services/constraintTelemetry';
+import { governReport, governorMode, generateGovernedFallback } from '../services/governor';
+import { recordGovernor } from '../services/governorTelemetry';
+import { OutputMode } from '../registry/componentRegistry';
 
 // Fixes column name casing in LLM-generated cards.
 // BQ returns columns in their original case (e.g. TEAM, CSAT_SCORE) but the LLM
@@ -360,14 +368,16 @@ export async function runStreamingPipeline(
   conversationHistory: ConversationTurn[] = [],
   provider: LLMProvider = 'gemma',
 ): Promise<void> {
-  const cacheKey = generateKey({ query, stream: true, v: 2, history: clarificationHistory, prior: priorContext });
-  const cached = cacheService.get<{ components: UITypeTree[]; title: string; message: string; activeTable?: string }>(cacheKey);
+  // Phase 1: provider is part of the key — gemma and sonnet must not share cache entries.
+  const cacheKey = generateKey({ query, stream: true, v: 3, provider, history: clarificationHistory, prior: priorContext });
+  const cached = cacheService.get<CachedReport>(cacheKey);
 
   console.log(`[Pipeline] query="${query}" skipClarification=${skipClarification} history=${clarificationHistory.length} activeTable=${activeTable ?? 'none'} cacheHit=${!!cached}`);
 
   if (cached) {
-    send('meta', { title: cached.title, description: cached.message, cached: true, activeTable: cached.activeTable });
+    send('meta', { title: cached.title, description: cached.message, cached: true, activeTable: cached.activeTable, rowCount: cached.rowCount ?? null, outputMode: cached.outputMode });
     for (const component of cached.components) send('component', component);
+    if (cached.followUp && cached.followUp.length > 0) send('followUp', cached.followUp);
     return;
   }
 
@@ -474,6 +484,9 @@ export async function runStreamingPipeline(
         report.cards = fixColumnCasing(report.cards, actualColumns);
         if (report.cards.length === 0) report.cards = generateFallbackCards(dataShape);
 
+        // Phase 3: shadow validation — passive, never blocks render.
+        shadowValidateCards(report.cards, provider);
+
         send('acknowledgment', { message: "Here's the updated report with your changes applied." });
         send('meta', { title: report.title, description: report.message, rowCount: allRows.length, template: report.template, activeTable });
         const validComponents: UITypeTree[] = [];
@@ -483,7 +496,7 @@ export async function runStreamingPipeline(
           validComponents.push(node);
         }
         if (report.followUp.length > 0) send('followUp', report.followUp);
-        cacheService.set(cacheKey, { components: validComponents, title: report.title, message: report.message, activeTable }, 5 * 60 * 1000);
+        cacheService.set(cacheKey, { components: validComponents, title: report.title, message: report.message, activeTable, followUp: report.followUp, rowCount: allRows.length }, 5 * 60 * 1000);
         return;
       }
 
@@ -538,6 +551,8 @@ export async function runStreamingPipeline(
   const forceGenerate = skipClarification || clarificationHistory.length >= 3;
   let tableOverride: string | undefined;
   const intent = { metric: 'unknown', dimension: 'unknown', intent: 'metric_by_dimension' as const };
+  let resolvedIntent = 'metric_by_dimension';
+  let llmProposedMode: OutputMode | undefined;
 
   send('status', { message: provider === 'sonnet' ? 'Thinking…' : 'Understanding your query...' });
 
@@ -549,6 +564,7 @@ export async function runStreamingPipeline(
 
     // Conversational or direct answer — reply as text, no dashboard.
     if (decision.action === 'chat' || decision.action === 'answer') {
+      recordOutputMode({ outputMode: 'qa_answer', source: 'llm', intent: 'qa_answer' }, { query, provider });
       send('qa_answer', { message: decision.message, followUp: [] });
       return;
     }
@@ -562,6 +578,8 @@ export async function runStreamingPipeline(
     } else {
       // generate
       tableOverride = decision.table;
+      resolvedIntent = decision.intent;
+      llmProposedMode = decision.outputMode;
     }
   } else {
     // Gemma path — unchanged: LLM-driven analyze, then route or clarify.
@@ -577,6 +595,8 @@ export async function runStreamingPipeline(
 
     if (analysis.action === 'route') {
       tableOverride = analysis.table;
+      resolvedIntent = analysis.intent;
+      llmProposedMode = analysis.outputMode;
     } else {
       // forceGenerate or LLM couldn't route — derive table from history/query text
       const allTexts = [query, ...clarificationHistory.map(t => t.answer)];
@@ -589,6 +609,11 @@ export async function runStreamingPipeline(
       tableOverride = matched?.table ?? availableSources[0]?.table;
     }
   }
+
+  // ── Phase 2: classify + FREEZE output_mode (observed only — no enforcement) ──
+  const outputModeDecision = resolveOutputMode({ query, intent: resolvedIntent, llmProposed: llmProposedMode });
+  recordOutputMode(outputModeDecision, { query, provider });
+  const outputMode = outputModeDecision.outputMode;
 
   // Step 2 — fetch real BigQuery data
   send('status', { message: 'Querying BigQuery...' });
@@ -637,6 +662,10 @@ export async function runStreamingPipeline(
   // Step 3 — shape analysis (gives Gemma column types)
   const dataShape = await analyzeDataShape(allRows);
 
+  // Phase 4: derive constraints (telemetry). Phase 5 governor may consume them.
+  const constraints = deriveConstraints(outputMode, dataShape);
+  recordConstraints(constraints, provider);
+
   // Pre-aggregate so the LLM sees one row per entity with correct averaged values —
   // the same values that hydrateTree will compute from the full dataset.
   const aggregatedRows = preaggregateRows(allRows, dataShape);
@@ -645,7 +674,7 @@ export async function runStreamingPipeline(
   // Step 4 — single LLM call: decides everything (enriched query gives the model full context)
   const providerLabel = provider === 'sonnet' ? 'Sonnet' : 'Gemma';
   send('status', { message: `Analysing ${allRows.length} rows with ${providerLabel}...` });
-  const report = await generateReport(enrichedQuery, dataShape, sampleRows, priorContext, provider);
+  const report = await generateReport(enrichedQuery, dataShape, sampleRows, priorContext, provider, outputMode);
 
   // Fix column casing: LLM often lowercases BQ column names which breaks charts
   const actualColumns = Object.keys(dataShape.columnTypes);
@@ -660,6 +689,30 @@ export async function runStreamingPipeline(
     }
   }
 
+  // Phase 3: shadow validation — passive, never blocks render.
+  shadowValidateCards(report.cards, provider);
+
+  // Phase 5: governor. off → no-op; shadow → log only; enforce → modify output.
+  const gMode = governorMode();
+  if (gMode !== 'off') {
+    const outcome = await governReport({
+      cards: report.cards,
+      constraints,
+      shape: dataShape,
+      provider,
+      mode: gMode,
+      regenerate: async (errs) => {
+        const retryQuery = `${enrichedQuery}\n\nThe previous attempt was invalid — fix these issues and try again: ${errs.join('; ')}`;
+        const r = await generateReport(retryQuery, dataShape, sampleRows, priorContext, provider, outputMode);
+        return fixColumnCasing(r.cards, actualColumns);
+      },
+      fallback: () => generateGovernedFallback(dataShape, constraints),
+    });
+    recordGovernor(outcome);
+    // Only enforce mode mutates output; and never to an empty report.
+    if (gMode === 'enforce' && outcome.cards.length > 0) report.cards = outcome.cards;
+  }
+
   // Step 5 — stream report metadata (includes template so frontend can adapt layout)
   send('meta', {
     title: report.title,
@@ -667,6 +720,7 @@ export async function runStreamingPipeline(
     rowCount: allRows.length,
     template: report.template,
     activeTable: resolvedTable,
+    outputMode,
   });
 
   // Step 6 — hydrate + stream each card (recursive for layout wrappers)
@@ -690,5 +744,8 @@ export async function runStreamingPipeline(
     title: report.title,
     message: report.message,
     activeTable: resolvedTable,
+    followUp: report.followUp,
+    rowCount: allRows.length,
+    outputMode,
   }, 5 * 60 * 1000);
 }

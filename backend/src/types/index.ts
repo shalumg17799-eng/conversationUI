@@ -1,3 +1,5 @@
+import { OutputMode } from '../registry/componentRegistry';
+
 export interface IntentResult {
   intent: "metric_by_dimension" | "trend" | "comparison";
   metric: string;
@@ -38,4 +40,16 @@ export interface ReportSection {
 export interface ValidationResult {
   isValid: boolean;
   errors?: string[];
+}
+
+// Cached streaming report payload. Includes followUp + rowCount so cache replays
+// are lossless (Phase 1 fix: previously dropped follow-ups and row count).
+export interface CachedReport {
+  components: UITypeTree[];
+  title: string;
+  message: string;
+  activeTable?: string;
+  followUp?: Array<{ label: string; intent: string }>;
+  rowCount?: number | null;
+  outputMode?: OutputMode;   // Phase 2: observed classification (not enforced)
 }

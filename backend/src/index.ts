@@ -5,6 +5,10 @@ import { runStreamingPipeline } from './pipeline/runStreamingPipeline';
 import { BigQueryService } from './services/bigqueryService';
 import { callLLM, probeTableAvailability, resolveProvider } from './services/llmHandler';
 import { refreshCatalog } from './services/catalogRefresher';
+import { getOutputModeSummary, resetOutputModeMetrics } from './services/outputModeTelemetry';
+import { getValidationSummary, resetValidationMetrics } from './services/validationTelemetry';
+import { getConstraintSummary, resetConstraintMetrics } from './services/constraintTelemetry';
+import { getGovernorSummary, resetGovernorMetrics } from './services/governorTelemetry';
 
 dotenv.config();
 
@@ -206,6 +210,42 @@ app.post('/api/catalog/refresh', async (_req: Request, res: Response) => {
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
+});
+
+// Phase 2 — output_mode observability (distribution, fallback/override/invalid rates).
+app.get('/api/metrics/output-mode', (_req: Request, res: Response) => {
+  res.json(getOutputModeSummary());
+});
+app.post('/api/metrics/output-mode/reset', (_req: Request, res: Response) => {
+  resetOutputModeMetrics();
+  res.json({ success: true });
+});
+
+// Phase 3 — shadow validation observability (passive; never affects rendering).
+app.get('/api/metrics/validation', (_req: Request, res: Response) => {
+  res.json(getValidationSummary());
+});
+app.post('/api/metrics/validation/reset', (_req: Request, res: Response) => {
+  resetValidationMetrics();
+  res.json({ success: true });
+});
+
+// Phase 4 — advisory constraint observability (passive; never affects generation).
+app.get('/api/metrics/constraints', (_req: Request, res: Response) => {
+  res.json(getConstraintSummary());
+});
+app.post('/api/metrics/constraints/reset', (_req: Request, res: Response) => {
+  resetConstraintMetrics();
+  res.json({ success: true });
+});
+
+// Phase 5 — governor observability (mode, change rate, retries, fallbacks, drops).
+app.get('/api/metrics/governor', (_req: Request, res: Response) => {
+  res.json(getGovernorSummary());
+});
+app.post('/api/metrics/governor/reset', (_req: Request, res: Response) => {
+  resetGovernorMetrics();
+  res.json({ success: true });
 });
 
 app.listen(port, () => {

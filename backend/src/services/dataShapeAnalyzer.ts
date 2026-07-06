@@ -38,6 +38,35 @@ const detectColumnType = (value: any): "numeric" | "categorical" | "datetime" =>
   return 'categorical';
 };
 
+// Surrogate date keys: numeric columns that encode a date/period rather than a metric,
+// e.g. month_id=202404, week_id, fiscal_period. `detectColumnType` sees a number and calls
+// them 'numeric', which suppresses time-series detection. We catch them here first —
+// by NAME (month_id, week_id, year_id, day_id, quarter_id, fiscal_period, period_id,
+// date_id, time_id, incl. table-prefixed variants) or by VALUE (YYYYMM / YYYYMMDD ints).
+const SURROGATE_DATE_KEY_PATTERNS = /(^|_)((month|week|year|day|quarter|period|date|time)_id|fiscal_period)$/i;
+
+function isNumericDateSurrogate(value: any): boolean {
+  if (typeof value !== 'number' || !Number.isInteger(value)) return false;
+  const s = String(Math.abs(value));
+  if (s.length === 6) { // YYYYMM (e.g. 202404)
+    const y = +s.slice(0, 4), m = +s.slice(4, 6);
+    return y >= 1900 && y <= 2200 && m >= 1 && m <= 12;
+  }
+  if (s.length === 8) { // YYYYMMDD (e.g. 20240401)
+    const y = +s.slice(0, 4), m = +s.slice(4, 6), d = +s.slice(6, 8);
+    return y >= 1900 && y <= 2200 && m >= 1 && m <= 12 && d >= 1 && d <= 31;
+  }
+  return false;
+}
+
+// Classify a column, treating surrogate date keys as datetime BEFORE the generic
+// numeric/string/date detection. Real ISO date strings still fall through to detectColumnType.
+const classifyColumnType = (colName: string, sampleValue: any): "numeric" | "categorical" | "datetime" => {
+  if (SURROGATE_DATE_KEY_PATTERNS.test(colName)) return 'datetime';
+  if (isNumericDateSurrogate(sampleValue)) return 'datetime';
+  return detectColumnType(sampleValue);
+};
+
 /**
  * Counts unique values in a column across all rows.
  */
@@ -75,9 +104,10 @@ export const analyzeDataShape = async (rows: any[]): Promise<ShapeSignature> => 
   let isTimeSeries = false;
 
   columns.forEach(col => {
-    // Detect type using the first non-null value
+    // Detect type using the first non-null value. Surrogate date keys (month_id etc.)
+    // are resolved to 'datetime' by name/value before the generic numeric detection.
     const firstNonNull = rows.find(r => r[col] !== null && r[col] !== undefined);
-    const type = detectColumnType(firstNonNull ? firstNonNull[col] : null);
+    const type = classifyColumnType(col, firstNonNull ? firstNonNull[col] : null);
     
     columnTypes[col] = type;
 

@@ -6,6 +6,8 @@ import { ShapeSignature } from '../types';
 import { runQueryWithMeta, qualifiedTable } from '../lib/bigqueryClient';
 import { DATA_SOURCES, ALL_DOMAINS, ALL_TABLES, getSourcesByDomain, getAnglesByDomain, findAnglesByLabel } from './dataSourceMap';
 import { loadCatalogContext } from './catalogRefresher';
+import { OutputMode } from '../registry/componentRegistry';
+import { isValidOutputMode, withOutputModeHint } from './outputMode';
 
 dotenv.config();
 
@@ -116,7 +118,7 @@ export interface ClarifyResult {
 
 export type AnalyzeResult =
   | { action: 'clarify'; opener: string; question: string; options: string[] }
-  | { action: 'route'; table: string; intent: 'trend' | 'comparison' | 'metric_by_dimension' };
+  | { action: 'route'; table: string; intent: 'trend' | 'comparison' | 'metric_by_dimension'; outputMode?: OutputMode };
 
 export interface ReportCard {
   renderType: string;
@@ -521,7 +523,7 @@ export type SonnetIntent =
   | { action: 'chat'; message: string }
   | { action: 'answer'; message: string }
   | { action: 'clarify'; question: string; options: string[] }
-  | { action: 'generate'; table: string; intent: 'trend' | 'comparison' | 'metric_by_dimension' };
+  | { action: 'generate'; table: string; intent: 'trend' | 'comparison' | 'metric_by_dimension'; outputMode?: OutputMode };
 
 // True when the text carries report-level intent beyond a bare domain — a metric,
 // dimension, chart type, or comparison. "create a sales report" → false (bare domain),
@@ -619,11 +621,11 @@ Respond with valid JSON only, no markdown:
   const user = `USER MESSAGE: "${query}"${historyText}\n\nDecide the best next action. Respond with JSON.`;
 
   try {
-    const raw = await withRetry(() => modelGenerate('sonnet', { system, user, temperature: 0.4, maxOutputTokens: 1024 }));
+    const raw = await withRetry(() => modelGenerate('sonnet', { system: withOutputModeHint(system), user, temperature: 0.4, maxOutputTokens: 1024 }));
     const parsed = JSON.parse(extractJSON(stripThinkTags(raw)));
 
     if (parsed.action === 'generate' && parsed.table && available.some(s => s.table === parsed.table)) {
-      return { action: 'generate', table: parsed.table, intent: parsed.intent ?? 'metric_by_dimension' };
+      return { action: 'generate', table: parsed.table, intent: parsed.intent ?? 'metric_by_dimension', outputMode: isValidOutputMode(parsed.output_mode) ? parsed.output_mode : undefined };
     }
     if (parsed.action === 'clarify') {
       // Guardrail: if the domain is already known, force report-level options so we can
@@ -755,7 +757,7 @@ export async function analyzeQuery(
     const { system, user } = await buildAnalyzePrompt(query, history);
 
     const raw = await withRetry(() => modelGenerate(provider, {
-      system, user, temperature: 0.2, maxOutputTokens: 768,
+      system: withOutputModeHint(system), user, temperature: 0.2, maxOutputTokens: 768,
     }));
 
     const cleaned = stripThinkTags(raw);
@@ -772,6 +774,7 @@ export async function analyzeQuery(
           action: 'route',
           table: parsed.table,
           intent: parsed.intent ?? 'metric_by_dimension',
+          outputMode: isValidOutputMode(parsed.output_mode) ? parsed.output_mode : undefined,
         };
       }
       console.warn(`[analyzeQuery] LLM returned unavailable table "${parsed.table}" — falling back`);
@@ -1248,7 +1251,9 @@ export async function generateReport(
   sampleRows: any[],
   priorContext?: string,
   provider: LLMProvider = 'gemma',
+  outputMode?: OutputMode,   // Phase 2: inert — logged for observability, never enforced
 ): Promise<LLMReport> {
+  if (outputMode) console.log(`[generateReport] outputMode=${outputMode} (observed, not enforced)`);
   const allColumns = Object.keys(shape.columnTypes);
 
   const entities = extractQueryEntities(query, sampleRows, shape.dimensionColumns);

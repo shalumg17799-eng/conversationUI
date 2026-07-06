@@ -1,4 +1,5 @@
 {
+  "_deprecated": "Superseded by componentRegistry.ts. Retained only until uiValidator.ts is rewired (Phase 2). Do not edit.",
   "components": [
     {
       "type": "BarChart",

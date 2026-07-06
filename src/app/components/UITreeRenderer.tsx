@@ -12,6 +12,7 @@ import {
 } from 'recharts';
 import { GenerativeTable } from './GenerativeTable';
 import { ReportSkeleton } from './ReportSkeleton';
+import { RenderType } from './renderTypes';
 import {
   TrendingUp, TrendingDown, Minus,
   Lightbulb, AlertTriangle, CheckCircle2, Info,
@@ -1052,7 +1053,8 @@ function ReportShell({ title, description, warnings, children }: any) {
 // COMPONENT REGISTRY
 // ════════════════════════════════════════════════════════════════════════════
 
-const COMPONENT_MAP: Record<string, React.ComponentType<any>> = {
+// Typed with RenderType so a missing/extra key fails `tsc` — compile-time parity (Phase 1).
+const COMPONENT_MAP: Record<RenderType, React.ComponentType<any>> = {
   KPI: KPICard,
   KPICard,
   KPIGrid,
