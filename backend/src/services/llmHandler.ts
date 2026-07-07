@@ -284,6 +284,117 @@ function useSonnetApi(): boolean {
   return !!(process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY.trim());
 }
 
+// Rewrite report-video narration lines into natural spoken voiceover, keeping
+// every number/fact identical and the order/count of lines unchanged. Used by
+// the client-only video feature via /api/video/narration. Degrades gracefully:
+// with no API key (or on any parse mismatch) the original lines pass through.
+export async function polishNarrationLines(lines: string[], title?: string): Promise<string[]> {
+  if (!Array.isArray(lines) || lines.length === 0) return lines ?? [];
+
+  const system =
+    'You are a professional voiceover script editor for short data-report videos. ' +
+    'Rewrite each narration line so it sounds warm, clear, and natural when spoken aloud. ' +
+    'STRICT RULES: keep every number, percentage, date, and proper noun exactly as given; ' +
+    'do not invent facts; keep each line roughly the same length (one or two sentences); ' +
+    'return ONLY a JSON array of strings with the SAME length and order as the input — no prose, no keys.';
+  const user = JSON.stringify({ title: title ?? 'Report', lines });
+
+  try {
+    // Route through the same Sonnet transport as reports: API SDK when
+    // ANTHROPIC_API_KEY is set, otherwise the locally-authenticated `claude` CLI.
+    const raw = await modelGenerate('sonnet', { system, user, maxOutputTokens: 1600, temperature: 0.5 });
+    const match = raw.match(/\[[\s\S]*\]/);
+    if (!match) return lines;
+    const parsed = JSON.parse(match[0]);
+    if (Array.isArray(parsed) && parsed.length === lines.length && parsed.every((s) => typeof s === 'string' && s.trim())) {
+      return parsed as string[];
+    }
+    return lines;
+  } catch {
+    return lines; // any failure → keep deterministic narration
+  }
+}
+
+// Scene context handed to the video scriptwriter — enough to tell the story
+// without the narration parroting what's already on screen.
+export interface NarrationScene {
+  kind: string;               // cover | kpis | chart | insight | table | outro
+  heading?: string;
+  onScreen?: string[];        // text already visible on the slide
+  dataHint?: string;          // factual summary (numbers) the line may draw from
+}
+
+// Write engaging, story-structured voiceover for a report video. Produces one
+// line per scene as a single flowing narrative — hook/context → the findings →
+// takeaway — instead of reading the slide text. TTS-friendly (full month names,
+// spoken numbers, no abbreviations/codes). Falls back to the provided dataHints
+// (the deterministic narration) if the model is unavailable or returns garbage.
+export async function writeVideoNarration(
+  scenes: NarrationScene[],
+  meta: { title?: string; description?: string },
+): Promise<string[]> {
+  const fallback = scenes.map(s => s.dataHint ?? '');
+  if (!scenes.length) return fallback;
+
+  const system =
+    'You are a scriptwriter for short, engaging data-story videos. You write the voiceover narration only.\n' +
+    'Write the whole set of lines as ONE cohesive story that flows scene to scene:\n' +
+    '• Open by framing what this report is about and WHY it matters (the question or problem it answers).\n' +
+    '• Build through the middle scenes by revealing what the data shows — the tension, the standouts, what is surprising or important.\n' +
+    '• Close with a clear takeaway or "so what".\n' +
+    'HARD RULES:\n' +
+    '- Return ONLY a JSON array of strings, exactly one per scene, in order. No keys, no commentary.\n' +
+    '- Each line is 1–2 sentences of natural, spoken English (a person talking, not a caption).\n' +
+    '- DO NOT read the on-screen text verbatim. Complement it — add the narrative connective tissue between slides.\n' +
+    '- Every number, percentage, and name must stay accurate to the data hints. Never invent figures.\n' +
+    '- Write for text-to-speech: spell months in full (say "April", never "Apr" or "A P R"); say "percent" and "dollars"; expand or drop codes and abbreviations (e.g. say "territory nine", not "T-009"; never read "(APR)" as letters).\n' +
+    '- Vary sentence openings; keep it warm and confident, not robotic.';
+
+  const user = JSON.stringify({
+    title: meta.title ?? 'Report',
+    description: meta.description ?? '',
+    scenes: scenes.map((s, i) => ({ scene: i + 1, kind: s.kind, heading: s.heading, onScreen: s.onScreen, dataHint: s.dataHint })),
+  });
+
+  try {
+    const raw = await modelGenerate('sonnet', { system, user, maxOutputTokens: 2200, temperature: 0.7 });
+    const match = raw.match(/\[[\s\S]*\]/);
+    if (!match) return fallback;
+    const parsed = JSON.parse(match[0]);
+    if (Array.isArray(parsed) && parsed.length === scenes.length && parsed.every((s) => typeof s === 'string' && s.trim())) {
+      return parsed as string[];
+    }
+    return fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+// Choose a few cinematic stock-footage search queries for the B-roll behind a
+// report video, evoking the topic without literal charts. Falls back to safe
+// corporate defaults.
+export async function pickFootageQueries(title?: string, description?: string): Promise<string[]> {
+  const fallback = ['business analytics', 'modern office', 'city skyline aerial'];
+  const system =
+    'You pick stock-video search queries for cinematic B-roll behind a corporate data-report video. ' +
+    'Return ONLY a JSON array of exactly 3 short queries (1–3 lowercase words each). ' +
+    'They should evoke the report\'s subject and a professional, aspirational mood — NOT literal charts, graphs, or screens. ' +
+    'Prefer abstract/atmospheric footage (people working, cityscapes, technology, industry, nature) relevant to the topic. No brand names.';
+  const user = JSON.stringify({ title: title ?? 'Business report', description: description ?? '' });
+  try {
+    const raw = await modelGenerate('sonnet', { system, user, maxOutputTokens: 200, temperature: 0.6 });
+    const m = raw.match(/\[[\s\S]*\]/);
+    if (!m) return fallback;
+    const arr = JSON.parse(m[0]);
+    if (Array.isArray(arr) && arr.length && arr.every((s) => typeof s === 'string' && s.trim())) {
+      return arr.slice(0, 3).map((s) => String(s).trim());
+    }
+    return fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 // Single entry point every LLM call funnels through. Returns the raw model text;
 // callers still run stripThinkTags + extractJSON as before.
 async function modelGenerate(provider: LLMProvider, opts: GenOpts): Promise<string> {

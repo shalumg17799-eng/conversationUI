@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
+import { VideoJobsMenu } from '@/app/components/VideoJobsMenu';
 import {
   LayoutDashboard,
   MessageSquare,
@@ -254,6 +255,8 @@ export function Layout({ children }: LayoutProps) {
               </div>
             )}
           </div>
+          {/* Video reports tray */}
+          <VideoJobsMenu />
           {/* Bell — circle */}
           <button className="w-9 h-9 flex items-center justify-center bg-[#F5F2EE] rounded-full hover:bg-[#EDEAE5] transition-colors relative">
             <Bell className="w-[18px] h-[18px] text-[#6B6965]" />

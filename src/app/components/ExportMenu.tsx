@@ -1,24 +1,39 @@
-// Export dropdown for a generated report — PDF / Excel / PPT.
+// Export dropdown for a generated report — PDF / Excel / PPT / Video.
 // Self-contained (own open state + outside-click close) so each report row in a
 // chat can render its own menu without colliding on shared state.
 
 import { useEffect, useRef, useState } from 'react';
-import { Download, FileSpreadsheet, FileText, Presentation, ChevronDown } from 'lucide-react';
+import { Download, FileSpreadsheet, FileText, Presentation, Clapperboard, Eye, ChevronDown } from 'lucide-react';
 import { exportReportPDF, exportReportExcel, exportReportPPT, type ReportMeta } from '@/lib/exportReport';
+import { VideoPreviewModal } from './VideoPreviewModal';
+import { useVideoJobs } from '@/app/context/VideoJobsContext';
 
 interface ExportMenuProps {
   meta: ReportMeta;
   components: any[];
 }
 
-const OPTIONS = [
+type ExportOption = {
+  key: string;
+  label: string;
+  hint: string;
+  Icon: typeof FileText;
+  run?: (meta: ReportMeta, components: any[]) => void;
+  action?: 'video' | 'preview';
+};
+
+const OPTIONS: ExportOption[] = [
   { key: 'pdf', label: 'PDF', hint: 'Formatted document', Icon: FileText, run: exportReportPDF },
   { key: 'excel', label: 'Excel', hint: 'Spreadsheet workbook', Icon: FileSpreadsheet, run: exportReportExcel },
   { key: 'ppt', label: 'PPT', hint: 'Presentation deck', Icon: Presentation, run: exportReportPPT },
-] as const;
+  { key: 'video', label: 'Video (MP4)', hint: 'Renders in the video tray', Icon: Clapperboard, action: 'video' },
+  { key: 'preview', label: 'Preview video', hint: 'Play instantly, no export', Icon: Eye, action: 'preview' },
+];
 
 export function ExportMenu({ meta, components }: ExportMenuProps) {
+  const { enqueue } = useVideoJobs();
   const [open, setOpen] = useState(false);
+  const [showVideo, setShowVideo] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -54,13 +69,15 @@ export function ExportMenu({ meta, components }: ExportMenuProps) {
           role="menu"
           className="absolute right-0 z-50 mt-1.5 w-52 overflow-hidden rounded-xl border border-border bg-white shadow-lg"
         >
-          {OPTIONS.map(({ key, label, hint, Icon, run }) => (
+          {OPTIONS.map(({ key, label, hint, Icon, run, action }) => (
             <button
               key={key}
               role="menuitem"
               onClick={() => {
                 setOpen(false);
-                run(meta, components);
+                if (action === 'video') enqueue(meta, components);
+                else if (action === 'preview') setShowVideo(true);
+                else run?.(meta, components);
               }}
               className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left hover:bg-accent transition-colors"
             >
@@ -72,6 +89,10 @@ export function ExportMenu({ meta, components }: ExportMenuProps) {
             </button>
           ))}
         </div>
+      )}
+
+      {showVideo && (
+        <VideoPreviewModal meta={meta} components={components} onClose={() => setShowVideo(false)} />
       )}
     </div>
   );

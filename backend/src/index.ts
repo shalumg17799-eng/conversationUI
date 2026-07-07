@@ -3,12 +3,15 @@ import dotenv from 'dotenv';
 import { runPipeline } from './pipeline/runPipeline';
 import { runStreamingPipeline } from './pipeline/runStreamingPipeline';
 import { BigQueryService } from './services/bigqueryService';
-import { callLLM, probeTableAvailability, resolveProvider } from './services/llmHandler';
+import { callLLM, probeTableAvailability, resolveProvider, polishNarrationLines, writeVideoNarration } from './services/llmHandler';
 import { refreshCatalog } from './services/catalogRefresher';
 import { getOutputModeSummary, resetOutputModeMetrics } from './services/outputModeTelemetry';
 import { getValidationSummary, resetValidationMetrics } from './services/validationTelemetry';
 import { getConstraintSummary, resetConstraintMetrics } from './services/constraintTelemetry';
 import { getGovernorSummary, resetGovernorMetrics } from './services/governorTelemetry';
+import { createJob, getJob, listJobs, cancelJob, deleteJob, videoPath, loadPersistedJobs, AUDIO_ROOT, VIDEO_ROOT, FOOTAGE_ROOT } from './services/videoJobs';
+import { warmupRenderer } from './services/videoRenderer';
+import { ttsEnabled } from './services/ttsService';
 
 dotenv.config();
 
@@ -18,12 +21,13 @@ const port = process.env.PORT || 3001;
 // Allowed CORS origin — set FRONTEND_ORIGIN in production to the frontend URL. Defaults to '*' for dev.
 const ALLOWED_ORIGIN = process.env.FRONTEND_ORIGIN || '*';
 
-app.use(express.json());
+// Video render payloads (the compiled script incl. chart data) can be large.
+app.use(express.json({ limit: '15mb' }));
 
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
@@ -119,6 +123,72 @@ app.post('/api/conversational', async (req: Request, res: Response) => {
       uiTree: { renderType: 'Table', props: { title: 'Error' }, children: [] }
     });
   }
+});
+
+// Narration polish for the report → video feature. Takes the client's
+// deterministic narration lines and returns natural spoken versions (facts
+// preserved). Never fails the caller: on any error it echoes the input back so
+// the video still renders with the original script.
+app.post('/api/video/narration', async (req: Request, res: Response) => {
+  const { lines, scenes, title, description } = req.body ?? {};
+  try {
+    // Preferred: full scene context → story-structured narration.
+    if (Array.isArray(scenes) && scenes.length) {
+      const out = await writeVideoNarration(scenes, { title, description });
+      return res.json({ lines: out });
+    }
+    // Back-compat: line-by-line polish.
+    if (!Array.isArray(lines)) return res.status(400).json({ error: 'lines[] or scenes[] required' });
+    const polished = await polishNarrationLines(lines, typeof title === 'string' ? title : undefined);
+    res.json({ lines: polished });
+  } catch {
+    res.json({ lines: Array.isArray(lines) ? lines : [] });
+  }
+});
+
+// ── Report → video render jobs (backend, high quality) ─────────────────────
+// Narration MP3s are served here so the Remotion renderer (headless Chrome) can
+// load each scene's <Audio> during the render.
+app.use('/media/audio', express.static(AUDIO_ROOT));
+// Pixabay B-roll, served so the renderer can load each scene's background video.
+app.use('/media/footage', express.static(FOOTAGE_ROOT));
+// Finished MP4s, served for inline playback in the client video tray.
+app.use('/media/videos', express.static(VIDEO_ROOT));
+
+// Enqueue a render. Body: { script } — the compiled VideoScript from the client.
+app.post('/api/video', (req: Request, res: Response) => {
+  const script = req.body?.script;
+  if (!script || !Array.isArray(script.scenes) || !script.scenes.length) {
+    return res.status(400).json({ error: 'script with scenes[] required' });
+  }
+  const id = createJob(script);
+  res.json({ id, status: 'queued' });
+});
+
+// List all jobs / library.
+app.get('/api/videos', (_req: Request, res: Response) => res.json({ jobs: listJobs() }));
+
+// Poll a single job's status.
+app.get('/api/video/:id', (req: Request, res: Response) => {
+  const job = getJob(req.params.id);
+  if (!job) return res.status(404).json({ error: 'not found' });
+  res.json(job);
+});
+
+// Stream / download the finished MP4.
+app.get('/api/video/:id/download', (req: Request, res: Response) => {
+  const job = getJob(req.params.id);
+  if (!job || job.status !== 'ready') return res.status(404).json({ error: 'not ready' });
+  res.download(videoPath(req.params.id), `${job.title.replace(/[^a-z0-9]+/gi, '_').slice(0, 60) || 'report'}.mp4`);
+});
+
+app.post('/api/video/:id/cancel', (req: Request, res: Response) => {
+  res.json({ ok: cancelJob(req.params.id) });
+});
+
+app.delete('/api/video/:id', async (req: Request, res: Response) => {
+  await deleteJob(req.params.id);
+  res.json({ ok: true });
 });
 
 // BigQuery raw query endpoint
@@ -254,6 +324,12 @@ app.listen(port, () => {
   // Refresh catalog and probe table availability on startup
   refreshCatalog().catch(err => console.error('[Startup] Catalog refresh failed:', err));
   probeTableAvailability().catch(err => console.error('[Startup] Table availability probe failed:', err));
+
+  // Video: rebuild the library from disk and pre-bundle the Remotion composition
+  // so the first user render doesn't pay the bundling cost.
+  loadPersistedJobs().catch(err => console.error('[Startup] Video library load failed:', err));
+  warmupRenderer();
+  if (!ttsEnabled()) console.warn('[Startup] ELEVENLABS_API_KEY not set — report videos will render WITHOUT narration.');
   setInterval(() => {
     refreshCatalog().catch(err => console.error('[Scheduler] Catalog refresh failed:', err));
   }, 24 * 60 * 60 * 1000);
