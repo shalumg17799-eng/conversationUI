@@ -62,7 +62,11 @@ export async function synthesizeToFile(text: string, outPath: string): Promise<S
 
   let durationMs = 0;
   try {
-    const meta = await parseBuffer(buf, { mimeType: 'audio/mpeg' });
+    // duration:true forces a full-frame scan, so CBR/streamed ElevenLabs MP3s that
+    // lack a Xing/duration header still report an accurate length. Without this the
+    // duration comes back 0 and scene timing falls back to a word-count estimate that
+    // does not match the spoken audio — which is what desyncs narration from visuals.
+    const meta = await parseBuffer(buf, { mimeType: 'audio/mpeg', size: buf.length }, { duration: true });
     durationMs = Math.round((meta.format.duration ?? 0) * 1000);
   } catch { /* duration stays 0 → scene keeps estimated timing */ }
   return { durationMs, ok: true };

@@ -139,7 +139,15 @@ async function pump() {
           const { durationMs, ok } = await synthesizeToFile(scene.narration, file);
           if (ok) {
             scene.narrationAudio = `${ASSET_BASE}/media/audio/${id}/scene${i}.mp3`;
-            if (durationMs > 0) scene.durationInFrames = Math.max(scene.durationInFrames, Math.round((durationMs / 1000 + TAIL_PAD_SEC) * script.fps));
+            // Retime the scene to the ACTUAL voiceover length (+ tail), so the visual
+            // stays on screen exactly as long as the narration plays. Base it on the
+            // measured audio rather than max() with the word-count estimate — the
+            // estimate is derived from pre-rewrite text and drifts out of sync. A small
+            // floor guarantees the scene's intro animation still has room to play.
+            if (durationMs > 0) {
+              const floorFrames = Math.round(1.8 * script.fps);
+              scene.durationInFrames = Math.max(floorFrames, Math.round((durationMs / 1000 + TAIL_PAD_SEC) * script.fps));
+            }
           }
         } catch { /* skip a failed line; scene stays silent with estimated timing */ }
         set(id, { progress: 0.05 + ((i + 1) / script.scenes.length) * 0.13, label: `Voiceover ${i + 1}/${script.scenes.length}` });
