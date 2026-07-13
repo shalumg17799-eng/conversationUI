@@ -11,6 +11,7 @@ import { writeVideoNarration, pickFootageQueries, type NarrationScene } from './
 import { ttsEnabled, synthesizeToFile } from './ttsService';
 import { pixabayEnabled, searchFootage, downloadFootage } from './pixabayService';
 import { renderScriptToFile } from './videoRenderer';
+import { sceneDurationFrames } from './sceneTiming';
 
 const DATA_DIR = path.resolve(process.cwd(), 'data');
 const VIDEO_DIR = path.join(DATA_DIR, 'videos');
@@ -19,7 +20,6 @@ const FOOTAGE_DIR = path.join(DATA_DIR, 'media', 'footage');
 // Scenes that get cinematic B-roll behind them (data scenes stay clean).
 const HERO_KINDS = new Set(['cover', 'insight', 'outro']);
 const ASSET_BASE = process.env.RENDER_ASSET_BASE || `http://localhost:${process.env.PORT || 3001}`;
-const TAIL_PAD_SEC = 0.6;
 
 export type JobStatus = 'queued' | 'polishing' | 'voicing' | 'rendering' | 'ready' | 'failed' | 'cancelled';
 
@@ -139,14 +139,12 @@ async function pump() {
           const { durationMs, ok } = await synthesizeToFile(scene.narration, file);
           if (ok) {
             scene.narrationAudio = `${ASSET_BASE}/media/audio/${id}/scene${i}.mp3`;
-            // Retime the scene to the ACTUAL voiceover length (+ tail), so the visual
-            // stays on screen exactly as long as the narration plays. Base it on the
-            // measured audio rather than max() with the word-count estimate — the
-            // estimate is derived from pre-rewrite text and drifts out of sync. A small
-            // floor guarantees the scene's intro animation still has room to play.
+            // Retime the scene to the ACTUAL voiceover length via the shared
+            // sceneDurationFrames — the SAME function the in-app preview uses — so
+            // the visual stays on screen exactly as long as the narration plays and
+            // preview and final render never drift apart.
             if (durationMs > 0) {
-              const floorFrames = Math.round(1.8 * script.fps);
-              scene.durationInFrames = Math.max(floorFrames, Math.round((durationMs / 1000 + TAIL_PAD_SEC) * script.fps));
+              scene.durationInFrames = sceneDurationFrames(durationMs, script.fps);
             }
           }
         } catch { /* skip a failed line; scene stays silent with estimated timing */ }
@@ -156,11 +154,29 @@ async function pump() {
 
     // 3. Render.
     if (jobs.get(id)?.status === 'cancelled') throw new CancelError();
+    // Debug: persist the exact script the renderer sees (durations, audio URLs,
+    // footage) so a bad render can be diagnosed after the per-job assets are gone.
+    await fs.writeFile(path.join(VIDEO_DIR, `${id}.script.json`), JSON.stringify(script, null, 2)).catch(() => {});
     set(id, { status: 'rendering', label: 'Rendering 1080p video', progress: 0.2 });
     const { cancelSignal, cancel } = makeCancelSignal();
     cancellers.set(id, cancel);
     const out = videoPath(id);
-    await renderScriptToFile(script, out, (frac) => set(id, { progress: 0.2 + frac * 0.78, label: `Rendering ${Math.round(frac * 100)}%` }), cancelSignal);
+    const onRenderProgress = (frac: number) => set(id, { progress: 0.2 + frac * 0.78, label: `Rendering ${Math.round(frac * 100)}%` });
+    try {
+      await renderScriptToFile(script, out, onRenderProgress, cancelSignal);
+    } catch (renderErr) {
+      // Background B-roll (OffthreadVideo) is the usual cause of a compositor
+      // crash / OOM on a constrained host, and it's purely decorative. Rather
+      // than fail the whole export, strip the footage and render once more on the
+      // clean scene backgrounds. Cancellations are not retried.
+      const cancelled = renderErr instanceof CancelError || (renderErr as any)?.name === 'AbortError' || jobs.get(id)?.status === 'cancelled';
+      const hadFootage = script.scenes.some((s) => (s.visual as { backgroundVideo?: string } | undefined)?.backgroundVideo);
+      if (cancelled || !hadFootage) throw renderErr;
+      console.warn(`[video ${id}] render failed (${(renderErr as any)?.message ?? renderErr}); retrying without background footage`);
+      set(id, { label: 'Retrying without background footage', progress: 0.2 });
+      for (const s of script.scenes) { if (s.visual) delete (s.visual as { backgroundVideo?: string }).backgroundVideo; }
+      await renderScriptToFile(script, out, onRenderProgress, cancelSignal);
+    }
     cancellers.delete(id);
 
     const stat = await fs.stat(out);

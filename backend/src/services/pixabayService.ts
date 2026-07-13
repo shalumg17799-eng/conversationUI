@@ -35,5 +35,27 @@ export async function searchFootage(query: string): Promise<FootageClip[]> {
 export async function downloadFootage(url: string, outPath: string): Promise<void> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Pixabay download ${res.status}`);
-  await fs.writeFile(outPath, Buffer.from(await res.arrayBuffer()));
+  const contentType = res.headers.get('content-type') || '';
+  const buf = Buffer.from(await res.arrayBuffer());
+  // Guard: the CDN occasionally answers 200 with a NON-video body (rate-limit
+  // notice, error page, redirect stub). Writing that as .mp4 makes Remotion's
+  // OffthreadVideo throw "Unknown file type" and fail the WHOLE render — turning a
+  // decorative, best-effort background into a hard export failure. Verify it's a
+  // real video container first; otherwise throw so the caller keeps the scene on
+  // its clean background (which is what "best-effort footage" is supposed to mean).
+  if (!isVideoContainer(buf) && !/^video\//i.test(contentType)) {
+    const head = buf.subarray(0, 16).toString('ascii').replace(/[^\x20-\x7e]/g, '.');
+    throw new Error(`Pixabay download not a video (content-type="${contentType}", ${buf.length}B, head="${head}")`);
+  }
+  await fs.writeFile(outPath, buf);
+}
+
+// Recognise the containers Pixabay serves by magic bytes (more reliable than the
+// content-type header): MP4/MOV (ISO BMFF) carry a 'ftyp' box at offset 4;
+// WebM/Matroska start with the EBML signature 1A 45 DF A3.
+function isVideoContainer(buf: Buffer): boolean {
+  if (buf.length < 12) return false;
+  if (buf.toString('ascii', 4, 8) === 'ftyp') return true;
+  if (buf[0] === 0x1a && buf[1] === 0x45 && buf[2] === 0xdf && buf[3] === 0xa3) return true;
+  return false;
 }

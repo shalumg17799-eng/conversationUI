@@ -7,6 +7,7 @@ import { THEME } from './theme';
 import { SceneFrame } from './components/SceneFrame';
 import { RemChart } from './components/RemChart';
 import { BackgroundVideo } from './components/BackgroundVideo';
+import { chartBeats } from './chartBeats';
 
 // Parse a display metric ("$912K", "64.06%", "10,565,731") into parts so the
 // number can count up while keeping its prefix/suffix/decimals.
@@ -123,8 +124,12 @@ const KpiScene: React.FC<{ scene: VideoScene }> = ({ scene }) => {
 const ChartScene: React.FC<{ scene: VideoScene }> = ({ scene }) => {
   const frame = useCurrentFrame();
   const c = scene.visual.chart!;
-  // Gentle continuous push so the frame breathes.
+  // Gentle continuous push so the frame breathes — this also keeps a long scene
+  // alive during the hold after the chart's reveal has completed.
   const zoom = interpolate(frame, [0, scene.durationInFrames], [1, 1.03], { extrapolateRight: 'clamp' });
+  // Reveal the bullets right as the chart spotlights the peak, at whatever frame
+  // that lands for this scene's length (same beat math the chart uses).
+  const peakReveal = chartBeats(scene.durationInFrames).peakReveal;
   return (
     <SceneFrame kicker={scene.onScreenText.kicker} heading={scene.onScreenText.heading} sub={scene.onScreenText.sub}>
       <div style={{ display: 'flex', gap: 50, height: '100%', alignItems: 'center' }}>
@@ -134,7 +139,7 @@ const ChartScene: React.FC<{ scene: VideoScene }> = ({ scene }) => {
         <div style={{ flex: '1 1 38%' }}>
           <div style={{ color: THEME.brand, fontSize: 24, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 26 }}>What the data shows</div>
           {/* first bullet (the peak) reveals right as the chart spotlights it */}
-          {bulletsBlock(scene.onScreenText.bullets, 44)}
+          {bulletsBlock(scene.onScreenText.bullets, peakReveal)}
         </div>
       </div>
     </SceneFrame>

@@ -9,6 +9,7 @@ import type {
 } from '@/remotion/types';
 import { VIDEO_FPS, VIDEO_W, VIDEO_H } from '@/remotion/types';
 import { THEME } from '@/remotion/theme';
+import { sceneDurationFrames } from '@/remotion/timing';
 import { synthesizeSpeech } from '@/lib/tts';
 
 interface UINode { renderType: string; props?: Record<string, any>; children?: UINode[]; }
@@ -281,8 +282,9 @@ export const scriptDurationInFrames = (s: VideoScript) =>
 // Voice every scene with ElevenLabs and retime each to its clip length, so the
 // visuals stay on screen exactly as long as the narration plays. Runs
 // sequentially (kind to ElevenLabs rate limits) and reports progress 0..1.
-// Falls back to the estimated timing for any line that fails to synthesize.
-const TAIL_PAD_SEC = 0.6; // breathing room after each line before the cut
+// Timing comes from the measured audio via sceneDurationFrames — the SAME
+// function the backend render uses — so preview and final render never diverge.
+// Falls back to the estimated timing only for lines that fail to synthesize.
 
 export async function narrateScript(
   script: VideoScript,
@@ -294,8 +296,10 @@ export async function narrateScript(
     const scene = script.scenes[i];
     try {
       const clip = await synthesizeSpeech(scene.narration);
-      const frames = Math.round((clip.durationMs / 1000 + TAIL_PAD_SEC) * script.fps);
-      scenes.push({ ...scene, narrationAudio: clip.url, durationInFrames: Math.max(scene.durationInFrames, frames) });
+      const durationInFrames = clip.durationMs > 0
+        ? sceneDurationFrames(clip.durationMs, script.fps)
+        : scene.durationInFrames; // measurement failed → keep estimate
+      scenes.push({ ...scene, narrationAudio: clip.url, durationInFrames });
     } catch {
       scenes.push({ ...scene }); // keep estimated timing, no audio
     }

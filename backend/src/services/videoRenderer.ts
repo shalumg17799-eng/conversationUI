@@ -3,6 +3,7 @@
 // H.264 MP4. This is what makes real quality possible — full resolution, real
 // fonts, proper encoding — none of which the browser could do.
 
+import os from 'os';
 import path from 'path';
 import { existsSync } from 'fs';
 import { bundle } from '@remotion/bundler';
@@ -48,6 +49,24 @@ export async function renderScriptToFile(
   const composition = await selectComposition({ serveUrl, id: 'ReportVideo', inputProps });
 
   const onProg: RenderMediaOnProgress = ({ progress }) => onProgress?.(progress);
+  // Surface in-composition console output (warnings/errors from the scenes) so a
+  // bad render isn't diagnosed blind. Tagged with the output basename (the job id).
+  const tag = `[render ${path.basename(outPath)}]`;
+
+  // Render concurrency = how many headless-Chrome tabs run in parallel. Remotion
+  // defaults to the core count, but each tab costs memory and B-roll adds
+  // OffthreadVideo decode on top, so on a host with little free RAM the default
+  // exhausts memory and the compositor process dies ("Compositor exited with
+  // code 3" / "memory allocation … failed"). Derive a memory-safe default
+  // (~1 tab per 0.9 GB free, capped by cores), overridable via
+  // VIDEO_RENDER_CONCURRENCY for hosts that want to force a value.
+  const cores = os.cpus().length;
+  const forced = parseInt(process.env.VIDEO_RENDER_CONCURRENCY || '', 10);
+  const memSafe = Math.max(1, Math.floor(os.freemem() / (0.9 * 1e9)));
+  const concurrency = Number.isFinite(forced) && forced > 0
+    ? Math.max(1, forced)
+    : Math.max(1, Math.min(cores, memSafe));
+  console.log(`${tag} concurrency=${concurrency} (cores=${cores}, freeMem=${(os.freemem() / 1e9).toFixed(1)}GB)`);
 
   await renderMedia({
     composition,
@@ -59,6 +78,10 @@ export async function renderScriptToFile(
     x264Preset: 'medium',
     jpegQuality: 95,            // crisp frame capture
     onProgress: onProg,
+    onBrowserLog: (log) => {
+      if (log.type === 'error' || log.type === 'warning') console.warn(tag, log.type, log.text);
+    },
+    concurrency,
     cancelSignal,
     chromiumOptions: { gl: 'angle' },
   });

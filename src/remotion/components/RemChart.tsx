@@ -7,6 +7,7 @@ import React from 'react';
 import { useCurrentFrame, interpolate, useVideoConfig, spring } from 'remotion';
 import type { ChartVisual } from '../types';
 import { THEME } from '../theme';
+import { chartBeats } from '../chartBeats';
 
 const fmt = (v: number) => {
   const a = Math.abs(v);
@@ -17,10 +18,28 @@ const fmt = (v: number) => {
 };
 const argmax = (a: number[]) => a.reduce((best, v, i) => (Number.isFinite(v) && v > a[best] ? i : best), 0);
 
-export const RemChart: React.FC<{ chart: ChartVisual; width: number; height: number; accent?: string; durationInFrames?: number }> = ({ chart, width, height, accent }) => {
+// Presentation-only label shortening for axis ticks / legends. Abbreviates
+// "February 2025" → "Feb 2025" so month labels fit without a mid-word "…", while
+// leaving the compiler's full labels (and the narration derived from them)
+// untouched. Falls back to a plain truncation for anything else long.
+const MONTH_ABBR: Record<string, string> = {
+  January: 'Jan', February: 'Feb', March: 'Mar', April: 'Apr', May: 'May', June: 'Jun',
+  July: 'Jul', August: 'Aug', September: 'Sep', October: 'Oct', November: 'Nov', December: 'Dec',
+};
+const axisLabel = (l: unknown): string => {
+  const s = String(l ?? '');
+  const m = s.match(/^([A-Za-z]+)\s+(\d{4})$/);
+  if (m && MONTH_ABBR[m[1]]) return `${MONTH_ABBR[m[1]]} ${m[2]}`;
+  return s.length > 12 ? s.slice(0, 11) + '…' : s;
+};
+
+export const RemChart: React.FC<{ chart: ChartVisual; width: number; height: number; accent?: string; durationInFrames?: number }> = ({ chart, width, height, accent, durationInFrames }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const grow = spring({ frame, fps, config: { damping: 200 }, durationInFrames: 26 });
+  // All beats scale with the scene length so the reveal always completes and the
+  // chart never freezes long before the cut (see chartBeats).
+  const beats = chartBeats(durationInFrames ?? 90);
+  const grow = spring({ frame: frame - beats.drawStart, fps, config: { damping: 200 }, durationInFrames: beats.drawDur });
 
   const pad = { top: 40, right: 40, bottom: 58, left: 82 };
   const iw = width - pad.left - pad.right;
@@ -35,11 +54,11 @@ export const RemChart: React.FC<{ chart: ChartVisual; width: number; height: num
   const n = chart.labels.length;
   const peak = argmax(values);
 
-  // Emphasis ramp: once the series is drawn (~frame 34), focus the peak and
-  // recede the rest. A gentle pulse keeps it alive.
-  const focus = interpolate(frame, [34, 50], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-  const pulse = 0.5 + 0.5 * Math.sin(Math.max(0, frame - 40) / 7);
-  const axisOp = interpolate(frame, [0, 14], [0, 1], { extrapolateRight: 'clamp' });
+  // Emphasis ramp: once the series is drawn, focus the peak and recede the rest.
+  // A gentle pulse keeps it alive through the hold at the end of the scene.
+  const focus = interpolate(frame, [beats.focusStart, beats.focusEnd], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const pulse = 0.5 + 0.5 * Math.sin(Math.max(0, frame - beats.focusStart) / 7);
+  const axisOp = interpolate(frame, [0, beats.axisEnd], [0, 1], { extrapolateRight: 'clamp' });
 
   const axis = chart.chartKind !== 'pie' && (
     <g opacity={axisOp}>
@@ -58,21 +77,26 @@ export const RemChart: React.FC<{ chart: ChartVisual; width: number; height: num
         if (i % step !== 0 && i !== n - 1 && i !== peak) return null;
         const x = pad.left + (n === 1 ? iw / 2 : (i / (n - 1)) * iw);
         const isPeak = i === peak;
-        return <text key={i} x={x} y={pad.top + ih + 34} textAnchor="middle" fontSize={20} fontWeight={isPeak ? 700 : 400} fill={isPeak ? THEME.ink : THEME.muted}>{String(l).length > 12 ? String(l).slice(0, 11) + '…' : l}</text>;
+        return <text key={i} x={x} y={pad.top + ih + 34} textAnchor="middle" fontSize={20} fontWeight={isPeak ? 700 : 400} fill={isPeak ? THEME.ink : THEME.muted}>{axisLabel(l)}</text>;
       })}
     </g>
   );
 
   // Callout bubble for the peak value.
   const callout = (cx: number, cy: number, text: string) => {
-    const op = interpolate(frame, [42, 54], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+    const op = interpolate(frame, [beats.calloutStart, beats.calloutEnd], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
     const w = Math.max(90, text.length * 17 + 34), h = 52;
-    const x = Math.min(Math.max(cx - w / 2, pad.left), pad.left + iw - w);
+    // Keep a margin from the chart's right edge so the bubble doesn't crowd the
+    // frame when the peak is the last data point.
+    const rightMargin = 16;
+    const x = Math.min(Math.max(cx - w / 2, pad.left), Math.max(pad.left, pad.left + iw - w - rightMargin));
     const y = Math.max(cy - h - 20, 4);
     return (
       <g opacity={op} transform={`translate(0, ${interpolate(op, [0, 1], [8, 0])})`}>
         <rect x={x} y={y} width={w} height={h} rx={12} fill={THEME.ink} />
-        <text x={x + w / 2} y={y + h / 2 + 8} textAnchor="middle" fontSize={26} fontWeight={800} fill="#FFFFFF" fontFamily={THEME.fontMono}>{text}</text>
+        {/* Body font (not mono) so the value reads tight — no fonts are loaded in
+            the render, and the mono fallback puts ugly gaps around the decimal. */}
+        <text x={x + w / 2} y={y + h / 2 + 8} textAnchor="middle" fontSize={26} fontWeight={800} fill="#FFFFFF" fontFamily={THEME.fontBody}>{text}</text>
         <path d={`M${cx - 8} ${y + h} L${cx + 8} ${y + h} L${cx} ${y + h + 12} Z`} fill={THEME.ink} />
       </g>
     );
@@ -83,10 +107,13 @@ export const RemChart: React.FC<{ chart: ChartVisual; width: number; height: num
 
   if (chart.chartKind === 'bar') {
     const bw = (iw / n) * 0.62;
+    // Stagger the bars across the draw window so the last one still settles
+    // before the peak focus begins, regardless of bar count or scene length.
+    const stagger = Math.max(1, Math.round((beats.focusStart - beats.drawStart) * 0.4 / Math.max(1, n)));
     body = chart.labels.map((_, i) => {
       const v = values[i] ?? 0;
       const full = yOf(minV) - yOf(v);
-      const g = spring({ frame: frame - 6 - i * 2, fps, config: { damping: 200 }, durationInFrames: 20 });
+      const g = spring({ frame: frame - beats.drawStart - i * stagger, fps, config: { damping: 200 }, durationInFrames: beats.drawDur });
       const h = Math.max(0, full * g);
       const x = pad.left + (i + 0.5) * (iw / n) - bw / 2;
       const isPeak = i === peak;
@@ -159,9 +186,9 @@ export const RemChart: React.FC<{ chart: ChartVisual; width: number; height: num
       {body}
       {peakCallout}
       {chart.chartKind === 'pie' && chart.labels.slice(0, 6).map((l, i) => (
-        <g key={i} transform={`translate(${width - 250}, ${44 + i * 42})`} opacity={interpolate(frame, [10 + i * 3, 24 + i * 3], [0, 1], { extrapolateRight: 'clamp' })}>
+        <g key={i} transform={`translate(${width - 250}, ${44 + i * 42})`} opacity={interpolate(frame, [beats.axisEnd + i * 3, beats.axisEnd + 12 + i * 3], [0, 1], { extrapolateRight: 'clamp' })}>
           <rect width={22} height={22} rx={4} fill={THEME.series[i % THEME.series.length]} />
-          <text x={32} y={18} fontSize={22} fill={THEME.ink}>{String(l).length > 15 ? String(l).slice(0, 14) + '…' : l}</text>
+          <text x={32} y={18} fontSize={22} fill={THEME.ink}>{axisLabel(l)}</text>
         </g>
       ))}
     </svg>

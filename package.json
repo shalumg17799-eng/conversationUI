@@ -10,7 +10,8 @@
     "test:outputmode": "cd backend && npx ts-node --transpile-only --project ../scripts/tsconfig.json ../scripts/test_outputMode.ts",
     "test:validation": "cd backend && npx ts-node --transpile-only --project ../scripts/tsconfig.json ../scripts/test_validation.ts",
     "test:constraints": "cd backend && npx ts-node --transpile-only --project ../scripts/tsconfig.json ../scripts/test_constraints.ts",
-    "test:governor": "cd backend && npx ts-node --transpile-only --project ../scripts/tsconfig.json ../scripts/test_governor.ts"
+    "test:governor": "cd backend && npx ts-node --transpile-only --project ../scripts/tsconfig.json ../scripts/test_governor.ts",
+    "test:timing": "cd backend && npx ts-node --transpile-only --project ../scripts/tsconfig.json ../scripts/test_timing.ts"
   },
   "dependencies": {
     "@amcharts/amcharts5": "^5.16.0",
