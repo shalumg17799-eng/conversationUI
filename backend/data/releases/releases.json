@@ -1,0 +1,28 @@
+[
+  {
+    "version": "2026.07.13",
+    "title": "Updates now come with short explainer videos",
+    "script": "Whenever a feature ships, the app now automatically puts together a short video explaining what changed. You'll see a badge the next time you log in — just click it to watch a 20-second rundown. That way you always know what's new without having to hunt for it.",
+    "bullets": [
+      "Short video auto-generated for every new feature",
+      "20-second rundown covers what changed",
+      "Login badge flags updates you haven't seen"
+    ],
+    "affectedArea": "Release notes",
+    "videoUrl": "/media/releases/2026.07.13.mp4",
+    "createdAt": "2026-07-13T10:15:19.368Z"
+  },
+  {
+    "version": "2026.07.14",
+    "title": "What's-new updates now include a voiceover",
+    "script": "When you open a what's-new update, you'll now hear it read aloud as the text appears on screen. The video length is matched to the narration, so everything stays in sync from start to finish. No more reading through release notes — just watch and listen.",
+    "bullets": [
+      "Voiceover reads each update aloud",
+      "Text and audio appear together",
+      "Video length matches narration timing"
+    ],
+    "affectedArea": "Release notes",
+    "videoUrl": "/media/releases/2026.07.14.mp4",
+    "createdAt": "2026-07-13T12:33:11.247Z"
+  }
+]

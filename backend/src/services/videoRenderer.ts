@@ -37,16 +37,19 @@ function getServeUrl(): Promise<string> {
 
 export interface RenderResult { outPath: string; }
 
-export async function renderScriptToFile(
-  script: unknown,
+// Render any registered composition to an MP4, reusing the cached bundle,
+// memory-safe concurrency, and browser-log surfacing. renderScriptToFile (report
+// videos) and the release-note renderer are both thin callers of this.
+export async function renderCompositionToFile(
+  compositionId: string,
+  inputProps: Record<string, unknown>,
   outPath: string,
   onProgress?: (fraction: number) => void,
   cancelSignal?: Parameters<typeof renderMedia>[0]['cancelSignal'],
 ): Promise<RenderResult> {
   const serveUrl = await getServeUrl();
-  const inputProps = { script } as Record<string, unknown>;
 
-  const composition = await selectComposition({ serveUrl, id: 'ReportVideo', inputProps });
+  const composition = await selectComposition({ serveUrl, id: compositionId, inputProps });
 
   const onProg: RenderMediaOnProgress = ({ progress }) => onProgress?.(progress);
   // Surface in-composition console output (warnings/errors from the scenes) so a
@@ -87,6 +90,16 @@ export async function renderScriptToFile(
   });
 
   return { outPath };
+}
+
+// Report videos: render the 'ReportVideo' composition from a compiled script.
+export async function renderScriptToFile(
+  script: unknown,
+  outPath: string,
+  onProgress?: (fraction: number) => void,
+  cancelSignal?: Parameters<typeof renderMedia>[0]['cancelSignal'],
+): Promise<RenderResult> {
+  return renderCompositionToFile('ReportVideo', { script }, outPath, onProgress, cancelSignal);
 }
 
 // Warm the bundle at startup so the first user render isn't slowed by bundling.

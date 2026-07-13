@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import React, { useState, useEffect } from 'react';
 import { Card } from './ui/Card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';

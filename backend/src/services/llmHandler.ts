@@ -396,8 +396,11 @@ export async function pickFootageQueries(title?: string, description?: string): 
 }
 
 // Single entry point every LLM call funnels through. Returns the raw model text;
-// callers still run stripThinkTags + extractJSON as before.
-async function modelGenerate(provider: LLMProvider, opts: GenOpts): Promise<string> {
+// callers still run stripThinkTags + extractJSON as before. Exported so parallel,
+// offline features (e.g. release-note generation) can reuse the same Sonnet
+// transport (CLI on OAuth, or API when ANTHROPIC_API_KEY is set) without touching
+// the query pipeline.
+export async function modelGenerate(provider: LLMProvider, opts: GenOpts): Promise<string> {
   if (provider === 'sonnet') return useSonnetApi() ? generateViaAPI(opts) : generateViaCLI(opts);
 
   const ai = getAI();

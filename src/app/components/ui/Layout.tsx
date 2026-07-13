@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { VideoJobsMenu } from '@/app/components/VideoJobsMenu';
+import { WhatsNewBadge } from '@/app/components/WhatsNewBadge';
 import {
   LayoutDashboard,
   MessageSquare,
@@ -343,6 +344,9 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Floating Mode Toggle */}
       <ModeToggle />
+
+      {/* Login-time "what's new" release nudge (authenticated pages only) */}
+      <WhatsNewBadge />
     </div>
   );
 }
