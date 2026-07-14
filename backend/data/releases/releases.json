@@ -1,28 +1,46 @@
 [
   {
-    "version": "2026.07.13",
-    "title": "Updates now come with short explainer videos",
-    "script": "Whenever a feature ships, the app now automatically puts together a short video explaining what changed. You'll see a badge the next time you log in — just click it to watch a 20-second rundown. That way you always know what's new without having to hunt for it.",
-    "bullets": [
-      "Short video auto-generated for every new feature",
-      "20-second rundown covers what changed",
-      "Login badge flags updates you haven't seen"
-    ],
-    "affectedArea": "Release notes",
-    "videoUrl": "/media/releases/2026.07.13.mp4",
-    "createdAt": "2026-07-13T10:15:19.368Z"
-  },
-  {
     "version": "2026.07.14",
-    "title": "What's-new updates now include a voiceover",
-    "script": "When you open a what's-new update, you'll now hear it read aloud as the text appears on screen. The video length is matched to the narration, so everything stays in sync from start to finish. No more reading through release notes — just watch and listen.",
-    "bullets": [
-      "Voiceover reads each update aloud",
-      "Text and audio appear together",
-      "Video length matches narration timing"
-    ],
-    "affectedArea": "Release notes",
-    "videoUrl": "/media/releases/2026.07.14.mp4",
-    "createdAt": "2026-07-13T12:33:11.247Z"
+    "publishedAt": "2026-07-14T13:07:32.301Z",
+    "features": [
+      {
+        "id": "model-upgrade-tool-use",
+        "title": "Smarter, faster answers with the right visuals",
+        "script": "The assistant now runs on an upgraded model, so you get answers that are faster and more consistent than before. When you ask a question, a new adapter automatically picks the right way to show your data — whether that's a chart, a KPI card, or a table. You don't need to do anything differently; it just works better.",
+        "bullets": [
+          "Upgraded to Claude Sonnet",
+          "Auto-selects the right chart, card, or table",
+          "Faster and more consistent responses"
+        ],
+        "affectedArea": "LLM",
+        "videoUrl": "/media/releases/2026.07.14/model-upgrade-tool-use.mp4"
+      },
+      {
+        "id": "doc-deck-export",
+        "title": "Export Reports to PDF, Word, or PowerPoint",
+        "script": "You can now export any report or dashboard view to a polished, shareable document in one click. Head to the report toolbar, choose your format — PDF, Word, or PowerPoint — and download it straight away. Your charts and tables come through exactly as you see them on screen.",
+        "bullets": [
+          "Export to PDF, Word, or PowerPoint",
+          "One click from the report toolbar",
+          "Charts and tables stay intact",
+          "Works on any report or dashboard"
+        ],
+        "affectedArea": "Reports",
+        "videoUrl": "/media/releases/2026.07.14/doc-deck-export.mp4"
+      },
+      {
+        "id": "generative-video-remotion",
+        "title": "Turn Any Report Into a Narrated Video",
+        "script": "You can now turn any report into a short narrated video, complete with an AI voiceover. Just open the video reports tray and generate one straight from there. In fact, this panel you're watching right now was made exactly the same way.",
+        "bullets": [
+          "Turn any report into a video",
+          "AI voiceover included automatically",
+          "Generate from the video reports tray",
+          "This panel was made the same way"
+        ],
+        "affectedArea": "Video",
+        "videoUrl": "/media/releases/2026.07.14/generative-video-remotion.mp4"
+      }
+    ]
   }
 ]

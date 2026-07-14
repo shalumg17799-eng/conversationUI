@@ -12,7 +12,7 @@ import { getGovernorSummary, resetGovernorMetrics } from './services/governorTel
 import { createJob, getJob, listJobs, cancelJob, deleteJob, videoPath, loadPersistedJobs, AUDIO_ROOT, VIDEO_ROOT, FOOTAGE_ROOT } from './services/videoJobs';
 import { warmupRenderer } from './services/videoRenderer';
 import { ttsEnabled } from './services/ttsService';
-import { getLatestRelease, releasesDir } from './releaseNotes/releaseStore';
+import { getLatestRelease, listReleaseSummaries, releasesDir } from './releaseNotes/releaseStore';
 
 dotenv.config();
 
@@ -158,8 +158,8 @@ app.use('/media/videos', express.static(VIDEO_ROOT));
 // "What's new" release explainer MP4s (mirrors /media/videos).
 app.use('/media/releases', express.static(releasesDir()));
 
-// Latest release note for the login-time "what's new" badge. Public, like the
-// other /api routes (the app gates access client-side after login).
+// Latest release (with its full features[]) for the "what's new" Help panel.
+// Public, like the other /api routes (the app gates access client-side after login).
 app.get('/api/releases/latest', async (_req: Request, res: Response) => {
   try {
     const latest = await getLatestRelease();
@@ -167,6 +167,15 @@ app.get('/api/releases/latest', async (_req: Request, res: Response) => {
     res.json(latest);
   } catch (e: any) {
     res.status(500).json({ error: (e?.message ?? 'failed to read releases').toString().slice(0, 200) });
+  }
+});
+
+// All releases, lightweight (title + bullets per feature) for a "previous releases" view.
+app.get('/api/releases', async (_req: Request, res: Response) => {
+  try {
+    res.json({ releases: await listReleaseSummaries() });
+  } catch (e: any) {
+    res.status(500).json({ error: (e?.message ?? 'failed to list releases').toString().slice(0, 200) });
   }
 });
 

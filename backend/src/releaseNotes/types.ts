@@ -1,27 +1,45 @@
-// Types for the "what's new" release-note pipeline. This is a small, offline
-// pipeline (CLI / CI job) that reuses the Claude transport and the Remotion
-// renderer, but is otherwise independent of the dashboard query pipeline.
+// Types for the "what's new" release pipeline. A release now bundles MANY feature
+// items — each independently scripted (Claude), narrated (ElevenLabs) and rendered
+// (Remotion) — rather than one video per release. Still an offline CLI/CI pipeline,
+// independent of the dashboard query pipeline.
 
-// What a caller (CLI args, a CHANGELOG entry, a PR description) feeds in.
-export interface ReleaseInput {
-  version?: string;      // optional; defaults to today's date (YYYY.MM.DD)
+// ── Input (CLI args, a JSON file, a PR body → JSON) ──────────────────────────
+export interface FeatureInput {
+  id?: string;           // slug for the filename/URL; derived from title if absent
   title: string;         // short change title (required)
   summary?: string;      // free-text description of what changed
   bullets?: string[];    // optional explicit highlights
-  affectedArea?: string; // e.g. "Video export", "Dashboard"
+  affectedArea?: string; // e.g. "Reports", "LLM"
 }
 
-// The Claude-generated, render-ready note (matches the Remotion ReleaseNote prop).
-export interface ReleaseNote {
-  version: string;
+export interface ReleaseInput {
+  version?: string;         // defaults to today's date (YYYY.MM.DD)
+  features: FeatureInput[]; // one or more features shipped in this release
+}
+
+// ── Claude-generated, render-ready ───────────────────────────────────────────
+export interface FeatureNote {
+  id: string;
   title: string;
   script: string;    // 2–4 sentence plain-language narration
   bullets: string[];
+  affectedArea?: string;
 }
 
-// A stored release, as returned by GET /api/releases/latest.
-export interface ReleaseRecord extends ReleaseNote {
-  affectedArea?: string;
-  videoUrl: string;  // relative to the API host, e.g. /media/releases/2026.07.08.mp4
-  createdAt: string; // ISO timestamp
+// ── Stored / served ──────────────────────────────────────────────────────────
+export interface FeatureRecord extends FeatureNote {
+  videoUrl: string; // relative to the API host, e.g. /media/releases/2026.07.14/doc-deck-export.mp4
+}
+
+export interface ReleaseRecord {
+  version: string;
+  publishedAt: string;      // ISO timestamp
+  features: FeatureRecord[];
+}
+
+// Lightweight shape for the list endpoint (no scripts/video payload).
+export interface ReleaseSummary {
+  version: string;
+  publishedAt: string;
+  features: { id: string; title: string; bullets: string[] }[];
 }

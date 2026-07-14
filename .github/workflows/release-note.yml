@@ -1,0 +1,108 @@
+# Auto-generate "what's new" release videos from CHANGELOG.md `feature:` entries.
+#
+# On a merge to main that touches CHANGELOG.md, this parses the Unreleased section,
+# and if there are `feature:` entries it runs the EXISTING render pipeline
+# (npm run release:note) for them — one video per feature, batched under one dated
+# release. It then (option B) commits only the metadata back (CHANGELOG move +
+# releases.json) and uploads the rendered MP4s as a build artifact; a deploy step
+# is responsible for placing those MP4s where the backend serves them
+# (backend/data/releases/<version>/). No feature: entries → the job no-ops quietly.
+#
+# REQUIRED repo secrets (rendering happens on the runner, not via the `claude` CLI):
+#   ANTHROPIC_API_KEY   - Claude script generation (API path; CLI OAuth isn't on CI)
+#   ELEVENLABS_API_KEY  - narration (omit to render silent)
+name: Release note video
+
+on:
+  push:
+    branches: [main]
+    paths: ['CHANGELOG.md']   # only a feature: line lands here — cheap gate
+
+# One release run at a time; don't cancel an in-flight render.
+concurrency:
+  group: release-note
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # to commit the CHANGELOG move + releases.json back
+
+jobs:
+  release-note:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 1. Parse the Unreleased section → release-input.json (+ feature count).
+      - name: Parse CHANGELOG
+        id: parse
+        run: |
+          npm run release:parse --silent -- --out release-input.json > /dev/null
+          COUNT=$(jq '.features | length' release-input.json)
+          VERSION=$(jq -r '.version' release-input.json)
+          echo "count=$COUNT"     >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Found $COUNT feature entr(y/ies) for release $VERSION"
+
+      # Everything below runs only when there is at least one feature: entry.
+      - name: Install dependencies
+        if: steps.parse.outputs.count > 0
+        run: |
+          npm ci
+          npm --prefix backend ci
+
+      # Remotion's headless-Chrome system libraries.
+      - name: Install Chrome libraries for Remotion
+        if: steps.parse.outputs.count > 0
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libnss3 libdbus-1-3 libatk1.0-0 libgbm1 libasound2t64 \
+            libatk-bridge2.0-0 libcups2 libxkbcommon0 libxcomposite1 libxdamage1 \
+            libxfixes3 libxrandr2 libpango-1.0-0 libcairo2 || \
+          sudo apt-get install -y libnss3 libdbus-1-3 libatk1.0-0 libgbm1 libasound2 \
+            libatk-bridge2.0-0 libcups2 libxkbcommon0 libxcomposite1 libxdamage1 \
+            libxfixes3 libxrandr2 libpango-1.0-0 libcairo2
+
+      # 2. Run the EXISTING pipeline (Claude → ElevenLabs → Remotion) for each feature.
+      #    Reuses generate-release-note.ts with the same --input path the CLI uses;
+      #    per-feature retry + partial-publish already live in that script.
+      - name: Render release videos
+        if: steps.parse.outputs.count > 0
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID }}
+        run: npm run release:note -- --input release-input.json
+
+      # 3. Upload the rendered MP4s as an artifact (option B: not committed to git).
+      - name: Upload release videos
+        if: steps.parse.outputs.count > 0
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ steps.parse.outputs.version }}-videos
+          path: backend/data/releases/${{ steps.parse.outputs.version }}/*.mp4
+          if-no-files-found: warn
+
+      # 4. Move consumed entries into a dated section (only after a successful render).
+      - name: Consume CHANGELOG entries
+        if: steps.parse.outputs.count > 0
+        run: npm run release:parse --silent -- --version "${{ steps.parse.outputs.version }}" --consume
+
+      # 5. Commit metadata back (CHANGELOG move + releases.json). MP4s stay out of git
+      #    (see .gitignore). GITHUB_TOKEN pushes don't re-trigger workflows, and the
+      #    now-empty Unreleased section makes any re-run a no-op anyway.
+      - name: Commit metadata
+        if: steps.parse.outputs.count > 0
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md backend/data/releases/releases.json
+          if git diff --cached --quiet; then
+            echo "No metadata changes to commit."
+          else
+            git commit -m "chore(release): publish ${{ steps.parse.outputs.version }} what's-new videos [skip ci]"
+            git push
+          fi

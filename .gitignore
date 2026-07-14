@@ -4,3 +4,6 @@ dist
 .DS_Store
 .env
 backend/data/catalog_context.md
+# Release-note videos are rendered per release and shipped as CI artifacts (not
+# committed); releases.json (the index) IS tracked so the app knows what exists.
+backend/data/releases/**/*.mp4

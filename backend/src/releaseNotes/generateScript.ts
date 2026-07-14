@@ -1,31 +1,31 @@
-// Turn a structured change description into a short, render-ready release note,
-// using the SAME Sonnet transport the report pipeline uses (modelGenerate →
-// `claude` CLI on OAuth, or the Anthropic API when ANTHROPIC_API_KEY is set).
-// Degrades gracefully: if Claude is unavailable or returns junk, the raw input is
-// used so a video still renders.
+// Turn a single feature's change description into a render-ready note, using the
+// SAME Sonnet transport as the report pipeline (modelGenerate → `claude` CLI on
+// OAuth, or the Anthropic API when ANTHROPIC_API_KEY is set). Called once per
+// feature within a release. Degrades gracefully: if Claude is unavailable or
+// returns junk, the raw input is used so a video still renders.
 
 import { modelGenerate } from '../services/llmHandler';
-import type { ReleaseInput, ReleaseNote } from './types';
+import type { FeatureInput, FeatureNote } from './types';
 
 const SYSTEM =
   'You write very short "what\'s new" explainer scripts for an internal analytics web app. ' +
-  'Given a structured description of a shipped change, produce: ' +
+  'Given a structured description of ONE shipped feature, produce: ' +
   '(1) a punchy one-line title (<= 8 words); ' +
   '(2) a plain-language narration script of 2 to 4 short sentences that reads in about 15-25 seconds ' +
   'when spoken, addressing the user as "you", no jargon, no marketing fluff; ' +
   '(3) 2 to 4 short bullet highlights (<= 8 words each). ' +
-  'Only describe what the input implies — never invent features. ' +
+  'Only describe what the input implies — never invent behaviour. ' +
   'Return ONLY minified JSON: {"title": string, "script": string, "bullets": string[]}. No prose, no code fences.';
 
-export async function generateReleaseNote(input: ReleaseInput): Promise<ReleaseNote> {
-  const version = (input.version && input.version.trim()) || defaultVersion();
+export async function generateFeatureNote(input: FeatureInput): Promise<FeatureNote> {
+  const id = slug(input.id || input.title);
 
-  // Deterministic fallback (used if Claude is unavailable or returns junk).
-  const fallback: ReleaseNote = {
-    version,
+  const fallback: FeatureNote = {
+    id,
     title: input.title.trim(),
     script: (input.summary && input.summary.trim()) || `${input.title.trim()} is now available.`,
     bullets: (input.bullets ?? []).filter((b) => b && b.trim()).slice(0, 4),
+    ...(input.affectedArea ? { affectedArea: input.affectedArea } : {}),
   };
 
   const user = JSON.stringify({
@@ -44,11 +44,15 @@ export async function generateReleaseNote(input: ReleaseInput): Promise<ReleaseN
     const bullets = Array.isArray(parsed.bullets)
       ? parsed.bullets.filter((b: unknown): b is string => typeof b === 'string' && !!b.trim()).map((b: string) => b.trim()).slice(0, 4)
       : fallback.bullets;
-    return { version, title, script, bullets: bullets.length ? bullets : fallback.bullets };
+    return { ...fallback, title, script, bullets: bullets.length ? bullets : fallback.bullets };
   } catch (err) {
-    console.warn(`[releaseNotes] Claude generation failed (${(err as Error)?.message ?? err}); using input as-is`);
+    console.warn(`[releaseNotes] Claude generation failed for "${input.title}" (${(err as Error)?.message ?? err}); using input as-is`);
     return fallback;
   }
+}
+
+function slug(s: string): string {
+  return s.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'feature';
 }
 
 function parseJsonObject(raw: string): Record<string, unknown> | null {
@@ -60,10 +64,4 @@ function parseJsonObject(raw: string): Record<string, unknown> | null {
   } catch {
     return null;
   }
-}
-
-function defaultVersion(): string {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())}`;
 }

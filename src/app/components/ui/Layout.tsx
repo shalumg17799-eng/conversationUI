@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { VideoJobsMenu } from '@/app/components/VideoJobsMenu';
-import { WhatsNewBadge } from '@/app/components/WhatsNewBadge';
+import { HelpMenu } from '@/app/components/HelpMenu';
 import {
   LayoutDashboard,
   MessageSquare,
@@ -304,8 +304,10 @@ export function Layout({ children }: LayoutProps) {
           })}
         </nav>
 
-        {/* Bottom Navigation (Settings) */}
-        <nav className="flex-shrink-0 pt-2 pb-3 px-1.5 border-t border-[#ECEAE6]">
+        {/* Bottom Navigation (Help + Settings) */}
+        <nav className="flex-shrink-0 pt-2 pb-3 px-1.5 border-t border-[#ECEAE6] space-y-0.5">
+          {/* What's new / Help — opens the release panel, dot when unseen */}
+          <HelpMenu />
           {bottomNavItems.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
@@ -344,9 +346,6 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Floating Mode Toggle */}
       <ModeToggle />
-
-      {/* Login-time "what's new" release nudge (authenticated pages only) */}
-      <WhatsNewBadge />
     </div>
   );
 }
