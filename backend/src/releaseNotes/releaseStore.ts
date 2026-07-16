@@ -40,6 +40,13 @@ export async function getLatestRelease(): Promise<ReleaseRecord | null> {
   return all.slice().sort(byNewest)[0];
 }
 
+// Full records, newest-first — for the multi-version "What's New" panel that
+// needs scripts, videoUrls and the combined overview per release.
+export async function listReleasesFull(): Promise<ReleaseRecord[]> {
+  const all = await readReleases();
+  return all.slice().sort(byNewest);
+}
+
 // Lightweight list (title + bullets only) for a "previous releases" view.
 export async function listReleaseSummaries(): Promise<ReleaseSummary[]> {
   const all = await readReleases();

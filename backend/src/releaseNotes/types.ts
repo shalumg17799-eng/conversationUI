@@ -32,9 +32,15 @@ export interface FeatureRecord extends FeatureNote {
 }
 
 export interface ReleaseRecord {
-  version: string;
+  version: string;          // semantic product version, e.g. "v1.1.0"
+  name?: string;            // optional human label, e.g. "Report Hub 1.1"
   publishedAt: string;      // ISO timestamp
   features: FeatureRecord[];
+  // One combined walkthrough for the whole release (all features in a single
+  // narrated video). Absent until the on-publish pipeline has rendered it.
+  overviewVideoUrl?: string; // e.g. /media/releases/v1.1.0/overview.mp4
+  posterUrl?: string;        // still frame shown before playback
+  durationSec?: number;      // combined video length
 }
 
 // Lightweight shape for the list endpoint (no scripts/video payload).

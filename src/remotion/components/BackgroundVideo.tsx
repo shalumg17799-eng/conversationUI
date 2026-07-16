@@ -5,9 +5,13 @@
 import React from 'react';
 import { AbsoluteFill, OffthreadVideo, useCurrentFrame, interpolate } from 'remotion';
 
-export const BackgroundVideo: React.FC<{ src: string; overlay?: number }> = ({ src, overlay = 0.62 }) => {
+// `overlay` is the base scrim strength. The gradient is LEFT-anchored: dark on the
+// left where the copy sits (kept legible) and fading to nearly clear on the right
+// so the real app footage stays visible instead of being buried under a flat wash.
+export const BackgroundVideo: React.FC<{ src: string; overlay?: number }> = ({ src, overlay = 0.42 }) => {
   const frame = useCurrentFrame();
   const scale = interpolate(frame, [0, 600], [1.06, 1.18], { extrapolateRight: 'clamp' });
+  const o = overlay;
   return (
     <AbsoluteFill>
       <AbsoluteFill style={{ transform: `scale(${scale})` }}>
@@ -15,7 +19,12 @@ export const BackgroundVideo: React.FC<{ src: string; overlay?: number }> = ({ s
       </AbsoluteFill>
       <AbsoluteFill
         style={{
-          background: `linear-gradient(105deg, rgba(20,18,16,${Math.min(0.92, overlay + 0.2)}) 0%, rgba(20,18,16,${overlay}) 45%, rgba(20,18,16,${Math.max(0.35, overlay - 0.2)}) 100%)`,
+          background:
+            `linear-gradient(90deg,` +
+            ` rgba(20,18,16,${Math.min(0.9, o + 0.34)}) 0%,` +
+            ` rgba(20,18,16,${o}) 32%,` +
+            ` rgba(20,18,16,${Math.max(0, o - 0.28)}) 55%,` +
+            ` rgba(20,18,16,0) 78%)`,
         }}
       />
     </AbsoluteFill>

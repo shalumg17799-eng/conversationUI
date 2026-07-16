@@ -66,6 +66,46 @@ export interface ReleaseNote {
   audioDurationMs?: number;
 }
 
+// ── "What's new" release TOUR ────────────────────────────────────────────────
+// A timeline-synced walkthrough: narration is split into beats (spoken phrases
+// with timings from ElevenLabs word timestamps), and each beat shows a real,
+// header-visible app footage shot with its words captioned — so the picture and
+// caption always match what's being said in that window.
+export interface TourBeat {
+  text: string;               // the spoken phrase (caption)
+  startFrame: number;         // relative to the feature segment start
+  durationInFrames: number;
+  footageUrl?: string;        // full-frame screen recording for this beat
+}
+export interface TourSegment {
+  kicker?: string;
+  heading: string;
+  audioUrl?: string;          // per-feature narration (played across its beats)
+  durationInFrames: number;
+  beats: TourBeat[];
+  // When set, the feature is illustrated by a native recreated-UI scene
+  // ('chat-kpi' | 'export-docs' | 'export-video') instead of screen-capture
+  // footage. Captions still sync to the beats.
+  mock?: string;
+}
+export interface TourHero {
+  kicker?: string;
+  heading: string;
+  sub?: string;
+  audioUrl?: string;
+  durationInFrames: number;
+}
+export interface ReleaseTour {
+  title: string;
+  version: string;
+  fps: number;
+  width: number;
+  height: number;
+  cover: TourHero;
+  features: TourSegment[];
+  outro: TourHero;
+}
+
 export const VIDEO_FPS = 30;
 export const VIDEO_W = 1920;
 export const VIDEO_H = 1080;

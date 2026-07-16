@@ -1,6 +1,41 @@
 [
   {
-    "version": "2026.07.14",
+    "version": "v1.0.0",
+    "name": "Report Hub 1.0",
+    "publishedAt": "2026-06-02T09:00:00.000Z",
+    "features": [
+      {
+        "id": "conversational-reports",
+        "title": "Ask questions, get reports",
+        "script": "Explore your connected datasets in plain language and get an answer built as a live report.",
+        "bullets": [
+          "Ask questions in plain language",
+          "Answers rendered as live reports",
+          "Built on your connected datasets"
+        ],
+        "affectedArea": "Reports",
+        "videoUrl": "/media/releases/v1.0.0/overview.mp4"
+      },
+      {
+        "id": "dashboards-datasets",
+        "title": "Dashboards, datasets, and platforms",
+        "script": "Organize insights into dashboards and connect the data sources your team already uses.",
+        "bullets": [
+          "Save insights into dashboards",
+          "Connect datasets and platforms",
+          "Governance controls built in"
+        ],
+        "affectedArea": "Platform",
+        "videoUrl": "/media/releases/v1.0.0/overview.mp4"
+      }
+    ],
+    "overviewVideoUrl": "/media/releases/v1.0.0/overview.mp4",
+    "durationSec": 17,
+    "posterUrl": "/media/releases/v1.0.0/overview.jpg"
+  },
+  {
+    "version": "v1.1.0",
+    "name": "Report Hub 1.1",
     "publishedAt": "2026-07-14T13:07:32.301Z",
     "features": [
       {
@@ -13,7 +48,7 @@
           "Faster and more consistent responses"
         ],
         "affectedArea": "LLM",
-        "videoUrl": "/media/releases/2026.07.14/model-upgrade-tool-use.mp4"
+        "videoUrl": "/media/releases/v1.1.0/overview.mp4"
       },
       {
         "id": "doc-deck-export",
@@ -26,7 +61,7 @@
           "Works on any report or dashboard"
         ],
         "affectedArea": "Reports",
-        "videoUrl": "/media/releases/2026.07.14/doc-deck-export.mp4"
+        "videoUrl": "/media/releases/v1.1.0/overview.mp4"
       },
       {
         "id": "generative-video-remotion",
@@ -39,8 +74,11 @@
           "This panel was made the same way"
         ],
         "affectedArea": "Video",
-        "videoUrl": "/media/releases/2026.07.14/generative-video-remotion.mp4"
+        "videoUrl": "/media/releases/v1.1.0/overview.mp4"
       }
-    ]
+    ],
+    "overviewVideoUrl": "/media/releases/v1.1.0/overview.mp4",
+    "durationSec": 54,
+    "posterUrl": "/media/releases/v1.1.0/overview.jpg"
   }
 ]

@@ -162,18 +162,20 @@ const InsightScene: React.FC<{ scene: VideoScene }> = ({ scene }) => {
     );
   }
 
-  // Cinematic version over B-roll.
+  // Cinematic version over B-roll. Text lives in a LEFT column over the darker
+  // side of the (left-anchored) scrim, so the real app footage stays visible on
+  // the right rather than being covered by the copy.
   const rise = spring({ frame, fps, config: { damping: 200 }, durationInFrames: 22 });
   const y = interpolate(rise, [0, 1], [30, 0]);
   const op = interpolate(frame, [0, 14], [0, 1], { extrapolateRight: 'clamp' });
   return (
     <AbsoluteFill style={{ backgroundColor: THEME.ink, fontFamily: THEME.fontBody }}>
-      <BackgroundVideo src={bg} overlay={0.66} />
+      <BackgroundVideo src={bg} overlay={0.34} />
       <div style={{ padding: '90px 110px', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-        <div style={{ transform: `translateY(${y}px)`, opacity: op }}>
-          {t.kicker && <div style={{ color: THEME.brand, fontWeight: 700, fontSize: 26, letterSpacing: 4, textTransform: 'uppercase', marginBottom: 14 }}>{t.kicker}</div>}
-          {t.heading && <div style={{ color: THEME.white, fontWeight: 800, fontSize: 72, lineHeight: 1.05, marginBottom: 40, fontFamily: THEME.fontHeading }}>{t.heading}</div>}
-          <div style={{ maxWidth: 1500 }}>{bulletsBlock(t.bullets, 14, THEME.white)}</div>
+        <div style={{ transform: `translateY(${y}px)`, opacity: op, maxWidth: 880 }}>
+          {t.kicker && <div style={{ color: THEME.brand, fontWeight: 700, fontSize: 26, letterSpacing: 4, textTransform: 'uppercase', marginBottom: 14, textShadow: '0 2px 12px rgba(0,0,0,0.5)' }}>{t.kicker}</div>}
+          {t.heading && <div style={{ color: THEME.white, fontWeight: 800, fontSize: 58, lineHeight: 1.06, marginBottom: 34, fontFamily: THEME.fontHeading, textShadow: '0 2px 18px rgba(0,0,0,0.55)' }}>{t.heading}</div>}
+          <div>{bulletsBlock(t.bullets, 14, THEME.white)}</div>
         </div>
       </div>
     </AbsoluteFill>

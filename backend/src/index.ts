@@ -12,7 +12,8 @@ import { getGovernorSummary, resetGovernorMetrics } from './services/governorTel
 import { createJob, getJob, listJobs, cancelJob, deleteJob, videoPath, loadPersistedJobs, AUDIO_ROOT, VIDEO_ROOT, FOOTAGE_ROOT } from './services/videoJobs';
 import { warmupRenderer } from './services/videoRenderer';
 import { ttsEnabled } from './services/ttsService';
-import { getLatestRelease, listReleaseSummaries, releasesDir } from './releaseNotes/releaseStore';
+import { getLatestRelease, listReleaseSummaries, listReleasesFull, releasesDir } from './releaseNotes/releaseStore';
+import { startPublish, getPublishJob } from './releaseNotes/publishRelease';
 
 dotenv.config();
 
@@ -170,6 +171,16 @@ app.get('/api/releases/latest', async (_req: Request, res: Response) => {
   }
 });
 
+// All releases, FULL records (scripts, videos, overview) newest-first — powers
+// the multi-version "What's New" panel where users browse every past release.
+app.get('/api/releases/all', async (_req: Request, res: Response) => {
+  try {
+    res.json({ releases: await listReleasesFull() });
+  } catch (e: any) {
+    res.status(500).json({ error: (e?.message ?? 'failed to list releases').toString().slice(0, 200) });
+  }
+});
+
 // All releases, lightweight (title + bullets per feature) for a "previous releases" view.
 app.get('/api/releases', async (_req: Request, res: Response) => {
   try {
@@ -177,6 +188,36 @@ app.get('/api/releases', async (_req: Request, res: Response) => {
   } catch (e: any) {
     res.status(500).json({ error: (e?.message ?? 'failed to list releases').toString().slice(0, 200) });
   }
+});
+
+// Publish a release: scripts each feature, renders ONE combined overview video
+// (optionally over real captured app footage), and upserts the release so the
+// "What's New" modal picks it up. This is the on-publish trigger — it returns a
+// job id immediately and generates the video asynchronously.
+// Body: { version: string, name?: string, features: FeatureInput[], capture?: boolean }
+app.post('/api/releases/publish', (req: Request, res: Response) => {
+  const body = req.body ?? {};
+  if (!body.version || typeof body.version !== 'string') {
+    return res.status(400).json({ error: 'version (string) required' });
+  }
+  if (!Array.isArray(body.features) || !body.features.length || !body.features.every((f: any) => f && typeof f.title === 'string')) {
+    return res.status(400).json({ error: 'features[] with at least one { title } required' });
+  }
+  const id = startPublish({
+    version: body.version,
+    name: typeof body.name === 'string' ? body.name : undefined,
+    features: body.features,
+    capture: body.capture,
+  });
+  res.json({ id, status: 'queued' });
+});
+
+// Poll a publish job's status (queued → scripting → capturing → voicing →
+// rendering → ready | failed).
+app.get('/api/releases/publish/:id', (req: Request, res: Response) => {
+  const job = getPublishJob(req.params.id);
+  if (!job) return res.status(404).json({ error: 'not found' });
+  res.json(job);
 });
 
 // Enqueue a render. Body: { script } — the compiled VideoScript from the client.
