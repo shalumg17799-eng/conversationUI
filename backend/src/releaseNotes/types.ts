@@ -10,10 +10,12 @@ export interface FeatureInput {
   summary?: string;      // free-text description of what changed
   bullets?: string[];    // optional explicit highlights
   affectedArea?: string; // e.g. "Reports", "LLM"
+  scene?: string;        // recreated-UI scene id ('chat-kpi'|'export-docs'|'export-video'); inferred if absent
 }
 
 export interface ReleaseInput {
   version?: string;         // defaults to today's date (YYYY.MM.DD)
+  name?: string;            // human label, e.g. "Report Hub 1.2"
   features: FeatureInput[]; // one or more features shipped in this release
 }
 
@@ -24,6 +26,7 @@ export interface FeatureNote {
   script: string;    // 2–4 sentence plain-language narration
   bullets: string[];
   affectedArea?: string;
+  scene?: string;    // recreated-UI scene id, carried through from the input
 }
 
 // ── Stored / served ──────────────────────────────────────────────────────────

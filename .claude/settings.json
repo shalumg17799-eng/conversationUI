@@ -53,7 +53,10 @@
       "Bash(pkill -f f7.js)",
       "Bash(pkill -f \"f[0-9].js\")",
       "Bash(pkill -f flow_probe)",
-      "Bash(node __TRACKED_VAR__/still_check.js __TRACKED_VAR__/mockshots2)"
+      "Bash(node __TRACKED_VAR__/still_check.js __TRACKED_VAR__/mockshots2)",
+      "Bash(node -e \"console.log\\(require\\('./backend/package.json'\\).scripts\\)\")",
+      "Bash(node -e \"console.log\\(require\\('./package.json'\\).scripts\\)\")",
+      "Bash(node -e 'const fs=require\\('\\\\''fs'\\\\''\\);const p='\\\\''/Users/vinodkumarmourya/Documents/GitHub/conversationUI/backend/data/releases/releases.json'\\\\'';const a=JSON.parse\\(fs.readFileSync\\(p,'\\\\''utf8'\\\\''\\)\\).filter\\(r=>r.version!=='\\\\''v0.0.0-test'\\\\''\\);fs.writeFileSync\\(p,JSON.stringify\\(a,null,2\\)\\);console.log\\('\\\\''registry versions:'\\\\'',a.map\\(r=>r.version\\).join\\('\\\\'', '\\\\''\\)\\)')"
     ]
   }
 }

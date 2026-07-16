@@ -19,9 +19,9 @@
 import '../backend/src/releaseNotes/loadEnv'; // loads backend/.env (resolves dotenv from backend/)
 import { readFileSync } from 'fs';
 import { generateFeatureNote } from '../backend/src/releaseNotes/generateScript';
-import { renderFeatureVideo } from '../backend/src/releaseNotes/renderRelease';
-import { upsertRelease, releaseVideoUrl } from '../backend/src/releaseNotes/releaseStore';
-import type { ReleaseInput, FeatureInput, ReleaseRecord, FeatureRecord } from '../backend/src/releaseNotes/types';
+import { renderReleaseTour, sceneForNote } from '../backend/src/releaseNotes/renderTour';
+import { upsertRelease } from '../backend/src/releaseNotes/releaseStore';
+import type { ReleaseInput, FeatureInput, ReleaseRecord, FeatureRecord, FeatureNote } from '../backend/src/releaseNotes/types';
 
 function parseArgs(argv: string[]): ReleaseInput {
   const args = argv.slice(2);
@@ -44,6 +44,7 @@ function parseArgs(argv: string[]): ReleaseInput {
   else if (jsonStr) base = JSON.parse(jsonStr);
 
   const version = get('--version') ?? (base as ReleaseInput).version;
+  const name = get('--name') ?? (base as ReleaseInput).name;
 
   // Determine the feature list.
   let features: FeatureInput[];
@@ -67,7 +68,7 @@ function parseArgs(argv: string[]): ReleaseInput {
     console.error('Usage: npm run release:note -- --title "<title>" [--summary "..."] [--bullet "..." ...]   OR   --input release.json');
     process.exit(2);
   }
-  return { version, features };
+  return { version, name, features };
 }
 
 (async () => {
@@ -75,42 +76,46 @@ function parseArgs(argv: string[]): ReleaseInput {
   const version = (input.version && input.version.trim()) || defaultVersion();
   console.log(`[release] version ${version} — ${input.features.length} feature(s)`);
 
-  const records: FeatureRecord[] = [];
-  const failed: string[] = [];
+  // 1. Script every feature (Claude), collecting the notes for one combined tour.
+  const notes: FeatureNote[] = [];
   for (const feat of input.features) {
     console.log(`\n[release] · "${feat.title}"`);
     const note = await generateFeatureNote(feat);
-    console.log(`[release]   title  : ${note.title}`);
-    console.log(`[release]   script : ${note.script}`);
-    console.log(`[release]   bullets: ${note.bullets.map((b) => `\n    • ${b}`).join('')}`);
-
-    try {
-      // Renders can crash transiently under memory pressure ("Target closed"); retry.
-      await withRetry(async () => {
-        let lastPct = -1;
-        await renderFeatureVideo(version, note, (f) => {
-          const pct = Math.round(f * 100);
-          if (pct !== lastPct && (pct % 20 === 0 || pct === 100)) { lastPct = pct; console.log(`[release]   render ${pct}%`); }
-        });
-      }, 3, note.id);
-      records.push({ ...note, videoUrl: releaseVideoUrl(version, note.id) });
-      console.log(`[release]   video  : ${releaseVideoUrl(version, note.id)}`);
-    } catch (e) {
-      // Don't lose the whole release for one flaky render — skip and publish the rest.
-      failed.push(note.title);
-      console.warn(`[release]   SKIPPED "${note.title}" after retries (${String((e as Error)?.message ?? e).slice(0, 90)})`);
-    }
+    console.log(`[release]   title : ${note.title}`);
+    console.log(`[release]   scene : ${sceneForNote(note)}`);
+    console.log(`[release]   script: ${note.script}`);
+    notes.push(note);
   }
 
-  if (!records.length) {
-    console.error('[release] FAILED: no features rendered successfully');
+  // 2. Render the whole release as ONE recreated-UI tour (retry transient crashes).
+  let result;
+  try {
+    result = await withRetry(async () => {
+      let lastPct = -1;
+      return renderReleaseTour(version, input.name, notes, (f) => {
+        const pct = Math.round(f * 100);
+        if (pct !== lastPct && (pct % 20 === 0 || pct === 100)) { lastPct = pct; console.log(`[release]   render ${pct}%`); }
+      });
+    }, 3, 'tour');
+  } catch (e) {
+    console.error('[release] FAILED: tour render error', String((e as Error)?.stack ?? e).slice(0, 300));
     process.exit(1);
   }
 
-  const release: ReleaseRecord = { version, publishedAt: new Date().toISOString(), features: records };
+  // 3. Publish: every feature points at the combined overview video.
+  const features: FeatureRecord[] = notes.map((n) => ({ ...n, videoUrl: result!.overviewVideoUrl }));
+  const release: ReleaseRecord = {
+    version,
+    ...(input.name ? { name: input.name } : {}),
+    publishedAt: new Date().toISOString(),
+    features,
+    overviewVideoUrl: result!.overviewVideoUrl,
+    durationSec: result!.durationSec,
+    ...(result!.posterUrl ? { posterUrl: result!.posterUrl } : {}),
+  };
   await upsertRelease(release);
 
-  console.log(`\n[release] done — release ${version} with ${records.length} feature(s)${failed.length ? `; ${failed.length} skipped: ${failed.join(', ')}` : ''}`);
+  console.log(`\n[release] done — ${version}${input.name ? ` (${input.name})` : ''} · ${notes.length} feature(s) · ${result!.durationSec}s`);
   console.log('[release] GET /api/releases/latest now returns this release');
   process.exit(0);
 })().catch((e) => {
