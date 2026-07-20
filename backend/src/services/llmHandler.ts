@@ -1145,6 +1145,19 @@ export async function clarifyOrGenerate(
 
 // ── Report system prompt (used as context for design_report tool) ─────────────
 
+// NOTE: the "AVAILABLE COMPONENTS" catalogue below is hand-maintained and is NOT
+// derived from backend/src/registry/componentRegistry.ts. A type must be listed here
+// AND registered there to be usable end to end — registry membership alone only wires
+// validation, constraint derivation, governance and rendering, never generation.
+// That duplication is the same class of drift as the known registry/renderer gap;
+// deriving this catalogue from the registry would remove it (tracked separately).
+//
+// Phase 2, Track D added 'html-artifact' and 'svg-artifact' to both. They are listed
+// under RICH ARTIFACTS with deliberately restrictive last-resort wording: generation
+// does not enforce the constraint set (see "observed, not enforced" in generateReport)
+// and the governor defaults to off, so the prompt text is the only thing bounding how
+// often the model reaches for them. Weaken that wording and they will start displacing
+// real chart/table components on ordinary BI queries.
 const REPORT_SYSTEM_PROMPT = `You are an expert business intelligence analyst. You receive a user query and real BigQuery data.
 Understand WHAT the user is asking, then select ONLY the components that directly answer it.
 Do NOT default to a standard dashboard layout. Choose components based on query intent.
@@ -1271,6 +1284,35 @@ NARRATIVE (embed content directly):
 LAYOUT:
   TwoColumn    { children: [exactly 2] }
   Section      { title?, description?, children: [1-4] }
+
+RICH ARTIFACTS — only when the user explicitly asks for a drawing or a formatted document.
+  svg-artifact  { content, title?, caption?, explanation? }
+    USE WHEN the query explicitly asks to draw/sketch/map something structural:
+      "draw a diagram", "sketch the flow", "show the topology", "map the architecture",
+      "flow chart", "process diagram", "escalation path", "how does X connect to Y".
+    content = one self-contained static SVG document laying out that structure — labelled
+    boxes/nodes connected by lines or arrows. Use a viewBox, readable <text> labels, and
+    the palette #2563EB #1D9E75 #D97706 #7C3AED on #EFF6FF/#F0FDF4/#FEF3C7 fills.
+    Ground the labels in the real domain entities from the data sample where relevant.
+    NEVER as a substitute for a chart — any x/y, categorical, time-series or share-of-whole
+    DATA must use BarChart/LineChart/AreaChart/PieChart/etc. A diagram shows STRUCTURE
+    (how things connect or flow), never measured values.
+
+  html-artifact { content, title?, caption?, explanation? }
+    USE WHEN the query explicitly asks for a written document rather than a dashboard:
+      "write a brief", "formatted document", "write-up with headings", "a one-pager",
+      "memo", "report document with sections and nested tables".
+    content = one self-contained static HTML fragment: <h3> headings, <p> prose,
+    <ul>/<ol> lists, and <table> where a small inline table genuinely helps.
+    Embed real values from the data sample — never placeholders.
+    NEVER for a plain data answer: tabular data uses Table/PivotTable, metrics use
+    KPICard/KPIGrid, and short narrative text uses SummaryText/InsightCard/Callout.
+
+  Both are rendered sandboxed with scripts disabled. content MUST be static markup only:
+  no <script>, no on* event handlers, no style="" attributes, no javascript:/data: URIs,
+  no external resource loads. Such content is stripped and the card downgrades to plain text.
+  Use SVG presentation attributes (fill=, stroke=) rather than style="".
+  Emit at most ONE artifact card per report, and only when the query explicitly asked for it.
 
 ── ENTITY SPECIFICITY (critical) ────────────────────────────────────────────
 If the query mentions specific entities (e.g. T-007, T-001, a named territory, team, or product):

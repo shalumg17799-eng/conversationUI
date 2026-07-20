@@ -77,6 +77,18 @@ export const COMPONENT_REGISTRY: ComponentSpec[] = [
   { type: 'Report',    tier: 'layout', family: 'layout', requiredProps: ['title'], optionalProps: ['description','warnings','children'], dataNeeds: 'none', outputModes: ['full_dashboard'], whenToUse: 'Top-level report shell.' },
   { type: 'ReportSkeleton', tier: 'layout', family: 'layout', requiredProps: [], optionalProps: ['rows','showChart'], dataNeeds: 'none', outputModes: [], whenToUse: 'Loading placeholder (internal).' },
   { type: 'BigQueryDashboard', tier: 'organism', family: 'layout', requiredProps: [], optionalProps: ['datasetId','tableId','filters','title'], dataNeeds: 'none', outputModes: ['full_dashboard'], whenToUse: 'Live BigQuery dashboard view.' },
+
+  // ── RICH ARTIFACTS (Phase 2, Track D) ─────────────────────────────────────
+  // Ordinary registry members — selectable by componentSelector like any other
+  // type, with no special-cased bypass. They carry family 'narrative' (not a new
+  // family) deliberately: MODE_POLICY in componentSelector.ts keys allowedComponents
+  // off a fixed ComponentFamily set, so a novel family would never be allowed by
+  // any output mode and the types would be silently ungenerated.
+  // Content is NEVER injected as raw markup — UITreeRenderer renders these inside a
+  // sandboxed, isolated-origin iframe, and artifactSanitizer.ts allowlist-strips the
+  // payload first. See scripts/test_artifacts.ts.
+  { type: 'html-artifact', tier: 'organism', family: 'narrative', requiredProps: ['content'], optionalProps: ['title','variant','caption','explanation'], dataNeeds: 'none', outputModes: ['narrative','full_dashboard'], whenToUse: 'Self-contained rich HTML fragment (formatted prose, nested tables, structured layout) that no existing component expresses. Static markup only — never scripts or interactive widgets.' },
+  { type: 'svg-artifact',  tier: 'organism', family: 'narrative', requiredProps: ['content'], optionalProps: ['title','variant','caption','explanation'], dataNeeds: 'none', outputModes: ['narrative','full_dashboard'], whenToUse: 'Bespoke vector diagram (flow, topology, annotated schematic) that the chart family cannot express. Prefer a real chart component whenever the data is tabular.' },
 ];
 
 export const REGISTRY_BY_TYPE: Record<string, ComponentSpec> =

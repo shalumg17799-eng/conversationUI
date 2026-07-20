@@ -1,0 +1,695 @@
+{
+  "$comment": "GENERATED FILE — do not edit by hand. Source of truth: backend/src/registry/componentRegistry.ts. Regenerate with `npm run registry:generate`; parity is enforced by `npm run check:registry`.",
+  "generatedFrom": "backend/src/registry/componentRegistry.ts",
+  "componentCount": 33,
+  "components": [
+    {
+      "type": "KPI",
+      "tier": "atomic",
+      "family": "metric",
+      "requiredProps": [
+        "title",
+        "value"
+      ],
+      "optionalProps": [
+        "label",
+        "trend",
+        "delta",
+        "deltaLabel",
+        "explanation"
+      ],
+      "dataNeeds": "none",
+      "outputModes": [
+        "single_metric",
+        "single_chart",
+        "comparison_dashboard",
+        "full_dashboard",
+        "narrative"
+      ],
+      "whenToUse": "Single headline metric.",
+      "renderedByUITreeRenderer": true
+    },
+    {
+      "type": "KPICard",
+      "tier": "atomic",
+      "family": "metric",
+      "requiredProps": [
+        "title",
+        "value"
+      ],
+      "optionalProps": [
+        "label",
+        "trend",
+        "delta",
+        "deltaLabel",
+        "explanation"
+      ],
+      "dataNeeds": "none",
+      "outputModes": [
+        "single_metric",
+        "single_chart",
+        "comparison_dashboard",
+        "full_dashboard",
+        "narrative"
+      ],
+      "whenToUse": "Single headline metric.",
+      "renderedByUITreeRenderer": true
+    },
+    {
+      "type": "KPIGrid",
+      "tier": "organism",
+      "family": "metric",
+      "requiredProps": [
+        "metrics"
+      ],
+      "optionalProps": [
+        "columns",
+        "explanation"
+      ],
+      "dataNeeds": "none",
+      "outputModes": [
+        "comparison_dashboard",
+        "full_dashboard"
+      ],
+      "whenToUse": "2-6 metrics together.",
+      "renderedByUITreeRenderer": true
+    },
+    {
+      "type": "StatDelta",
+      "tier": "atomic",
+      "family": "metric",
+      "requiredProps": [
+        "title",
+        "current",
+        "previous"
+      ],
+      "optionalProps": [
+        "currentLabel",
+        "previousLabel",
+        "trend",
+        "explanation"
+      ],
+      "dataNeeds": "none",
+      "outputModes": [
+        "single_metric",
+        "comparison_dashboard",
+        "full_dashboard"
+      ],
+      "whenToUse": "Current vs previous value.",
+      "renderedByUITreeRenderer": true
+    },
+    {
+      "type": "GaugeChart",
+      "tier": "molecular",
+      "family": "metric",
+      "requiredProps": [
+        "title",
+        "value"
+      ],
+      "optionalProps": [
+        "max",
+        "target",
+        "unit",
+        "explanation"
+      ],
+      "dataNeeds": "none",
+      "outputModes": [
+        "single_metric",
+        "comparison_dashboard",
+        "full_dashboard"
+      ],
+      "whenToUse": "Attainment vs a target.",
+      "renderedByUITreeRenderer": true
+    },
+    {
+      "type": "Sparkline",
+      "tier": "atomic",
+      "family": "metric",
+      "requiredProps": [
+        "label",
+        "value",
+        "xKey",
+        "yKey"
+      ],
+      "optionalProps": [
+        "trend",
+        "explanation"
+      ],
+      "dataNeeds": "series",
+      "outputModes": [
+        "comparison_dashboard",
+        "full_dashboard"
+      ],
+      "whenToUse": "Inline KPI + trend line.",
+      "renderedByUITreeRenderer": true
+    },
+    {
+      "type": "ProgressBar",
+      "tier": "molecular",
+      "family": "metric",
+      "requiredProps": [
+        "items"
+      ],
+      "optionalProps": [
+        "title",
+        "explanation"
+      ],
+      "dataNeeds": "none",
+      "outputModes": [
+        "comparison_dashboard",
+        "full_dashboard"
+      ],
+      "whenToUse": "Progress toward targets.",
+      "renderedByUITreeRenderer": true
+    },
+    {
+      "type": "BarChart",
+      "tier": "molecular",
+      "family": "chart",
+      "requiredProps": [
+        "xKey",
+        "yKey"
+      ],
+      "optionalProps": [
+        "title",
+        "filterValues",
+        "color",
+        "explanation"
+      ],
+      "dataNeeds": "rows",
+      "outputModes": [
+        "single_chart",
+        "comparison_dashboard",
+        "full_dashboard"
+      ],
+      "whenToUse": "Categorical comparison.",
+      "renderedByUITreeRenderer": true
+    },
+    {
+      "type": "LineChart",
+      "tier": "molecular",
+      "family": "chart",
+      "requiredProps": [
+        "xKey",
+        "yKey"
+      ],
+      "optionalProps": [
+        "title",
+        "smooth",
+        "explanation"
+      ],
+      "dataNeeds": "series",
+      "shapeConstraints": {
+        "requiresTimeSeries": true
+      },
+      "outputModes": [
+        "single_chart",
+        "comparison_dashboard",
+        "full_dashboard"
+      ],
+      "whenToUse": "Trend over time.",
+      "renderedByUITreeRenderer": true
+    },
+    {
+      "type": "AreaChart",
+      "tier": "molecular",
+      "family": "chart",
+      "requiredProps": [
+        "xKey",
+        "yKey"
+      ],
+      "optionalProps": [
+        "title",
+        "explanation"
+      ],
+      "dataNeeds": "series",
+      "shapeConstraints": {
+        "requiresTimeSeries": true
+      },
+      "outputModes": [
+        "single_chart",
+        "comparison_dashboard",
+        "full_dashboard"
+      ],
+      "whenToUse": "Trend over time, filled.",
+      "renderedByUITreeRenderer": true
+    },
+    {
+      "type": "PieChart",
+      "tier": "molecular",
+      "family": "chart",
+      "requiredProps": [
+        "nameKey",
+        "valueKey"
+      ],
+      "optionalProps": [
+        "title",
+        "explanation"
+      ],
+      "dataNeeds": "rows",
+      "outputModes": [
+        "single_chart",
+        "comparison_dashboard",
+        "full_dashboard"
+      ],
+      "whenToUse": "Share of whole (<=6 slices).",
+      "renderedByUITreeRenderer": true
+    },
+    {
+      "type": "RankedList",
+      "tier": "molecular",
+      "family": "chart",
+      "requiredProps": [
+        "labelKey",
+        "valueKey"
+      ],
+      "optionalProps": [
+        "title",
+        "limit",
+        "sort",
+        "explanation"
+      ],
+      "dataNeeds": "rows",
+      "outputModes": [
+        "comparison_dashboard",
+        "full_dashboard"
+      ],
+      "whenToUse": "Top/bottom N ranking.",
+      "renderedByUITreeRenderer": true
+    },
+    {
+      "type": "ScatterPlot",
+      "tier": "organism",
+      "family": "chart",
+      "requiredProps": [
+        "xKey",
+        "yKey"
+      ],
+      "optionalProps": [
+        "zKey",
+        "title",
+        "explanation"
+      ],
+      "dataNeeds": "rows",
+      "outputModes": [
+        "single_chart",
+        "comparison_dashboard",
+        "full_dashboard"
+      ],
+      "whenToUse": "Correlation between two metrics.",
+      "renderedByUITreeRenderer": true
+    },
+    {
+      "type": "FunnelChart",
+      "tier": "organism",
+      "family": "chart",
+      "requiredProps": [
+        "nameKey",
+        "valueKey"
+      ],
+      "optionalProps": [
+        "title",
+        "explanation"
+      ],
+      "dataNeeds": "rows",
+      "outputModes": [
+        "single_chart",
+        "comparison_dashboard",
+        "full_dashboard"
+      ],
+      "whenToUse": "Conversion / drop-off.",
+      "renderedByUITreeRenderer": true
+    },
+    {
+      "type": "HeatMap",
+      "tier": "organism",
+      "family": "chart",
+      "requiredProps": [
+        "xKey",
+        "yKey",
+        "valueKey"
+      ],
+      "optionalProps": [
+        "title",
+        "explanation"
+      ],
+      "dataNeeds": "rows",
+      "outputModes": [
+        "comparison_dashboard",
+        "full_dashboard"
+      ],
+      "whenToUse": "Time-of-day / day-of-week pattern.",
+      "renderedByUITreeRenderer": true
+    },
+    {
+      "type": "ComboChart",
+      "tier": "organism",
+      "family": "chart",
+      "requiredProps": [
+        "xKey",
+        "barKey",
+        "lineKey"
+      ],
+      "optionalProps": [
+        "barLabel",
+        "lineLabel",
+        "title",
+        "explanation"
+      ],
+      "dataNeeds": "rows",
+      "outputModes": [
+        "comparison_dashboard",
+        "full_dashboard"
+      ],
+      "whenToUse": "Dual-axis bar + line.",
+      "renderedByUITreeRenderer": true
+    },
+    {
+      "type": "ComparisonCard",
+      "tier": "molecular",
+      "family": "chart",
+      "requiredProps": [
+        "entities"
+      ],
+      "optionalProps": [
+        "title",
+        "metric",
+        "explanation"
+      ],
+      "dataNeeds": "none",
+      "outputModes": [
+        "comparison_dashboard",
+        "full_dashboard"
+      ],
+      "whenToUse": "2-5 named entities head-to-head.",
+      "renderedByUITreeRenderer": true
+    },
+    {
+      "type": "Table",
+      "tier": "molecular",
+      "family": "table",
+      "requiredProps": [
+        "columns"
+      ],
+      "optionalProps": [
+        "title",
+        "pageSize",
+        "explanation"
+      ],
+      "dataNeeds": "rows",
+      "outputModes": [
+        "table",
+        "comparison_dashboard",
+        "full_dashboard"
+      ],
+      "whenToUse": "Exact tabular values.",
+      "renderedByUITreeRenderer": true
+    },
+    {
+      "type": "GenerativeTable",
+      "tier": "organism",
+      "family": "table",
+      "requiredProps": [
+        "columns"
+      ],
+      "optionalProps": [
+        "title",
+        "pageSize",
+        "highlightKey",
+        "explanation"
+      ],
+      "dataNeeds": "rows",
+      "outputModes": [
+        "table",
+        "comparison_dashboard",
+        "full_dashboard"
+      ],
+      "whenToUse": "Rich table with formatting.",
+      "renderedByUITreeRenderer": true
+    },
+    {
+      "type": "PivotTable",
+      "tier": "organism",
+      "family": "table",
+      "requiredProps": [
+        "rowKey",
+        "colKey",
+        "valueKey"
+      ],
+      "optionalProps": [
+        "title",
+        "explanation"
+      ],
+      "dataNeeds": "rows",
+      "outputModes": [
+        "comparison_dashboard",
+        "full_dashboard"
+      ],
+      "whenToUse": "Cross-tab matrix.",
+      "renderedByUITreeRenderer": true
+    },
+    {
+      "type": "InsightCard",
+      "tier": "molecular",
+      "family": "narrative",
+      "requiredProps": [
+        "title",
+        "body"
+      ],
+      "optionalProps": [
+        "type",
+        "highlight"
+      ],
+      "dataNeeds": "none",
+      "outputModes": [
+        "narrative",
+        "comparison_dashboard",
+        "full_dashboard"
+      ],
+      "whenToUse": "Key finding callout.",
+      "renderedByUITreeRenderer": true
+    },
+    {
+      "type": "AlertBanner",
+      "tier": "atomic",
+      "family": "narrative",
+      "requiredProps": [
+        "message"
+      ],
+      "optionalProps": [
+        "type"
+      ],
+      "dataNeeds": "none",
+      "outputModes": [
+        "narrative",
+        "full_dashboard"
+      ],
+      "whenToUse": "Status / warning banner.",
+      "renderedByUITreeRenderer": true
+    },
+    {
+      "type": "SummaryText",
+      "tier": "atomic",
+      "family": "narrative",
+      "requiredProps": [
+        "text"
+      ],
+      "optionalProps": [],
+      "dataNeeds": "none",
+      "outputModes": [
+        "narrative",
+        "full_dashboard"
+      ],
+      "whenToUse": "Prose summary.",
+      "renderedByUITreeRenderer": true
+    },
+    {
+      "type": "Callout",
+      "tier": "molecular",
+      "family": "narrative",
+      "requiredProps": [
+        "title"
+      ],
+      "optionalProps": [
+        "body",
+        "metric",
+        "explanation"
+      ],
+      "dataNeeds": "none",
+      "outputModes": [
+        "narrative",
+        "comparison_dashboard",
+        "full_dashboard"
+      ],
+      "whenToUse": "Highlighted key finding.",
+      "renderedByUITreeRenderer": true
+    },
+    {
+      "type": "StepList",
+      "tier": "molecular",
+      "family": "narrative",
+      "requiredProps": [
+        "steps"
+      ],
+      "optionalProps": [
+        "title",
+        "explanation"
+      ],
+      "dataNeeds": "none",
+      "outputModes": [
+        "narrative",
+        "full_dashboard"
+      ],
+      "whenToUse": "Numbered actions / steps.",
+      "renderedByUITreeRenderer": true
+    },
+    {
+      "type": "TimelineCard",
+      "tier": "organism",
+      "family": "narrative",
+      "requiredProps": [
+        "events"
+      ],
+      "optionalProps": [
+        "title",
+        "explanation"
+      ],
+      "dataNeeds": "none",
+      "outputModes": [
+        "narrative",
+        "full_dashboard"
+      ],
+      "whenToUse": "Sequence of events.",
+      "renderedByUITreeRenderer": true
+    },
+    {
+      "type": "TwoColumn",
+      "tier": "layout",
+      "family": "layout",
+      "requiredProps": [],
+      "optionalProps": [
+        "children"
+      ],
+      "dataNeeds": "none",
+      "outputModes": [
+        "comparison_dashboard",
+        "full_dashboard"
+      ],
+      "whenToUse": "Exactly 2 side-by-side cards.",
+      "isLayoutWrapper": true,
+      "renderedByUITreeRenderer": true
+    },
+    {
+      "type": "Section",
+      "tier": "layout",
+      "family": "layout",
+      "requiredProps": [],
+      "optionalProps": [
+        "title",
+        "description",
+        "children"
+      ],
+      "dataNeeds": "none",
+      "outputModes": [
+        "comparison_dashboard",
+        "full_dashboard"
+      ],
+      "whenToUse": "Grouped sub-section.",
+      "isLayoutWrapper": true,
+      "renderedByUITreeRenderer": true
+    },
+    {
+      "type": "Report",
+      "tier": "layout",
+      "family": "layout",
+      "requiredProps": [
+        "title"
+      ],
+      "optionalProps": [
+        "description",
+        "warnings",
+        "children"
+      ],
+      "dataNeeds": "none",
+      "outputModes": [
+        "full_dashboard"
+      ],
+      "whenToUse": "Top-level report shell.",
+      "renderedByUITreeRenderer": true
+    },
+    {
+      "type": "ReportSkeleton",
+      "tier": "layout",
+      "family": "layout",
+      "requiredProps": [],
+      "optionalProps": [
+        "rows",
+        "showChart"
+      ],
+      "dataNeeds": "none",
+      "outputModes": [],
+      "whenToUse": "Loading placeholder (internal).",
+      "renderedByUITreeRenderer": true
+    },
+    {
+      "type": "BigQueryDashboard",
+      "tier": "organism",
+      "family": "layout",
+      "requiredProps": [],
+      "optionalProps": [
+        "datasetId",
+        "tableId",
+        "filters",
+        "title"
+      ],
+      "dataNeeds": "none",
+      "outputModes": [
+        "full_dashboard"
+      ],
+      "whenToUse": "Live BigQuery dashboard view.",
+      "renderedByUITreeRenderer": true
+    },
+    {
+      "type": "html-artifact",
+      "tier": "organism",
+      "family": "narrative",
+      "requiredProps": [
+        "content"
+      ],
+      "optionalProps": [
+        "title",
+        "variant",
+        "caption",
+        "explanation"
+      ],
+      "dataNeeds": "none",
+      "outputModes": [
+        "narrative",
+        "full_dashboard"
+      ],
+      "whenToUse": "Self-contained rich HTML fragment (formatted prose, nested tables, structured layout) that no existing component expresses. Static markup only — never scripts or interactive widgets.",
+      "renderedByUITreeRenderer": true
+    },
+    {
+      "type": "svg-artifact",
+      "tier": "organism",
+      "family": "narrative",
+      "requiredProps": [
+        "content"
+      ],
+      "optionalProps": [
+        "title",
+        "variant",
+        "caption",
+        "explanation"
+      ],
+      "dataNeeds": "none",
+      "outputModes": [
+        "narrative",
+        "full_dashboard"
+      ],
+      "whenToUse": "Bespoke vector diagram (flow, topology, annotated schematic) that the chart family cannot express. Prefer a real chart component whenever the data is tabular.",
+      "renderedByUITreeRenderer": true
+    }
+  ]
+}

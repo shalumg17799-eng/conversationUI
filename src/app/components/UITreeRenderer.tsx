@@ -13,6 +13,7 @@ import {
 import { GenerativeTable } from './GenerativeTable';
 import { ReportSkeleton } from './ReportSkeleton';
 import { RenderType } from './renderTypes';
+import { sanitizeArtifact, buildArtifactSrcDoc } from './artifactSanitizer';
 import {
   TrendingUp, TrendingDown, Minus,
   Lightbulb, AlertTriangle, CheckCircle2, Info,
@@ -1067,6 +1068,91 @@ function ReportShell({ title, description, warnings, children }: any) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+// RICH ARTIFACTS (Phase 2, Track D)
+// ════════════════════════════════════════════════════════════════════════════
+// Rendered ONLY inside a sandboxed, isolated-origin iframe — never via
+// dangerouslySetInnerHTML, and never as raw injected markup.
+//
+// Layered controls, outermost first:
+//   1. sandbox=""        — empty value = every sandbox restriction applied. No
+//                          allow-scripts and no allow-same-origin, so the frame
+//                          is an opaque origin that cannot execute script,
+//                          navigate the top frame, submit forms, or reach our
+//                          storage/cookies. This is the primary control.
+//   2. CSP (ARTIFACT_CSP) — script-src 'none' + default-src 'none' in the srcdoc
+//                          document. Scoped to this frame only, not app-global.
+//   3. sanitizeArtifact() — allowlist strip before the payload is ever embedded.
+//   4. referrerPolicy / no allow-popups — no outbound signal on render.
+//
+// If sanitizing leaves the content unusable (below the retention threshold, or
+// oversized), we downgrade to plain text rather than render a misleading
+// fragment. See ArtifactFallback below.
+function ArtifactFallback({ title, reason, text }: any) {
+  return (
+    <div className="rounded-[12px] border border-[#E5E3DF] px-5 py-4" style={{ background: '#F4F2EF' }}>
+      {title && <p className="text-[13px] font-semibold text-[#1C1917] mb-1" style={FB}>{title}</p>}
+      {text
+        ? <p className="text-[13px] text-[#6B6965] leading-relaxed whitespace-pre-wrap" style={FI}>{text}</p>
+        : <p className="text-[12px] text-[#8A8785] leading-relaxed" style={FI}>
+            This content could not be displayed safely.
+          </p>}
+      <p className="text-[11px] text-[#8A8785] mt-2" style={FI}>Rich content unavailable ({reason}).</p>
+    </div>
+  );
+}
+
+function ArtifactFrame({ content, title, caption, explanation, variant, kind }: any) {
+  // Both memos must run unconditionally and in a stable order — an early return
+  // between them would change the hook count when `usable` flips between renders.
+  const result = React.useMemo(() => sanitizeArtifact(content, kind), [content, kind]);
+  const srcDoc = React.useMemo(() => buildArtifactSrcDoc(result.safe, kind), [result.safe, kind]);
+
+  if (!result.usable) {
+    // Downgrade path: strip every tag and show whatever readable text survives.
+    const plain = typeof content === 'string'
+      ? content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 600)
+      : '';
+    const reason = result.oversized
+      ? 'payload exceeded size limit'
+      : result.safeLength === 0 ? 'no safe content remained' : 'too much content was removed';
+    return <ArtifactFallback title={title} reason={reason} text={plain} />;
+  }
+
+  const bare = variant === 'bare';
+
+  const frame = (
+    <iframe
+      // sandbox="" is intentional and load-bearing: an empty token list applies
+      // ALL restrictions. Do not add allow-scripts or allow-same-origin — either
+      // one re-enables the script execution this whole path exists to prevent.
+      sandbox=""
+      srcDoc={srcDoc}
+      title={title || (kind === 'svg' ? 'SVG artifact' : 'HTML artifact')}
+      loading="lazy"
+      referrerPolicy="no-referrer"
+      className="w-full block border-0"
+      style={{ height: kind === 'svg' ? 320 : 420, background: 'transparent' }}
+    />
+  );
+
+  if (bare) return frame;
+
+  return (
+    <div className={`${CARD_BASE} ${CARD_HOVER}`} style={{ boxShadow: SHADOW_DEFAULT }}>
+      <div className="p-5">
+        {title && <h4 className="text-[14px] font-semibold text-[#1C1917] mb-3 leading-snug" style={FB}>{title}</h4>}
+        {explanation && <p className="text-[11px] text-[#8A8785] mb-4 leading-relaxed" style={FI}>{explanation}</p>}
+        {frame}
+        {caption && <p className="text-[11px] text-[#8A8785] mt-3 leading-relaxed" style={FI}>{caption}</p>}
+      </div>
+    </div>
+  );
+}
+
+function HtmlArtifact(props: any) { return <ArtifactFrame {...props} kind="html" />; }
+function SvgArtifact(props: any)  { return <ArtifactFrame {...props} kind="svg" />; }
+
+// ════════════════════════════════════════════════════════════════════════════
 // COMPONENT REGISTRY
 // ════════════════════════════════════════════════════════════════════════════
 
@@ -1103,6 +1189,8 @@ const COMPONENT_MAP: Record<RenderType, React.ComponentType<any>> = {
   Report: ReportShell,
   ReportSkeleton,
   BigQueryDashboard,
+  'html-artifact': HtmlArtifact,
+  'svg-artifact': SvgArtifact,
 };
 
 // ════════════════════════════════════════════════════════════════════════════

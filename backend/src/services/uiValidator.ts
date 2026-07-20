@@ -1,5 +1,9 @@
 import Ajv, { ValidateFunction } from 'ajv';
 import { COMPONENT_REGISTRY, REGISTRY_BY_TYPE, ComponentSpec } from '../registry/componentRegistry';
+import {
+  ArtifactKind, isArtifactRenderType, artifactKindOf, sanitizeArtifact,
+  MAX_ARTIFACT_BYTES, MIN_RETENTION_RATIO,
+} from './artifactSanitizer';
 
 // Phase 3: registry-driven structural validation, SHADOW MODE ONLY.
 // Rewired from the legacy JSON registry to componentRegistry.ts (single source of truth).
@@ -9,7 +13,9 @@ export type ViolationCategory =
   | 'unknown_render_type'
   | 'missing_prop'
   | 'invalid_prop_type'
-  | 'invalid_structure';
+  | 'invalid_structure'
+  // Phase 2, Track D: applies ONLY to 'html-artifact' / 'svg-artifact' nodes.
+  | 'unsafe_artifact_content';
 
 export interface ValidationViolation {
   component: string;
@@ -59,6 +65,9 @@ const PROP_TYPES: Record<string, PropSchema> = {
   children: { type: 'array' }, warnings: { type: 'array' }, sections: { type: 'array' },
   // booleans
   smooth: { type: 'boolean' }, showChart: { type: 'boolean' }, editable: { type: 'boolean' },
+  // rich artifacts (Phase 2, Track D) — no existing component declares these
+  // prop names, so adding them cannot change any existing component's schema.
+  content: { type: 'string' }, variant: { type: 'string' }, caption: { type: 'string' },
 };
 
 // ── Ajv schema generation (from ComponentSpec) ────────────────────────────────
@@ -80,6 +89,71 @@ function buildSchema(spec: ComponentSpec): object {
 const validators = new Map<string, ValidateFunction>();
 for (const spec of COMPONENT_REGISTRY) {
   validators.set(spec.type, ajv.compile(buildSchema(spec)));
+}
+
+// ── Rich-artifact guardrails (Phase 2, Track D) ───────────────────────────────
+// Additive: this path runs ONLY for 'html-artifact' / 'svg-artifact' nodes and is
+// a no-op for every other component type.
+//
+// Consistent with this module's contract, it REPORTS and never mutates. The
+// enforcement points are elsewhere and independent of it:
+//   - UITreeRenderer sanitizes + sandboxes at render time, unconditionally.
+//   - governor.ts (enforce mode) can drop/downgrade a node using these violations.
+// That separation matters: the governor defaults to `off`, so the renderer — not
+// this validator — is what actually guarantees nothing unsafe reaches a user.
+
+export interface ArtifactAssessment {
+  renderType: string;
+  kind: ArtifactKind;
+  safe: string;
+  removed: string[];
+  retention: number;
+  oversized: boolean;
+  /** true => sanitized output is too degraded (or absent) to render as an artifact. */
+  shouldDowngrade: boolean;
+}
+
+/**
+ * Assess one artifact node's payload. Pure; never throws.
+ * Returns null for non-artifact nodes so callers can use it as a filter.
+ */
+export function assessArtifactNode(node: ValidatableNode): ArtifactAssessment | null {
+  if (!isArtifactRenderType(node?.renderType)) return null;
+  const renderType = node.renderType as string;
+  const kind = artifactKindOf(renderType);
+  const props = (node.props ?? {}) as Record<string, unknown>;
+  const r = sanitizeArtifact(props.content, kind);
+  return {
+    renderType, kind,
+    safe: r.safe,
+    removed: r.removed,
+    retention: r.retention,
+    oversized: r.oversized,
+    shouldDowngrade: !r.usable,
+  };
+}
+
+function validateArtifactNode(node: ValidatableNode, path: string, out: ValidationViolation[]): void {
+  const a = assessArtifactNode(node);
+  if (!a) return;
+  const props = (node.props ?? {}) as Record<string, unknown>;
+
+  if (typeof props.content !== 'string' || props.content.trim() === '') {
+    out.push({ component: a.renderType, category: 'unsafe_artifact_content', detail: 'content missing or not a string', path });
+    return;
+  }
+  if (a.oversized) {
+    out.push({ component: a.renderType, category: 'unsafe_artifact_content', detail: `oversized: ${props.content.length} > ${MAX_ARTIFACT_BYTES}`, path });
+    return;
+  }
+  // Deduplicate so one violation per class of removal, not one per occurrence.
+  const classes = Array.from(new Set(a.removed));
+  if (classes.length) {
+    out.push({ component: a.renderType, category: 'unsafe_artifact_content', detail: `stripped: ${classes.join(',')}`, path });
+  }
+  if (a.shouldDowngrade) {
+    out.push({ component: a.renderType, category: 'unsafe_artifact_content', detail: `downgrade: retention ${a.retention.toFixed(2)} < ${MIN_RETENTION_RATIO}`, path });
+  }
 }
 
 // ── Tree walk ─────────────────────────────────────────────────────────────────
@@ -113,6 +187,9 @@ function validateNode(node: ValidatableNode, path: string, out: ValidationViolat
       }
     }
   }
+
+  // Rich-artifact guardrails. No-op unless renderType is an artifact type.
+  validateArtifactNode(node, path, out);
 
   // Structural: children must be an array if present.
   if (node.children !== undefined && !Array.isArray(node.children)) {

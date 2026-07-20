@@ -12,6 +12,10 @@ export const RENDER_TYPES = [
   'Table', 'GenerativeTable',
   'InsightCard', 'AlertBanner', 'SummaryText',
   'TwoColumn', 'Section', 'Report', 'ReportSkeleton', 'BigQueryDashboard',
+  // Rich artifacts (Phase 2, Track D) — rendered via a sandboxed iframe, never
+  // as raw injected markup. Kebab-case matches the registry entries in
+  // backend/src/registry/componentRegistry.ts.
+  'html-artifact', 'svg-artifact',
 ] as const;
 
 export type RenderType = typeof RENDER_TYPES[number];
