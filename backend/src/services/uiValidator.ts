@@ -8,6 +8,13 @@ import {
 // Phase 3: registry-driven structural validation, SHADOW MODE ONLY.
 // Rewired from the legacy JSON registry to componentRegistry.ts (single source of truth).
 // This module is PASSIVE — it reports violations; it never rejects, trims, or alters output.
+//
+// This applies to artifact nodes too: for 'html-artifact' / 'svg-artifact' this module
+// only REPORTS schema/safety violations (e.g. unsafe_artifact_content); it does NOT block
+// rendering. The actual safety enforcement is unconditional and lives at render time in
+// sanitizeArtifact / ArtifactFrame (sandbox + CSP + allowlist strip). Do not treat this
+// validator as the artifact safety gate — any new artifact render path must go through the
+// renderer's sanitizer, not rely on validation to have stopped unsafe content.
 
 export type ViolationCategory =
   | 'unknown_render_type'
