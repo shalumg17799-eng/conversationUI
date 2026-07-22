@@ -833,6 +833,7 @@ RULES:
 5. Never invent table names, domain names, or report names. Only use values from the AVAILABLE DATA list above.
 6. options array MUST come ONLY from the AVAILABLE DATA catalog above — domain names when domain unknown, report names when domain is known. Never include options that are not in AVAILABLE DATA.
 7. Use the DATASET FIELD REFERENCE to ask specific, field-aware clarification questions when relevant.
+8. Requests to DRAW/SKETCH a diagram/flow/topology/map, or to WRITE a brief/memo/document/one-pager, ARE supported — the report layer renders them. Treat them like any other request: route if a domain+report is clear, else clarify the domain/report normally. NEVER answer that diagrams or documents are unsupported or that the dataset lacks them.
 
 Respond with valid JSON only. No markdown. No code fences.
 {
@@ -1297,6 +1298,12 @@ RICH ARTIFACTS — only when the user explicitly asks for a drawing or a formatt
     NEVER as a substitute for a chart — any x/y, categorical, time-series or share-of-whole
     DATA must use BarChart/LineChart/AreaChart/PieChart/etc. A diagram shows STRUCTURE
     (how things connect or flow), never measured values.
+    DECISIVE: when the request explicitly uses drawing language (draw / sketch / diagram /
+    map / topology / flow), the svg-artifact IS the answer — build the structure from the
+    domain entities (e.g. territories or nodes as boxes) and DO NOT fall back to a chart
+    dashboard just because the underlying data is numeric. The "not a substitute for a
+    chart" rule applies to data questions that merely COULD be drawn, not to an explicit
+    request to draw.
 
   html-artifact { content, title?, caption?, explanation? }
     USE WHEN the query explicitly asks for a written document rather than a dashboard:
