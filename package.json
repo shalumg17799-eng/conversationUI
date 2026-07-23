@@ -14,6 +14,7 @@
     "test:governor": "cd backend && npx ts-node --transpile-only --project ../scripts/tsconfig.json ../scripts/test_governor.ts",
     "test:timing": "cd backend && npx ts-node --transpile-only --project ../scripts/tsconfig.json ../scripts/test_timing.ts",
     "test:artifacts": "cd backend && npx ts-node --transpile-only --project ../scripts/tsconfig.json ../scripts/test_artifacts.ts",
+    "test:layout": "cd backend && npx ts-node --transpile-only --project ../scripts/tsconfig.json ../scripts/test_layout.ts",
     "demo:artifacts": "cd backend && npx ts-node --transpile-only --project ../scripts/tsconfig.json ../scripts/demo_artifacts.ts",
     "release:note": "cd backend && npx ts-node --transpile-only --project ../scripts/tsconfig.json ../scripts/generate-release-note.ts",
     "release:parse": "cd backend && npx ts-node --transpile-only --project ../scripts/tsconfig.json ../scripts/parseChangelog.ts"

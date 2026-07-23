@@ -261,3 +261,21 @@
     line-height: 1.5;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Adaptive UI — layout density (Requirement 5)
+   Set via data-density on <html> by LayoutPrefsContext. Scales the
+   root font-size (rem-based sizing follows) and a shared spacing token.
+   ───────────────────────────────────────────────────────────── */
+:root[data-density='compact'] {
+  --font-size: 15px;
+  --density-gap: 0.75rem;
+}
+:root[data-density='comfortable'] {
+  --font-size: 16px;
+  --density-gap: 1rem;
+}
+:root[data-density='spacious'] {
+  --font-size: 17px;
+  --density-gap: 1.5rem;
+}

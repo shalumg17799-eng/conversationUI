@@ -61,6 +61,7 @@ import {
 } from 'lucide-react';
 import MedallionIcon from '@/imports/Group5';
 import { usePersona } from '@/app/context/PersonaContext';
+import { useLayoutPrefs } from '@/app/context/LayoutPrefsContext';
 
 // Backend base URL — set VITE_API_URL at build time for production. Falls back to localhost in dev.
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -117,6 +118,26 @@ interface Conversation {
   createReportState?: CreateReportState; // Store create report flow state for draft restoration
   migrationState?: MigrationState; // Store migration flow state
   status?: 'active' | 'planned' | 'draft'; // Session status
+}
+
+// Adaptive UI: translate the persisted right-panel preferences (position / size /
+// visibility) into the report-panel aside's chrome. Docks right (default), left,
+// top, or bottom; the panel is offset past the nav rail (64px) + Talk history (240px).
+function reportPanelChrome(panel: { position: string; size: string }): { className: string; style: React.CSSProperties } {
+  const widths: Record<string, number> = { narrow: 380, default: 480, wide: 640, full: 760 };
+  const w = widths[panel.size] ?? 480;
+  const base = 'fixed bg-white z-30 flex flex-col shadow-xl';
+  switch (panel.position) {
+    case 'bottom':
+      return { className: `${base} left-[304px] right-0 bottom-0 border-t border-[var(--border)]`, style: { height: '46vh' } };
+    case 'top':
+      return { className: `${base} left-[304px] right-0 top-[52px] border-b border-[var(--border)]`, style: { height: '46vh' } };
+    case 'left':
+      return { className: `${base} top-[60px] left-[304px] bottom-0 border-r border-[var(--border)]`, style: { width: w } };
+    case 'right':
+    default:
+      return { className: `${base} top-[60px] right-0 bottom-0 border-l border-[var(--border)]`, style: { width: w } };
+  }
 }
 
 export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowMode?: boolean } = {}) { // marker 1
@@ -349,6 +370,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
   const migrationRouteInitialized = useRef<string | null>(null);
 
   const { persona } = usePersona();
+  const { prefs: layoutPrefs, applyDirectives: applyLayoutDirectives } = useLayoutPrefs();
   const allReports = getAllReports();
   const allDatasets = getAllDatasets();
   const reportsCount = catalogReports.length;
@@ -2647,6 +2669,13 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
               if (payload.followUp?.length) {
                 patchMsg(m => ({ ...m, data: { ...m.data, followUp: payload.followUp } }));
               }
+            } else if (event === 'layout_directive') {
+              // Adaptive UI: apply + persist the validated layout directives, and
+              // replace the streaming placeholder with the acknowledgment text.
+              if (Array.isArray(payload.directives) && payload.directives.length > 0) {
+                applyLayoutDirectives(payload.directives);
+              }
+              patchMsg(m => ({ ...m, isStreaming: false, renderType: 'text', content: payload.acknowledgment ?? 'Layout updated.' }));
             } else if (event === 'clarification') {
               patchMsg(m => ({ ...m, isStreaming: false, renderType: 'clarification', originalQuery: query, data: { opener: payload.opener, currentQuestion: payload.currentQuestion, isRecovery: payload.isRecovery ?? false } }));
             } else if (event === 'error') {
@@ -7593,8 +7622,10 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
       {/* REPORT PREVIEW PANEL (RIGHT) */}
       {/* SHARED PANEL: Used for both My Reports → Explore Report AND Talk → Create Report (draft) */}
       {/* Draft mode indicated by selectedReport.isDraft flag */}
-      {isReportPanelOpen && selectedReport && (
-        <aside className="fixed top-[60px] right-0 bottom-0 w-[480px] bg-white border-l border-[var(--border)] z-30 flex flex-col shadow-xl">
+      {isReportPanelOpen && selectedReport && layoutPrefs.panels.right_panel.visible && (() => {
+        const chrome = reportPanelChrome(layoutPrefs.panels.right_panel);
+        return (
+        <aside className={chrome.className} style={chrome.style}>
           {/* Panel Header */}
           <div className="p-5 border-b border-[var(--border)]">
             <div className="flex items-start justify-between mb-3">
@@ -7895,7 +7926,8 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
             )}
           </div>
         </aside>
-      )}
+        );
+      })()}
 
       {/* DATASET DETAILS PANEL (RIGHT) */}
       {isDatasetPanelOpen && selectedDataset && (

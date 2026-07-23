@@ -1,0 +1,483 @@
+import Ajv, { ValidateFunction } from 'ajv';
+import { modelGenerate, LLMProvider } from './llmHandler';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Adaptive UI — Requirement 5, Tasks 1 & 2
+//
+// This module is the single source of truth for the "Layout Directive" contract:
+// the constrained, typed set of UI-personalization operations the user can drive
+// with natural language ("move the right panel to the bottom", "hide the sidebar",
+// "make the panel wider", "use a compact layout").
+//
+// It does two jobs, mirroring the governance-stack pattern used elsewhere in the
+// codebase (keyword classifier > LLM proposal > deterministic fallback, then an
+// Ajv schema check):
+//
+//   1. detectLayoutIntent(query)  — recognize a UI-personalization command DISTINCTLY
+//      from data queries and report edits. This runs first in the pipeline so a
+//      layout command is never misrouted into a new report or a structural edit.
+//
+//   2. parseLayoutDirective(...)  — turn a recognized command into one or more typed
+//      LayoutDirective objects, then validate each against the constrained schema.
+//      Unsupported operations are REJECTED with a clear, user-facing reason; only
+//      schema-valid directives are ever emitted to the frontend.
+//
+// Nothing here renders anything — the frontend applies + persists valid directives.
+// This module only classifies, parses, and validates.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── The constrained allowed set ───────────────────────────────────────────────
+// These enums ARE the contract. Anything outside them is rejected. Keep them small
+// and deliberate — every value here must have a corresponding frontend behavior.
+
+/** Which layout surface the operation targets. */
+export const LAYOUT_TARGETS = [
+  'right_panel',   // the report / preview panel (the "right panel" users refer to)
+  'left_panel',    // the Talk-history secondary nav
+  'nav_rail',      // the icon navigation rail
+  'chat_panel',    // the main conversation column
+] as const;
+export type LayoutTarget = (typeof LAYOUT_TARGETS)[number];
+
+/** Allowed operations. */
+export const LAYOUT_OPS = ['move', 'toggle', 'resize', 'density'] as const;
+export type LayoutOp = (typeof LAYOUT_OPS)[number];
+
+/** move — where a panel is docked. */
+export const LAYOUT_POSITIONS = ['left', 'right', 'top', 'bottom'] as const;
+export type LayoutPosition = (typeof LAYOUT_POSITIONS)[number];
+
+/** toggle — visibility action. */
+export const LAYOUT_VISIBILITY = ['show', 'hide', 'toggle'] as const;
+export type LayoutVisibility = (typeof LAYOUT_VISIBILITY)[number];
+
+/** resize — named size steps (no free-form pixels; keeps the surface bounded). */
+export const LAYOUT_SIZES = ['narrow', 'default', 'wide', 'full'] as const;
+export type LayoutSize = (typeof LAYOUT_SIZES)[number];
+
+/** density — global spacing. */
+export const LAYOUT_DENSITIES = ['compact', 'comfortable', 'spacious'] as const;
+export type LayoutDensity = (typeof LAYOUT_DENSITIES)[number];
+
+// Discriminated union — one directive = one atomic layout change.
+export type LayoutDirective =
+  | { op: 'move'; target: LayoutTarget; position: LayoutPosition }
+  | { op: 'toggle'; target: LayoutTarget; visibility: LayoutVisibility }
+  | { op: 'resize'; target: LayoutTarget; size: LayoutSize }
+  | { op: 'density'; density: LayoutDensity };
+
+export interface LayoutDirectiveBatch {
+  directives: LayoutDirective[];
+  /** One-sentence confirmation of what was applied (for the chat surface). */
+  acknowledgment: string;
+}
+
+// A directive the parser produced but the schema rejected — surfaced to the user
+// so unsupported requests get a clear response instead of a silent drop.
+export interface RejectedDirective {
+  raw: unknown;
+  reason: string;
+}
+
+// ── Ajv schema (mirrors uiValidator.ts — Ajv, additive) ────────────────────────
+// One schema per op, so validation errors are deterministic and precise (the op is
+// already known before we validate, so there is no branch ambiguity to resolve).
+const ajv = new Ajv({ allErrors: true, strict: false });
+
+const targetEnum = { type: 'string', enum: [...LAYOUT_TARGETS] };
+
+const OP_SCHEMAS: Record<LayoutOp, object> = {
+  move: {
+    type: 'object',
+    properties: { op: { const: 'move' }, target: targetEnum, position: { type: 'string', enum: [...LAYOUT_POSITIONS] } },
+    required: ['op', 'target', 'position'],
+    additionalProperties: false,
+  },
+  toggle: {
+    type: 'object',
+    properties: { op: { const: 'toggle' }, target: targetEnum, visibility: { type: 'string', enum: [...LAYOUT_VISIBILITY] } },
+    required: ['op', 'target', 'visibility'],
+    additionalProperties: false,
+  },
+  resize: {
+    type: 'object',
+    properties: { op: { const: 'resize' }, target: targetEnum, size: { type: 'string', enum: [...LAYOUT_SIZES] } },
+    required: ['op', 'target', 'size'],
+    additionalProperties: false,
+  },
+  density: {
+    type: 'object',
+    properties: { op: { const: 'density' }, density: { type: 'string', enum: [...LAYOUT_DENSITIES] } },
+    required: ['op', 'density'],
+    additionalProperties: false,
+  },
+};
+
+const OP_VALIDATORS: Record<LayoutOp, ValidateFunction> = {
+  move: ajv.compile(OP_SCHEMAS.move),
+  toggle: ajv.compile(OP_SCHEMAS.toggle),
+  resize: ajv.compile(OP_SCHEMAS.resize),
+  density: ajv.compile(OP_SCHEMAS.density),
+};
+
+/**
+ * Validate one directive against the constrained schema.
+ * Pure; never throws. Returns a typed directive on success, or a clear reason.
+ */
+export function validateLayoutDirective(
+  raw: unknown,
+): { valid: true; directive: LayoutDirective } | { valid: false; reason: string } {
+  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) {
+    return { valid: false, reason: 'directive must be an object' };
+  }
+  const op = (raw as any).op;
+  if (!LAYOUT_OPS.includes(op)) {
+    return {
+      valid: false,
+      reason: `unsupported operation "${String(op)}" — allowed: ${LAYOUT_OPS.join(', ')}`,
+    };
+  }
+  const validate = OP_VALIDATORS[op as LayoutOp];
+  if (validate(raw)) {
+    return { valid: true, directive: raw as LayoutDirective };
+  }
+  // Build a human-readable reason from the most meaningful Ajv error.
+  const reason = summarizeAjvErrors(op, validate.errors ?? []);
+  return { valid: false, reason };
+}
+
+function summarizeAjvErrors(op: string, errors: NonNullable<ValidateFunction['errors']>): string {
+  // Priority: a bad value (enum) is more informative than a missing/extra field.
+  const enumErr = errors.find(e => e.keyword === 'enum');
+  if (enumErr) {
+    const prop = enumErr.instancePath.replace(/^\//, '') || 'value';
+    const allowed = (enumErr.params as any)?.allowedValues?.join(', ');
+    return `invalid ${prop} for "${op}" — allowed: ${allowed}`;
+  }
+  const addlErr = errors.find(e => e.keyword === 'additionalProperties');
+  if (addlErr) {
+    return `"${op}" has an unsupported field "${(addlErr.params as any).additionalProperty}"`;
+  }
+  const reqErr = errors.find(e => e.keyword === 'required');
+  if (reqErr) {
+    return `"${op}" is missing required field "${(reqErr.params as any).missingProperty}"`;
+  }
+  return `"${op}" directive did not match the layout schema`;
+}
+
+// ── Task 1: intent recognition ────────────────────────────────────────────────
+// A UI-personalization command must be recognized DISTINCTLY from:
+//   - data queries      ("show me revenue by region")     → target is a metric, not a panel
+//   - structural edits  ("hide the table", "remove chart") → target is a report component
+//
+// The discriminator: a layout command references a layout SURFACE (panel / sidebar /
+// rail / layout / density) — never a metric or a report component (table/chart/kpi).
+// We deliberately do NOT treat table/chart/kpi as layout targets so report edits keep
+// flowing to the existing structural-edit path.
+
+// Surface nouns that mean "a chrome/layout region", not report content.
+const SURFACE_RE =
+  /\b(panel|panels|sidebar|side\s?bar|side\s?panel|rail|nav(?:igation)?\s?(?:rail|bar)?|pane|layout|density|spacing|screen\s?layout|workspace|history\s?(?:panel|list|sidebar))\b/i;
+
+// Layout action verbs. Includes bare comparatives ("wider", "smaller") so
+// "make the panel wider" is recognized even with a noun between verb and adjective.
+const ACTION_RE =
+  /\b(move|reposition|relocate|dock|put|place|shift|send|hide|show|collapse|expand|open|close|minimi[sz]e|maximi[sz]e|resize|widen|wider|narrow|narrower|shrink|shrunk|enlarge|enlarged|grow|bigger|smaller|larger|compact|comfortable|spacious|denser?|roomier)\b/i;
+
+// Density-only phrasing that needs no surface noun.
+const DENSITY_RE = /\b(compact|comfortable|spacious|densit(?:y|ies)|denser|roomier|more\s+(?:compact|spacious|dense))\b/i;
+
+// Position phrasing ("to the bottom", "on the left").
+const POSITION_RE = /\b(?:to\s+the\s+|on\s+the\s+|at\s+the\s+|move\s+.*\b)?(top|bottom|left|right)\b/i;
+
+// Guard: report-content nouns that must NOT be treated as layout targets. If the
+// query is clearly about report content and has no surface noun, it is not a layout
+// command (e.g. "hide the table", "remove the revenue chart").
+const REPORT_CONTENT_RE = /\b(table|chart|graph|kpi|metric|card|legend|axis|column\s+of\s+data|report|dashboard)\b/i;
+
+export interface LayoutIntentSignal {
+  isLayout: boolean;
+  /** 0..1 heuristic confidence — informational only. */
+  confidence: number;
+  matched: string[];
+}
+
+/**
+ * Fast, deterministic classifier: is this query a UI-personalization command?
+ * Pure + synchronous. Deliberately conservative so it never steals a data query
+ * or a report edit — it fires only when a layout SURFACE (or bare density) is named.
+ */
+export function detectLayoutIntent(query: string): LayoutIntentSignal {
+  const q = (query ?? '').toLowerCase();
+  const matched: string[] = [];
+
+  const hasSurface = SURFACE_RE.test(q);
+  const hasAction = ACTION_RE.test(q);
+  const hasDensity = DENSITY_RE.test(q);
+  const mentionsReportContent = REPORT_CONTENT_RE.test(q) && !hasSurface;
+
+  if (hasSurface) matched.push('surface');
+  if (hasAction) matched.push('action');
+  if (hasDensity) matched.push('density');
+
+  // A report-content edit with no surface noun is NOT layout personalization.
+  if (mentionsReportContent && !hasSurface && !hasDensity) {
+    return { isLayout: false, confidence: 0, matched };
+  }
+
+  // Bare density command ("make it more compact", "use a spacious layout").
+  if (hasDensity && !mentionsReportContent) {
+    return { isLayout: true, confidence: hasSurface || hasAction ? 0.95 : 0.8, matched };
+  }
+
+  // Surface + action is the strong signal ("move the right panel to the bottom").
+  if (hasSurface && hasAction) {
+    return { isLayout: true, confidence: 0.95, matched };
+  }
+
+  // Surface alone with a position ("panel on the left") — still a layout command.
+  if (hasSurface && POSITION_RE.test(q)) {
+    matched.push('position');
+    return { isLayout: true, confidence: 0.85, matched };
+  }
+
+  // Surface named with clear show/hide/close/open only.
+  if (hasSurface && /\b(hide|show|close|open|collapse|expand)\b/i.test(q)) {
+    return { isLayout: true, confidence: 0.85, matched };
+  }
+
+  return { isLayout: false, confidence: 0, matched };
+}
+
+// ── Task 2: parse into typed, validated directives ────────────────────────────
+
+// Map free-text target phrases → canonical LayoutTarget.
+function resolveTarget(q: string): LayoutTarget | null {
+  if (/\b(report|preview|right)\b.*\bpanel\b|\bright\s?panel\b|\breport\s?panel\b|\bpreview\s?panel\b/i.test(q)) return 'right_panel';
+  if (/\b(history|talk|left)\b.*\b(panel|sidebar|list)\b|\bleft\s?panel\b|\bleft\s?sidebar\b|\bhistory\s?(panel|sidebar|list)\b/i.test(q)) return 'left_panel';
+  if (/\bnav(?:igation)?\s?(?:rail|bar)?\b|\brail\b|\bicon\s?(?:rail|bar)\b/i.test(q)) return 'nav_rail';
+  if (/\bchat\b|\bconversation\b|\bmain\s?(panel|area|column)\b/i.test(q)) return 'chat_panel';
+  // Bare "panel"/"sidebar" defaults to the right panel — the one users reposition most.
+  if (/\bside\s?bar\b|\bleft\b/i.test(q)) return 'left_panel';
+  if (/\bpanel\b|\bpane\b/i.test(q)) return 'right_panel';
+  return null;
+}
+
+function resolvePosition(q: string): LayoutPosition | null {
+  // Prefer a position that follows a directional preposition ("to the bottom",
+  // "on the left", "at the top") — this avoids picking the "right" in "right panel".
+  const directed = q.match(/\b(?:to|at|on|into|toward|towards|dock(?:ed)?(?:\s+(?:at|to))?)\s+(?:the\s+)?(top|bottom|left|right)\b/i);
+  if (directed) return directed[1].toLowerCase() as LayoutPosition;
+  // Fall back to the LAST bare position word (target descriptors like "right panel"
+  // come first; the destination usually comes last).
+  const all = [...q.matchAll(/\b(top|bottom|left|right)\b/gi)];
+  return all.length ? (all[all.length - 1][1].toLowerCase() as LayoutPosition) : null;
+}
+
+function resolveDensity(q: string): LayoutDensity | null {
+  if (/\bcompact|denser?|tighter?\b/i.test(q)) return 'compact';
+  if (/\bspacious|roomier|airy\b/i.test(q)) return 'spacious';
+  if (/\bcomfortable|comfy|default\s+spacing\b/i.test(q)) return 'comfortable';
+  return null;
+}
+
+/**
+ * Deterministic parse for the common, unambiguous phrasings. Returns [] when it
+ * cannot confidently produce a directive (caller then falls back to the LLM parse).
+ */
+export function deterministicParse(query: string): LayoutDirective[] {
+  const q = (query ?? '').toLowerCase();
+  const out: LayoutDirective[] = [];
+
+  // density — global, no target needed
+  if (DENSITY_RE.test(q)) {
+    const density = resolveDensity(q);
+    if (density) out.push({ op: 'density', density });
+  }
+
+  const target = resolveTarget(q);
+
+  // move — "move X to the bottom", "put the panel on the left"
+  if (target && /\b(move|reposition|relocate|dock|put|place|shift|send)\b/i.test(q)) {
+    const position = resolvePosition(q);
+    if (position) out.push({ op: 'move', target, position });
+  }
+
+  // toggle — hide/show/collapse/expand
+  if (target) {
+    if (/\b(hide|collapse|close|minimi[sz]e)\b/i.test(q)) out.push({ op: 'toggle', target, visibility: 'hide' });
+    else if (/\b(show|expand|open|reveal|maximi[sz]e)\b/i.test(q)) out.push({ op: 'toggle', target, visibility: 'show' });
+    else if (/\btoggle\b/i.test(q)) out.push({ op: 'toggle', target, visibility: 'toggle' });
+  }
+
+  // resize — widen/narrow/wider/smaller
+  if (target) {
+    if (/\b(widen|wider|enlarge|bigger|larger|grow|expand\s+width)\b/i.test(q)) out.push({ op: 'resize', target, size: 'wide' });
+    else if (/\b(narrow|narrower|shrink|smaller|reduce\s+width)\b/i.test(q)) out.push({ op: 'resize', target, size: 'narrow' });
+    else if (/\bfull\s?(width|screen)\b|\bmaximi[sz]e\s+width\b/i.test(q)) out.push({ op: 'resize', target, size: 'full' });
+    else if (/\b(reset|default)\s+(?:the\s+)?(?:size|width)\b/i.test(q)) out.push({ op: 'resize', target, size: 'default' });
+  }
+
+  // De-dupe (a query like "hide the panel" shouldn't emit twice).
+  return dedupe(out);
+}
+
+function dedupe(directives: LayoutDirective[]): LayoutDirective[] {
+  const seen = new Set<string>();
+  return directives.filter(d => {
+    const key = JSON.stringify(d);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+const LLM_PARSE_SYSTEM = `You convert a natural-language UI-personalization command into a JSON array of layout directives.
+You ONLY handle changes to the app's layout chrome — panels, sidebars, the nav rail, and spacing density.
+You NEVER generate reports, answer data questions, or edit report content (tables/charts/KPIs).
+
+Respond with JSON ONLY (no prose, no code fences): { "directives": [ ... ] }
+
+Each directive is exactly ONE of these shapes. Do not invent fields or values.
+
+1. Move/reposition a panel:
+   { "op": "move", "target": <TARGET>, "position": "left" | "right" | "top" | "bottom" }
+2. Show / hide a panel:
+   { "op": "toggle", "target": <TARGET>, "visibility": "show" | "hide" | "toggle" }
+3. Resize a panel:
+   { "op": "resize", "target": <TARGET>, "size": "narrow" | "default" | "wide" | "full" }
+4. Change spacing density (global — no target):
+   { "op": "density", "density": "compact" | "comfortable" | "spacious" }
+
+<TARGET> is one of: "right_panel" (report/preview panel), "left_panel" (talk history),
+"nav_rail" (icon nav), "chat_panel" (main conversation).
+
+If the command asks for something outside this set, return { "directives": [] }.`;
+
+/**
+ * LLM-backed parse for phrasings the deterministic parser cannot resolve.
+ * Output is validated by the caller — this only proposes.
+ */
+async function llmParse(query: string, provider: LLMProvider): Promise<unknown[]> {
+  try {
+    const raw = await modelGenerate(provider, {
+      system: LLM_PARSE_SYSTEM,
+      user: `Command: "${query}"`,
+      temperature: 0,
+      maxOutputTokens: 500,
+    });
+    const jsonText = extractJSON(stripThink(raw));
+    const parsed = JSON.parse(jsonText);
+    return Array.isArray(parsed?.directives) ? parsed.directives : [];
+  } catch (err) {
+    console.warn('[layoutDirective] llmParse failed:', (err as Error).message);
+    return [];
+  }
+}
+
+// Local copies of the tiny llmHandler helpers (kept private there).
+function stripThink(text: string): string {
+  return text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+}
+function extractJSON(text: string): string {
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start !== -1 && end !== -1 && end > start) return text.slice(start, end + 1);
+  return text;
+}
+
+export interface ParseResult {
+  /** Schema-valid directives, ready to apply. */
+  directives: LayoutDirective[];
+  /** Proposals that failed schema validation — each with a clear reason. */
+  rejected: RejectedDirective[];
+  /** Which parser produced the directives. */
+  source: 'deterministic' | 'llm' | 'none';
+}
+
+/**
+ * Parse a recognized UI-personalization command into validated layout directives.
+ *
+ * Precedence mirrors the governance stack: deterministic parse first (fast, free,
+ * unambiguous), LLM parse as a fallback. Every candidate — from either path — is
+ * validated against the constrained schema. Unsupported operations are collected in
+ * `rejected` with a clear reason rather than silently dropped.
+ */
+export async function parseLayoutDirective(
+  query: string,
+  provider: LLMProvider = 'gemma',
+): Promise<ParseResult> {
+  // 1. Deterministic first.
+  const deterministic = deterministicParse(query);
+  if (deterministic.length > 0) {
+    const { directives, rejected } = partitionValid(deterministic);
+    if (directives.length > 0) return { directives, rejected, source: 'deterministic' };
+  }
+
+  // 2. LLM fallback for the long tail.
+  const proposals = await llmParse(query, provider);
+  if (proposals.length > 0) {
+    const { directives, rejected } = partitionValid(proposals);
+    return { directives, rejected, source: directives.length > 0 ? 'llm' : 'none' };
+  }
+
+  return { directives: [], rejected: [], source: 'none' };
+}
+
+function partitionValid(candidates: unknown[]): { directives: LayoutDirective[]; rejected: RejectedDirective[] } {
+  const directives: LayoutDirective[] = [];
+  const rejected: RejectedDirective[] = [];
+  for (const c of candidates) {
+    const result = validateLayoutDirective(c);
+    if (result.valid) directives.push(result.directive);
+    else rejected.push({ raw: c, reason: result.reason });
+  }
+  return { directives: dedupe(directives), rejected };
+}
+
+// ── User-facing acknowledgment builder ────────────────────────────────────────
+const TARGET_LABEL: Record<LayoutTarget, string> = {
+  right_panel: 'report panel',
+  left_panel: 'history panel',
+  nav_rail: 'navigation rail',
+  chat_panel: 'chat panel',
+};
+
+function describe(d: LayoutDirective): string {
+  switch (d.op) {
+    case 'move': return `moved the ${TARGET_LABEL[d.target]} to the ${d.position}`;
+    case 'toggle': return `${d.visibility === 'hide' ? 'hid' : d.visibility === 'show' ? 'showed' : 'toggled'} the ${TARGET_LABEL[d.target]}`;
+    case 'resize': return `set the ${TARGET_LABEL[d.target]} to ${d.size} width`;
+    case 'density': return `switched to a ${d.density} layout`;
+  }
+}
+
+/**
+ * Build the chat-surface acknowledgment for a parse result. Confirms what was
+ * applied and clearly reports anything unsupported (Task 2 acceptance criterion).
+ */
+export function buildAcknowledgment(result: ParseResult): string {
+  const applied = result.directives.map(describe);
+  const parts: string[] = [];
+  if (applied.length > 0) {
+    parts.push(`Done — ${joinList(applied)}.`);
+  }
+  if (result.rejected.length > 0) {
+    const reasons = Array.from(new Set(result.rejected.map(r => r.reason)));
+    parts.push(
+      applied.length > 0
+        ? `I couldn't apply everything: ${reasons.join('; ')}.`
+        : `I can't do that — ${reasons.join('; ')}. I can move, show/hide, resize panels, or change density.`,
+    );
+  }
+  if (parts.length === 0) {
+    return `I understood that as a layout change, but couldn't map it to a supported action. I can move, show/hide, or resize the report, history, nav, or chat panels, or change the layout density.`;
+  }
+  return parts.join(' ');
+}
+
+function joinList(items: string[]): string {
+  if (items.length === 1) return items[0];
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
+}

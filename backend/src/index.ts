@@ -9,6 +9,7 @@ import { getOutputModeSummary, resetOutputModeMetrics } from './services/outputM
 import { getValidationSummary, resetValidationMetrics } from './services/validationTelemetry';
 import { getConstraintSummary, resetConstraintMetrics } from './services/constraintTelemetry';
 import { getGovernorSummary, resetGovernorMetrics } from './services/governorTelemetry';
+import { getLayoutSummary, resetLayoutMetrics } from './services/layoutDirectiveTelemetry';
 import { createJob, getJob, listJobs, cancelJob, deleteJob, videoPath, loadPersistedJobs, AUDIO_ROOT, VIDEO_ROOT, FOOTAGE_ROOT } from './services/videoJobs';
 import { warmupRenderer } from './services/videoRenderer';
 import { ttsEnabled } from './services/ttsService';
@@ -380,6 +381,15 @@ app.get('/api/metrics/governor', (_req: Request, res: Response) => {
 });
 app.post('/api/metrics/governor/reset', (_req: Request, res: Response) => {
   resetGovernorMetrics();
+  res.json({ success: true });
+});
+
+// Adaptive UI (Requirement 5): layout-directive intent telemetry.
+app.get('/api/metrics/layout', (_req: Request, res: Response) => {
+  res.json(getLayoutSummary());
+});
+app.post('/api/metrics/layout/reset', (_req: Request, res: Response) => {
+  resetLayoutMetrics();
   res.json({ success: true });
 });
 

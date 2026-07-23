@@ -19,6 +19,8 @@ import { recordConstraints } from '../services/constraintTelemetry';
 import { governReport, governorMode, generateGovernedFallback } from '../services/governor';
 import { recordGovernor } from '../services/governorTelemetry';
 import { OutputMode } from '../registry/componentRegistry';
+import { detectLayoutIntent, parseLayoutDirective, buildAcknowledgment } from '../services/layoutDirective';
+import { recordLayoutDirective } from '../services/layoutDirectiveTelemetry';
 
 // Fixes column name casing in LLM-generated cards.
 // BQ returns columns in their original case (e.g. TEAM, CSAT_SCORE) but the LLM
@@ -378,6 +380,29 @@ export async function runStreamingPipeline(
     send('meta', { title: cached.title, description: cached.message, cached: true, activeTable: cached.activeTable, rowCount: cached.rowCount ?? null, outputMode: cached.outputMode });
     for (const component of cached.components) send('component', component);
     if (cached.followUp && cached.followUp.length > 0) send('followUp', cached.followUp);
+    return;
+  }
+
+  // ── Adaptive UI: UI-personalization intent (Requirement 5) ─────────────────
+  // Runs BEFORE report/edit classification so a layout command ("move the right
+  // panel to the bottom", "hide the sidebar", "use a compact layout") is recognized
+  // as a distinct UI intent and never becomes a new report or a structural edit.
+  // Deliberately conservative: only fires when a layout SURFACE (or bare density)
+  // is named, so data queries and report edits are untouched.
+  const layoutSignal = detectLayoutIntent(query);
+  if (layoutSignal.isLayout) {
+    send('status', { message: 'Adjusting your layout...' });
+    const parseResult = await parseLayoutDirective(query, provider);
+    recordLayoutDirective(parseResult, { query, provider });
+
+    // Only emit schema-valid directives; unsupported ops are reported clearly.
+    const acknowledgment = buildAcknowledgment(parseResult);
+    send('layout_directive', {
+      directives: parseResult.directives,
+      rejected: parseResult.rejected,
+      acknowledgment,
+      source: parseResult.source,
+    });
     return;
   }
 
