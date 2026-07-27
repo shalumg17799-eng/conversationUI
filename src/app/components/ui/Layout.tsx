@@ -360,8 +360,8 @@ export function Layout({ children }: LayoutProps) {
         </div>
       </main>
 
-      {/* Floating Mode Toggle */}
-      <ModeToggle />
+      {/* Floating Mode Toggle (mode_toggle surface — hideable via Adaptive UI) */}
+      {layoutPrefs.panels.mode_toggle.visible && <ModeToggle />}
     </div>
   );
 }

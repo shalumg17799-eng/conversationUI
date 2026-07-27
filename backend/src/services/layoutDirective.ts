@@ -37,6 +37,7 @@ export const LAYOUT_TARGETS = [
   'nav_rail',      // the icon navigation rail
   'chat_panel',    // the main conversation column
   'header',        // the top bar (logo / search / persona) — dockable top or bottom
+  'mode_toggle',   // the floating Static/LLM response-mode pill — show/hide only
 ] as const;
 export type LayoutTarget = (typeof LAYOUT_TARGETS)[number];
 
@@ -178,12 +179,12 @@ function summarizeAjvErrors(op: string, errors: NonNullable<ValidateFunction['er
 
 // Surface nouns that mean "a chrome/layout region", not report content.
 const SURFACE_RE =
-  /\b(panel|panels|sidebar|side\s?bar|side\s?panel|rail|nav(?:igation)?\s?(?:rail|bar)?|pane|layout|density|spacing|screen\s?layout|workspace|history\s?(?:panel|list|sidebar)|headers?|top\s?bar|tool\s?bar)\b/i;
+  /\b(panel|panels|sidebar|side\s?bar|side\s?panel|rail|nav(?:igation)?\s?(?:rail|bar)?|pane|layout|density|spacing|screen\s?layout|workspace|history\s?(?:panel|list|sidebar)|headers?|top\s?bar|tool\s?bar|mode\s?toggle|response\s?mode|static\s?\/?\s?llm)\b/i;
 
 // Layout action verbs. Includes bare comparatives ("wider", "smaller") so
 // "make the panel wider" is recognized even with a noun between verb and adjective.
 const ACTION_RE =
-  /\b(move|reposition|relocate|dock|put|place|shift|send|hide|show|collapse|expand|open|close|minimi[sz]e|maximi[sz]e|resize|widen|wider|wide|narrow|narrower|shrink|shrunk|enlarge|enlarged|grow|bigger|smaller|larger|compact|comfortable|spacious|denser?|roomier)\b/i;
+  /\b(move|reposition|relocate|dock|put|place|shift|send|hide|show|collapse|expand|open|close|minimi[sz]e|maximi[sz]e|resize|widen|wider|wide|narrow|narrower|shrink|shrunk|enlarge|enlarged|grow|bigger|smaller|larger|compact|comfortable|spacious|denser?|roomier|remove|get\s+rid|delete|dismiss|restore|reveal|unhide|bring\s+back)\b/i;
 
 // Density-only phrasing that needs no surface noun.
 const DENSITY_RE = /\b(compact|comfortable|spacious|densit(?:y|ies)|denser|roomier|more\s+(?:compact|spacious|dense))\b/i;
@@ -254,6 +255,7 @@ export function detectLayoutIntent(query: string): LayoutIntentSignal {
 
 // Map free-text target phrases → canonical LayoutTarget.
 function resolveTarget(q: string): LayoutTarget | null {
+  if (/\bmode\s?toggle\b|\bresponse\s?mode\b|\bstatic\s?\/?\s?llm\b|\bllm\s?\/?\s?static\b|\b(static|llm)\s+(?:mode\s+)?(?:toggle|switch|pill)\b/i.test(q)) return 'mode_toggle';
   if (/\bheaders?\b|\btop\s?bar\b|\btool\s?bar\b/i.test(q)) return 'header';
   if (/\b(report|preview|right)\b.*\bpanel\b|\bright\s?panel\b|\breport\s?panel\b|\bpreview\s?panel\b/i.test(q)) return 'right_panel';
   if (/\b(history|talk|left)\b.*\b(panel|sidebar|list)\b|\bleft\s?panel\b|\bleft\s?sidebar\b|\bhistory\s?(panel|sidebar|list)\b/i.test(q)) return 'left_panel';
@@ -307,8 +309,8 @@ export function deterministicParse(query: string): LayoutDirective[] {
 
   // toggle — hide/show/collapse/expand
   if (target) {
-    if (/\b(hide|collapse|close|minimi[sz]e)\b/i.test(q)) out.push({ op: 'toggle', target, visibility: 'hide' });
-    else if (/\b(show|expand|open|reveal|maximi[sz]e)\b/i.test(q)) out.push({ op: 'toggle', target, visibility: 'show' });
+    if (/\b(hide|collapse|close|minimi[sz]e|remove|get\s+rid\s+of|delete|dismiss)\b/i.test(q)) out.push({ op: 'toggle', target, visibility: 'hide' });
+    else if (/\b(show|expand|open|reveal|maximi[sz]e|restore|unhide|bring\s+back)\b/i.test(q)) out.push({ op: 'toggle', target, visibility: 'show' });
     else if (/\btoggle\b/i.test(q)) out.push({ op: 'toggle', target, visibility: 'toggle' });
   }
 
@@ -352,7 +354,8 @@ Each directive is exactly ONE of these shapes. Do not invent fields or values.
    { "op": "density", "density": "compact" | "comfortable" | "spacious" }
 
 <TARGET> is one of: "right_panel" (report/preview panel), "left_panel" (talk history),
-"nav_rail" (icon nav), "chat_panel" (main conversation), "header" (top bar / toolbar).
+"nav_rail" (icon nav), "chat_panel" (main conversation), "header" (top bar / toolbar),
+"mode_toggle" (the floating Static/LLM response-mode toggle — show/hide only).
 
 If the command asks for something outside this set, return { "directives": [] }.`;
 
@@ -465,19 +468,24 @@ Each directive is exactly ONE of these shapes. Do not invent fields or values.
 
 <TARGET> is one of: "right_panel" (the report / preview panel), "left_panel" (the Talk-history
 sidebar), "nav_rail" (the icon navigation rail), "chat_panel" (the main conversation column),
-"header" (the top bar / toolbar). The header only moves top or bottom.
+"header" (the top bar / toolbar), "mode_toggle" (the floating Static/LLM response-mode toggle
+pill). The header only moves top or bottom. mode_toggle only shows or hides (no move/resize) —
+"remove / get rid of / hide the Static/LLM toggle" means { "op": "toggle", "target":
+"mode_toggle", "visibility": "hide" }.
 
-Map the user's words to the closest target and op by meaning, not by exact keyword. If they
-clearly want a layout change but it maps to no supported op/target/value, return
-{ "isLayout": true, "directives": [] } so the app can tell them it is unsupported.`;
+Note: hiding a piece of app chrome (a toggle, a panel, the nav) IS a valid layout change —
+it is not "modifying code" and you should NOT refuse it. Map the user's words to the closest
+target and op by meaning, not by exact keyword. If they clearly want a layout change but it
+maps to no supported op/target/value, return { "isLayout": true, "directives": [] } so the
+app can tell them it is unsupported.`;
 
 /** Loose, cheap pre-filter: could this plausibly be a layout command? Deliberately
  *  over-inclusive (favor a false positive → let the LLM decide) but rejects the bulk
  *  of pure data queries so the LLM is not called on every message. */
 const MAYBE_UI_NOUN_RE =
-  /\b(panel|panels|sidebar|side\s?bar|rail|nav|navigation|header|top\s?bar|tool\s?bar|toolbar|layout|screen|density|spacing|workspace|pane|chrome|sidebar|column)\b/i;
+  /\b(panel|panels|sidebar|side\s?bar|rail|nav|navigation|header|top\s?bar|tool\s?bar|toolbar|layout|screen|density|spacing|workspace|pane|chrome|column|toggle|switch|pill|button|control|response\s?mode|static\s?\/?\s?llm)\b/i;
 const MAYBE_LAYOUT_VERB_RE =
-  /\b(move|reposition|relocate|dock|shift|hide|show|collapse|expand|minimi[sz]e|maximi[sz]e|resize|widen|wider|wide|narrow|shrink|enlarge|bigger|smaller|larger|compact|spacious|comfortable|denser|roomier)\b/i;
+  /\b(move|reposition|relocate|dock|shift|hide|show|collapse|expand|minimi[sz]e|maximi[sz]e|resize|widen|wider|wide|narrow|shrink|enlarge|bigger|smaller|larger|compact|spacious|comfortable|denser|roomier|remove|get\s+rid|delete|dismiss)\b/i;
 const MAYBE_DIRECTION_RE = /\b(top|bottom|left|right|side|up|down)\b/i;
 
 export function mightBeLayout(query: string): boolean {
@@ -554,6 +562,7 @@ const TARGET_LABEL: Record<LayoutTarget, string> = {
   nav_rail: 'navigation rail',
   chat_panel: 'chat panel',
   header: 'header',
+  mode_toggle: 'Static/LLM toggle',
 };
 
 function describe(d: LayoutDirective): string {
