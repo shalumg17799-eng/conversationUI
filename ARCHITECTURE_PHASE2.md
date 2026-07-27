@@ -252,7 +252,7 @@ A second pipeline reuses the same Remotion + ElevenLabs stack, fully decoupled f
 | 2 | Document & Deck Export | ✅ Delivered (PDF/Excel/PPTX; DOCX optional) |
 | 3 | Rich Artifacts (HTML/SVG) + Registry Reconciliation | Registry reconciled ✅; sandboxed HTML/SVG artifact path pending |
 | 4 | Generative Video (Remotion) | ✅ Delivered |
-| 5 | Adaptive UI (Conversational Personalization) | Pending |
+| 5 | Adaptive UI (Conversational Personalization) | Partial ✅ — NL layout directives live (typed contract: 4 targets × 4 ops, backend intent detection + Ajv validation + telemetry, frontend prefs store persisted to localStorage). Right panel (move/resize/hide) + global density render today; left_panel / nav_rail / chat_panel validated + stored but not yet rendered. |
 
 ---
 

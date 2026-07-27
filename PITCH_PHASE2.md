@@ -300,8 +300,14 @@ interesting than "we added a second model.")*
 **4 · Generative video — DONE.**
 > "Narrated video compiled from the same node tree."
 
-**5 · Adaptive UI — NOT STARTED.**
-> "Personalisation. Not started, and I'd rather say that than colour it amber."
+**5 · Adaptive UI — PARTIAL.**
+> "Conversational personalisation. You type 'move the report panel to the bottom' or 'use a
+> compact layout' in chat, and the UI re-arranges itself and remembers it across sessions.
+> The full typed contract is live — four surfaces, four operations, backend intent-detection,
+> schema validation, telemetry, a persisted preference store. What renders today is the
+> report panel — move, resize, hide — plus global density. The other three surfaces are
+> validated and stored but not yet wired to pixels. So: partial, and honest partial —
+> the hard part, the contract, is done."
 
 Then — **this is where you cash the slide-1 tease:**
 
@@ -351,7 +357,7 @@ carrying:
 - **the release-video / CHANGELOG feature** — where does it live? If it doesn't have a
   slide, it needs one. Right now it's your best material and it's homeless.
 - the governance / telemetry detail
-- Adaptive UI (R5) as the Phase 3 ask
+- Adaptive UI (R5) — partial today (report panel + density live); remaining three surfaces as the Phase 3 ask
 - next steps / close
 
 Send those and I'll sync them the same way.
