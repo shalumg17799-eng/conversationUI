@@ -14,6 +14,8 @@
 //   • chat_panel  — show/hide
 //   • header      — move (top/bottom) + show/hide (shared Layout shell); content reflows
 //                   its top/bottom edge to follow the bar
+//   • header_logo — show/hide JUST the "Report Hub" logo inside the header
+//   • header_search — show/hide JUST the global search bar inside the header
 //   • mode_toggle — show/hide the floating Static/LLM response-mode pill
 //   • density     — global, reflected on <html data-density> for any surface to read
 // Repositioning (move) of nav_rail / left_panel / chat_panel is intentionally a no-op —
@@ -22,7 +24,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
 
 // ── Directive contract (mirrors the backend schema) ───────────────────────────
-export type LayoutTarget = 'right_panel' | 'left_panel' | 'nav_rail' | 'chat_panel' | 'header' | 'mode_toggle';
+export type LayoutTarget = 'right_panel' | 'left_panel' | 'nav_rail' | 'chat_panel' | 'header' | 'header_logo' | 'header_search' | 'mode_toggle';
 export type LayoutPosition = 'left' | 'right' | 'top' | 'bottom';
 export type LayoutVisibility = 'show' | 'hide' | 'toggle';
 export type LayoutSize = 'narrow' | 'default' | 'wide' | 'full';
@@ -53,6 +55,8 @@ const DEFAULT_PREFS: LayoutPrefs = {
     nav_rail: { position: 'left', visible: true, size: 'default' },
     chat_panel: { position: 'left', visible: true, size: 'default' },
     header: { position: 'top', visible: true, size: 'default' },
+    header_logo: { position: 'left', visible: true, size: 'default' },
+    header_search: { position: 'top', visible: true, size: 'default' },
     mode_toggle: { position: 'bottom', visible: true, size: 'default' },
   },
   density: 'comfortable',
@@ -74,6 +78,8 @@ function loadPrefs(): LayoutPrefs {
         nav_rail: { ...DEFAULT_PREFS.panels.nav_rail, ...parsed.panels?.nav_rail },
         chat_panel: { ...DEFAULT_PREFS.panels.chat_panel, ...parsed.panels?.chat_panel },
         header: { ...DEFAULT_PREFS.panels.header, ...parsed.panels?.header },
+        header_logo: { ...DEFAULT_PREFS.panels.header_logo, ...parsed.panels?.header_logo },
+        header_search: { ...DEFAULT_PREFS.panels.header_search, ...parsed.panels?.header_search },
         mode_toggle: { ...DEFAULT_PREFS.panels.mode_toggle, ...parsed.panels?.mode_toggle },
       },
     };

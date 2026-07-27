@@ -36,7 +36,9 @@ export const LAYOUT_TARGETS = [
   'left_panel',    // the Talk-history secondary nav
   'nav_rail',      // the icon navigation rail
   'chat_panel',    // the main conversation column
-  'header',        // the top bar (logo / search / persona) — dockable top or bottom
+  'header',        // the whole top bar (logo / search / persona) — dockable top or bottom
+  'header_logo',   // just the "Report Hub" logo / product mark inside the header — show/hide
+  'header_search', // just the global search bar inside the header — show/hide
   'mode_toggle',   // the floating Static/LLM response-mode pill — show/hide only
 ] as const;
 export type LayoutTarget = (typeof LAYOUT_TARGETS)[number];
@@ -179,7 +181,7 @@ function summarizeAjvErrors(op: string, errors: NonNullable<ValidateFunction['er
 
 // Surface nouns that mean "a chrome/layout region", not report content.
 const SURFACE_RE =
-  /\b(panel|panels|sidebar|side\s?bar|side\s?panel|rail|nav(?:igation)?\s?(?:rail|bar)?|pane|layout|density|spacing|screen\s?layout|workspace|history\s?(?:panel|list|sidebar)|headers?|top\s?bar|tool\s?bar|mode\s?toggle|response\s?mode|static\s?\/?\s?llm)\b/i;
+  /\b(panel|panels|sidebar|side\s?bar|side\s?panel|rail|nav(?:igation)?\s?(?:rail|bar)?|pane|layout|density|spacing|screen\s?layout|workspace|history\s?(?:panel|list|sidebar)|headers?|top\s?bar|tool\s?bar|mode\s?toggle|response\s?mode|static\s?\/?\s?llm|logo|brand(?:mark|ing)?|word\s?mark|search\s?(?:bar|box|field|input))\b/i;
 
 // Layout action verbs. Includes bare comparatives ("wider", "smaller") so
 // "make the panel wider" is recognized even with a noun between verb and adjective.
@@ -256,6 +258,10 @@ export function detectLayoutIntent(query: string): LayoutIntentSignal {
 // Map free-text target phrases → canonical LayoutTarget.
 function resolveTarget(q: string): LayoutTarget | null {
   if (/\bmode\s?toggle\b|\bresponse\s?mode\b|\bstatic\s?\/?\s?llm\b|\bllm\s?\/?\s?static\b|\b(static|llm)\s+(?:mode\s+)?(?:toggle|switch|pill)\b/i.test(q)) return 'mode_toggle';
+  // Header SUB-elements must be checked before the whole header — "the logo in the
+  // header" names the logo, not the bar.
+  if (/\blogo\b|\bbrand(?:mark|ing)?\b|\bword\s?mark\b|\bproduct\s?mark\b|\breport\s?hub\s+(?:logo|mark|name)\b/i.test(q)) return 'header_logo';
+  if (/\bsearch\s?(?:bar|box|field|input)\b|\bsearch\b(?=.*\b(?:bar|box|field|input|remove|hide|show)\b)/i.test(q)) return 'header_search';
   if (/\bheaders?\b|\btop\s?bar\b|\btool\s?bar\b/i.test(q)) return 'header';
   if (/\b(report|preview|right)\b.*\bpanel\b|\bright\s?panel\b|\breport\s?panel\b|\bpreview\s?panel\b/i.test(q)) return 'right_panel';
   if (/\b(history|talk|left)\b.*\b(panel|sidebar|list)\b|\bleft\s?panel\b|\bleft\s?sidebar\b|\bhistory\s?(panel|sidebar|list)\b/i.test(q)) return 'left_panel';
@@ -354,8 +360,10 @@ Each directive is exactly ONE of these shapes. Do not invent fields or values.
    { "op": "density", "density": "compact" | "comfortable" | "spacious" }
 
 <TARGET> is one of: "right_panel" (report/preview panel), "left_panel" (talk history),
-"nav_rail" (icon nav), "chat_panel" (main conversation), "header" (top bar / toolbar),
-"mode_toggle" (the floating Static/LLM response-mode toggle — show/hide only).
+"nav_rail" (icon nav), "chat_panel" (main conversation), "header" (the WHOLE top bar),
+"header_logo" (just the logo inside the header), "header_search" (just the search bar inside
+the header), "mode_toggle" (the floating Static/LLM response-mode toggle — show/hide only).
+If the user names an element inside the header (logo, search), target that element, not "header".
 
 If the command asks for something outside this set, return { "directives": [] }.`;
 
@@ -468,8 +476,15 @@ Each directive is exactly ONE of these shapes. Do not invent fields or values.
 
 <TARGET> is one of: "right_panel" (the report / preview panel), "left_panel" (the Talk-history
 sidebar), "nav_rail" (the icon navigation rail), "chat_panel" (the main conversation column),
-"header" (the top bar / toolbar), "mode_toggle" (the floating Static/LLM response-mode toggle
-pill). The header only moves top or bottom. mode_toggle only shows or hides (no move/resize) —
+"header" (the WHOLE top bar / toolbar), "header_logo" (JUST the "Report Hub" logo/wordmark
+inside the header), "header_search" (JUST the global search bar inside the header),
+"mode_toggle" (the floating Static/LLM response-mode toggle pill). The header only moves top
+or bottom. header_logo, header_search and mode_toggle only show or hide (no move/resize).
+
+IMPORTANT — element vs. container: if the user names a specific element INSIDE the header
+(the logo, the search bar), target THAT element, NOT the whole header. "Remove the logo from
+the header" means { "op": "toggle", "target": "header_logo", "visibility": "hide" } — it must
+NOT hide the whole header. Only target "header" when the user means the entire bar.
 "remove / get rid of / hide the Static/LLM toggle" means { "op": "toggle", "target":
 "mode_toggle", "visibility": "hide" }.
 
@@ -483,7 +498,7 @@ app can tell them it is unsupported.`;
  *  over-inclusive (favor a false positive → let the LLM decide) but rejects the bulk
  *  of pure data queries so the LLM is not called on every message. */
 const MAYBE_UI_NOUN_RE =
-  /\b(panel|panels|sidebar|side\s?bar|rail|nav|navigation|header|top\s?bar|tool\s?bar|toolbar|layout|screen|density|spacing|workspace|pane|chrome|column|toggle|switch|pill|button|control|response\s?mode|static\s?\/?\s?llm)\b/i;
+  /\b(panel|panels|sidebar|side\s?bar|rail|nav|navigation|header|top\s?bar|tool\s?bar|toolbar|layout|screen|density|spacing|workspace|pane|chrome|column|toggle|switch|pill|button|control|response\s?mode|static\s?\/?\s?llm|logo|brand|word\s?mark|search\s?(?:bar|box|field|input))\b/i;
 const MAYBE_LAYOUT_VERB_RE =
   /\b(move|reposition|relocate|dock|shift|hide|show|collapse|expand|minimi[sz]e|maximi[sz]e|resize|widen|wider|wide|narrow|shrink|enlarge|bigger|smaller|larger|compact|spacious|comfortable|denser|roomier|remove|get\s+rid|delete|dismiss)\b/i;
 const MAYBE_DIRECTION_RE = /\b(top|bottom|left|right|side|up|down)\b/i;
@@ -562,6 +577,8 @@ const TARGET_LABEL: Record<LayoutTarget, string> = {
   nav_rail: 'navigation rail',
   chat_panel: 'chat panel',
   header: 'header',
+  header_logo: 'logo',
+  header_search: 'search bar',
   mode_toggle: 'Static/LLM toggle',
 };
 

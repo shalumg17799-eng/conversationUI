@@ -170,8 +170,8 @@ export function Layout({ children }: LayoutProps) {
         className={`fixed left-0 right-0 h-[52px] z-50 flex items-center justify-between px-6 ${chrome.headerBottom ? 'top-auto bottom-0 border-t' : 'top-0 bottom-auto border-b'} border-[#ECEAE6]`}
         style={{ background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
       >
-        {/* Left: Product mark */}
-        <div className="flex items-center gap-3 w-[200px]">
+        {/* Left: Product mark (header_logo surface — hideable via Adaptive UI) */}
+        <div className="flex items-center gap-3 w-[200px]" style={{ visibility: layoutPrefs.panels.header_logo.visible ? 'visible' : 'hidden' }}>
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-[9px] bg-[#1A1917] flex items-center justify-center">
               <div className="w-2 h-2 rounded-full bg-white" />
@@ -185,8 +185,8 @@ export function Layout({ children }: LayoutProps) {
           </div>
         </div>
 
-        {/* Center: Global Search — pill shape */}
-        <div className="flex-1 max-w-2xl px-6">
+        {/* Center: Global Search — pill shape (header_search surface — hideable) */}
+        <div className="flex-1 max-w-2xl px-6" style={{ visibility: layoutPrefs.panels.header_search.visible ? 'visible' : 'hidden' }}>
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8A8785]" />
             <input
