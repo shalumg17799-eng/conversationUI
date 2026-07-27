@@ -19,7 +19,7 @@ import { recordConstraints } from '../services/constraintTelemetry';
 import { governReport, governorMode, generateGovernedFallback } from '../services/governor';
 import { recordGovernor } from '../services/governorTelemetry';
 import { OutputMode } from '../registry/componentRegistry';
-import { detectLayoutIntent, parseLayoutDirective, buildAcknowledgment } from '../services/layoutDirective';
+import { resolveLayout, buildAcknowledgment } from '../services/layoutDirective';
 import { recordLayoutDirective } from '../services/layoutDirectiveTelemetry';
 
 // Fixes column name casing in LLM-generated cards.
@@ -387,21 +387,23 @@ export async function runStreamingPipeline(
   // Runs BEFORE report/edit classification so a layout command ("move the right
   // panel to the bottom", "hide the sidebar", "use a compact layout") is recognized
   // as a distinct UI intent and never becomes a new report or a structural edit.
-  // Deliberately conservative: only fires when a layout SURFACE (or bare density)
-  // is named, so data queries and report edits are untouched.
-  const layoutSignal = detectLayoutIntent(query);
-  if (layoutSignal.isLayout) {
+  //
+  // resolveLayout is fast-path-first: an obvious keyword command is parsed instantly
+  // with no LLM call; anything the fast-path cannot resolve is handed to Sonnet, which
+  // decides intent AND parses. Sonnet self-gates (isLayout=false ⇒ we fall through
+  // to the normal pipeline), so novel phrasing works without a regex edit while data
+  // queries and report-content edits are left untouched.
+  const layout = await resolveLayout(query, provider);
+  if (layout.isLayout) {
     send('status', { message: 'Adjusting your layout...' });
-    const parseResult = await parseLayoutDirective(query, provider);
-    recordLayoutDirective(parseResult, { query, provider });
+    recordLayoutDirective(layout.result, { query, provider });
 
     // Only emit schema-valid directives; unsupported ops are reported clearly.
-    const acknowledgment = buildAcknowledgment(parseResult);
     send('layout_directive', {
-      directives: parseResult.directives,
-      rejected: parseResult.rejected,
-      acknowledgment,
-      source: parseResult.source,
+      directives: layout.result.directives,
+      rejected: layout.result.rejected,
+      acknowledgment: buildAcknowledgment(layout.result),
+      source: layout.result.source,
     });
     return;
   }

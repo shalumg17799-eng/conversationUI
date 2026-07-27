@@ -437,6 +437,116 @@ function partitionValid(candidates: unknown[]): { directives: LayoutDirective[];
   return { directives: dedupe(directives), rejected };
 }
 
+// ── LLM-first path: classify intent AND parse in a single call ────────────────
+// This is what lets novel phrasing work without a regex edit for every new verb,
+// synonym, or surface ("shove the toolbar down low", "put everything on one side").
+// The model is the authority on BOTH questions: is this a layout-chrome command at
+// all, and if so, what are the directives. It self-gates by returning isLayout=false
+// for data questions and report-content edits, so it can run on ambiguous messages
+// without hijacking them.
+const LLM_CLASSIFY_SYSTEM = `You are the UI-layout intent classifier + parser for a conversational analytics app.
+
+Decide whether the user's message is a request to PERSONALIZE THE APP'S LAYOUT CHROME —
+the panels, sidebars, navigation rail, header/top bar, or spacing density — as opposed to
+a data question or a request to edit report CONTENT (tables, charts, KPIs, metrics, values).
+
+Respond with JSON ONLY (no prose, no code fences): { "isLayout": true | false, "directives": [ ... ] }
+
+- If the message is NOT about the layout chrome (it asks about data, or edits report content
+  like "hide the revenue chart", "show sales by region"), return { "isLayout": false, "directives": [] }.
+- If it IS a layout-chrome command, return { "isLayout": true, "directives": [ ...one per change... ] }.
+
+Each directive is exactly ONE of these shapes. Do not invent fields or values.
+
+1. Move/reposition a surface: { "op": "move", "target": <TARGET>, "position": "left" | "right" | "top" | "bottom" }
+2. Show / hide a surface:     { "op": "toggle", "target": <TARGET>, "visibility": "show" | "hide" | "toggle" }
+3. Resize a surface:          { "op": "resize", "target": <TARGET>, "size": "narrow" | "default" | "wide" | "full" }
+4. Change spacing density:    { "op": "density", "density": "compact" | "comfortable" | "spacious" }
+
+<TARGET> is one of: "right_panel" (the report / preview panel), "left_panel" (the Talk-history
+sidebar), "nav_rail" (the icon navigation rail), "chat_panel" (the main conversation column),
+"header" (the top bar / toolbar). The header only moves top or bottom.
+
+Map the user's words to the closest target and op by meaning, not by exact keyword. If they
+clearly want a layout change but it maps to no supported op/target/value, return
+{ "isLayout": true, "directives": [] } so the app can tell them it is unsupported.`;
+
+/** Loose, cheap pre-filter: could this plausibly be a layout command? Deliberately
+ *  over-inclusive (favor a false positive → let the LLM decide) but rejects the bulk
+ *  of pure data queries so the LLM is not called on every message. */
+const MAYBE_UI_NOUN_RE =
+  /\b(panel|panels|sidebar|side\s?bar|rail|nav|navigation|header|top\s?bar|tool\s?bar|toolbar|layout|screen|density|spacing|workspace|pane|chrome|sidebar|column)\b/i;
+const MAYBE_LAYOUT_VERB_RE =
+  /\b(move|reposition|relocate|dock|shift|hide|show|collapse|expand|minimi[sz]e|maximi[sz]e|resize|widen|wider|wide|narrow|shrink|enlarge|bigger|smaller|larger|compact|spacious|comfortable|denser|roomier)\b/i;
+const MAYBE_DIRECTION_RE = /\b(top|bottom|left|right|side|up|down)\b/i;
+
+export function mightBeLayout(query: string): boolean {
+  const q = (query ?? '').toLowerCase();
+  if (DENSITY_RE.test(q)) return true;
+  if (MAYBE_UI_NOUN_RE.test(q)) return true;
+  return MAYBE_LAYOUT_VERB_RE.test(q) && MAYBE_DIRECTION_RE.test(q);
+}
+
+/** Single Sonnet call that both classifies intent and proposes directives. */
+export async function classifyLayoutIntent(
+  query: string,
+  provider: LLMProvider,
+): Promise<{ isLayout: boolean; directives: unknown[] }> {
+  try {
+    const raw = await modelGenerate(provider, {
+      system: LLM_CLASSIFY_SYSTEM,
+      user: `Message: "${query}"`,
+      temperature: 0,
+      maxOutputTokens: 500,
+    });
+    const parsed = JSON.parse(extractJSON(stripThink(raw)));
+    return {
+      isLayout: parsed?.isLayout === true,
+      directives: Array.isArray(parsed?.directives) ? parsed.directives : [],
+    };
+  } catch (err) {
+    console.warn('[layoutDirective] classifyLayoutIntent failed:', (err as Error).message);
+    return { isLayout: false, directives: [] };
+  }
+}
+
+export interface LayoutResolution {
+  isLayout: boolean;
+  result: ParseResult;
+}
+
+const EMPTY_RESULT: ParseResult = { directives: [], rejected: [], source: 'none' };
+
+/**
+ * Single entry point for the pipeline. Fast-path first, LLM as the authority for
+ * everything the fast-path cannot resolve:
+ *
+ *   1. Strict keyword gate + deterministic parse — zero latency, no LLM. Handles the
+ *      common, unambiguous commands (and keeps the 37-case test surface green).
+ *   2. Otherwise, a loose pre-filter: if the message could plausibly be a layout
+ *      command, ask Sonnet to decide intent AND parse in one call. The model gates
+ *      itself (isLayout=false ⇒ fall through to the normal pipeline).
+ *   3. Otherwise, it is not a layout command and no LLM call is made.
+ */
+export async function resolveLayout(query: string, provider: LLMProvider = 'gemma'): Promise<LayoutResolution> {
+  // 1. Confident deterministic fast-path.
+  if (detectLayoutIntent(query).isLayout) {
+    const result = await parseLayoutDirective(query, provider);
+    return { isLayout: true, result };
+  }
+
+  // 2. Plausibly layout but not an obvious keyword match → let Sonnet decide.
+  if (mightBeLayout(query)) {
+    const cls = await classifyLayoutIntent(query, provider);
+    if (!cls.isLayout) return { isLayout: false, result: EMPTY_RESULT };
+    const { directives, rejected } = partitionValid(cls.directives);
+    return { isLayout: true, result: { directives, rejected, source: directives.length ? 'llm' : 'none' } };
+  }
+
+  // 3. Not a layout command.
+  return { isLayout: false, result: EMPTY_RESULT };
+}
+
 // ── User-facing acknowledgment builder ────────────────────────────────────────
 const TARGET_LABEL: Record<LayoutTarget, string> = {
   right_panel: 'report panel',

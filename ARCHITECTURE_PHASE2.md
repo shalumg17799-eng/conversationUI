@@ -252,7 +252,7 @@ A second pipeline reuses the same Remotion + ElevenLabs stack, fully decoupled f
 | 2 | Document & Deck Export | ✅ Delivered (PDF/Excel/PPTX; DOCX optional) |
 | 3 | Rich Artifacts (HTML/SVG) + Registry Reconciliation | Registry reconciled ✅; sandboxed HTML/SVG artifact path pending |
 | 4 | Generative Video (Remotion) | ✅ Delivered |
-| 5 | Adaptive UI (Conversational Personalization) | ✅ Delivered — NL layout directives live (typed contract: 5 targets × 4 ops, backend intent detection + Ajv validation + telemetry, frontend prefs store persisted to localStorage). All five surfaces render: right panel (move/resize/hide), left panel (resize/hide with chat reflow), nav rail (hide), chat panel (hide), header/top bar (dock top or bottom + hide, with top/bottom reflow), global density. Repositioning of nav rail / left / chat is intentionally a no-op; the report panel repositions freely and the header docks top/bottom. |
+| 5 | Adaptive UI (Conversational Personalization) | ✅ Delivered — NL layout directives live (typed contract: 5 targets × 4 ops, Ajv validation + telemetry, frontend prefs store persisted to localStorage). Intent detection is LLM-first: a deterministic fast-path handles obvious commands with zero latency, and anything it can't resolve is handed to Sonnet, which decides intent AND parses in one call (self-gates on data queries) — so novel phrasing works without regex edits. All five surfaces render: right panel (move/resize/hide), left panel (resize/hide with chat reflow), nav rail (hide), chat panel (hide), header/top bar (dock top or bottom + hide, with top/bottom reflow), global density. Repositioning of nav rail / left / chat is intentionally a no-op; the report panel repositions freely and the header docks top/bottom. |
 
 ---
 
