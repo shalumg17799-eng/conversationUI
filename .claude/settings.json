@@ -56,7 +56,15 @@
       "Bash(node __TRACKED_VAR__/still_check.js __TRACKED_VAR__/mockshots2)",
       "Bash(node -e \"console.log\\(require\\('./backend/package.json'\\).scripts\\)\")",
       "Bash(node -e \"console.log\\(require\\('./package.json'\\).scripts\\)\")",
-      "Bash(node -e 'const fs=require\\('\\\\''fs'\\\\''\\);const p='\\\\''/Users/vinodkumarmourya/Documents/GitHub/conversationUI/backend/data/releases/releases.json'\\\\'';const a=JSON.parse\\(fs.readFileSync\\(p,'\\\\''utf8'\\\\''\\)\\).filter\\(r=>r.version!=='\\\\''v0.0.0-test'\\\\''\\);fs.writeFileSync\\(p,JSON.stringify\\(a,null,2\\)\\);console.log\\('\\\\''registry versions:'\\\\'',a.map\\(r=>r.version\\).join\\('\\\\'', '\\\\''\\)\\)')"
+      "Bash(node -e 'const fs=require\\('\\\\''fs'\\\\''\\);const p='\\\\''/Users/vinodkumarmourya/Documents/GitHub/conversationUI/backend/data/releases/releases.json'\\\\'';const a=JSON.parse\\(fs.readFileSync\\(p,'\\\\''utf8'\\\\''\\)\\).filter\\(r=>r.version!=='\\\\''v0.0.0-test'\\\\''\\);fs.writeFileSync\\(p,JSON.stringify\\(a,null,2\\)\\);console.log\\('\\\\''registry versions:'\\\\'',a.map\\(r=>r.version\\).join\\('\\\\'', '\\\\''\\)\\)')",
+      "Bash(/opt/homebrew/bin/python3.13 drive.py)",
+      "Bash(/opt/homebrew/bin/python3.13 drive3.py)",
+      "Bash(curl -s -N -X POST http://localhost:3001/api/conversational/stream -H 'Content-Type: application/json' -d '{\"query\":\"move headers in bottom\",\"skipClarification\":true}' --max-time 20)",
+      "Bash(curl -s -N -X POST http://localhost:3001/api/conversational/stream -H 'Content-Type: application/json' -d '{\"query\":\"move the header back to the top\",\"skipClarification\":true}' --max-time 20)",
+      "Bash(curl -s -N -X POST http://localhost:3001/api/conversational/stream -H 'Content-Type: application/json' -d '{\"query\":\"hide the top bar\",\"skipClarification\":true}' --max-time 20)",
+      "Bash(curl -s -N -X POST http://localhost:3001/api/conversational/stream -H 'Content-Type: application/json' -d '{\"query\":\"show me the top 5 regions on the left of the chart\",\"skipClarification\":true,\"provider\":\"sonnet\"}' --max-time 90)",
+      "Bash(curl -s -N -X POST http://localhost:3001/api/conversational/stream -H 'Content-Type: application/json' -d '{\"query\":\"what was revenue by territory last quarter\",\"skipClarification\":true,\"provider\":\"sonnet\"}' --max-time 90)",
+      "Bash(npx ts-node-dev *)"
     ]
   }
 }
