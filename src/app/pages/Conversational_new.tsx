@@ -120,20 +120,41 @@ interface Conversation {
   status?: 'active' | 'planned' | 'draft'; // Session status
 }
 
+// Adaptive UI: named size steps → pixel widths, per surface.
+const NAV_RAIL_WIDTH = 64;
+const RIGHT_PANEL_WIDTHS: Record<string, number> = { narrow: 380, default: 480, wide: 640, full: 760 };
+const LEFT_PANEL_WIDTHS: Record<string, number> = { narrow: 200, default: 240, wide: 320, full: 400 };
+
+// Adaptive UI: derive the left-edge reflow from the persisted prefs. Hiding the nav
+// rail or the Talk-history (left) panel — or resizing the left panel — shifts every
+// downstream surface (chat column + a bottom/top/left-docked report panel) so nothing
+// is left floating over a gap or overlapping a hidden neighbor.
+interface LayoutMetrics { navW: number; leftW: number; contentLeft: number; }
+function layoutMetrics(prefs: {
+  panels: Record<string, { visible: boolean; size: string }>;
+}): LayoutMetrics {
+  const navW = prefs.panels.nav_rail.visible ? NAV_RAIL_WIDTH : 0;
+  const left = prefs.panels.left_panel;
+  const leftW = left.visible ? (LEFT_PANEL_WIDTHS[left.size] ?? 240) : 0;
+  return { navW, leftW, contentLeft: navW + leftW };
+}
+
 // Adaptive UI: translate the persisted right-panel preferences (position / size /
 // visibility) into the report-panel aside's chrome. Docks right (default), left,
-// top, or bottom; the panel is offset past the nav rail (64px) + Talk history (240px).
-function reportPanelChrome(panel: { position: string; size: string }): { className: string; style: React.CSSProperties } {
-  const widths: Record<string, number> = { narrow: 380, default: 480, wide: 640, full: 760 };
-  const w = widths[panel.size] ?? 480;
+// top, or bottom; the panel starts past the current content-left reflow.
+function reportPanelChrome(
+  panel: { position: string; size: string },
+  contentLeft: number,
+): { className: string; style: React.CSSProperties } {
+  const w = RIGHT_PANEL_WIDTHS[panel.size] ?? 480;
   const base = 'fixed bg-white z-30 flex flex-col shadow-xl';
   switch (panel.position) {
     case 'bottom':
-      return { className: `${base} left-[304px] right-0 bottom-0 border-t border-[var(--border)]`, style: { height: '46vh' } };
+      return { className: `${base} right-0 bottom-0 border-t border-[var(--border)]`, style: { left: contentLeft, height: '46vh' } };
     case 'top':
-      return { className: `${base} left-[304px] right-0 top-[52px] border-b border-[var(--border)]`, style: { height: '46vh' } };
+      return { className: `${base} right-0 top-[52px] border-b border-[var(--border)]`, style: { left: contentLeft, height: '46vh' } };
     case 'left':
-      return { className: `${base} top-[60px] left-[304px] bottom-0 border-r border-[var(--border)]`, style: { width: w } };
+      return { className: `${base} top-[60px] bottom-0 border-r border-[var(--border)]`, style: { left: contentLeft, width: w } };
     case 'right':
     default:
       return { className: `${base} top-[60px] right-0 bottom-0 border-l border-[var(--border)]`, style: { width: w } };
@@ -371,6 +392,11 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
 
   const { persona } = usePersona();
   const { prefs: layoutPrefs, applyDirectives: applyLayoutDirectives } = useLayoutPrefs();
+  // Adaptive UI: left-edge reflow driven by nav-rail + left-panel visibility/size.
+  const { leftW: leftPanelW, contentLeft } = layoutMetrics(layoutPrefs);
+  const leftPanelVisible = layoutPrefs.panels.left_panel.visible;
+  const chatPanelVisible = layoutPrefs.panels.chat_panel.visible;
+  const rightPanelPrefs = layoutPrefs.panels.right_panel;
   const allReports = getAllReports();
   const allDatasets = getAllDatasets();
   const reportsCount = catalogReports.length;
@@ -6324,8 +6350,12 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
 
   return (
     <Layout>
-      {/* SECONDARY NAV — TALK HISTORY */}
-      <aside className="fixed top-[52px] left-[64px] bottom-0 w-[240px] bg-white border-r border-[#ECEAE6] z-30 flex flex-col">
+      {/* SECONDARY NAV — TALK HISTORY (left_panel) */}
+      {leftPanelVisible && (
+      <aside
+        className="fixed top-[52px] bottom-0 bg-white border-r border-[#ECEAE6] z-30 flex flex-col transition-all duration-300"
+        style={{ left: contentLeft - leftPanelW, width: leftPanelW }}
+      >
         <div className="p-4 border-b border-[#ECEAE6]">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-[16px] font-semibold text-[#2C2B29]" style={{ fontFamily: "'Bricolage Grotesque', sans-serif" }}>
@@ -6455,12 +6485,21 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
           ))}
         </div>
       </aside>
+      )}
 
-      {/* MAIN TALK WORKSPACE */}
+      {/* MAIN TALK WORKSPACE (chat_panel) */}
+      {chatPanelVisible && (
       <div
-        className={`fixed top-[52px] left-[304px] bottom-0 overflow-hidden transition-all duration-300 ${
-          isReportPanelOpen || isDatasetPanelOpen ? 'right-[480px]' : 'right-0'
-        }`}
+        className="fixed top-[52px] bottom-0 overflow-hidden transition-all duration-300"
+        style={{
+          left: contentLeft,
+          right:
+            isDatasetPanelOpen
+              ? 480
+              : isReportPanelOpen && rightPanelPrefs.visible && rightPanelPrefs.position === 'right'
+              ? (RIGHT_PANEL_WIDTHS[rightPanelPrefs.size] ?? 480)
+              : 0,
+        }}
       >
         <div className="h-full flex flex-col bg-[#F7F6F3]">
           {/* STATE 1: NEW CONVERSATION */}
@@ -7618,12 +7657,13 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
           )}
         </div>
       </div>
+      )}
 
       {/* REPORT PREVIEW PANEL (RIGHT) */}
       {/* SHARED PANEL: Used for both My Reports → Explore Report AND Talk → Create Report (draft) */}
       {/* Draft mode indicated by selectedReport.isDraft flag */}
       {isReportPanelOpen && selectedReport && layoutPrefs.panels.right_panel.visible && (() => {
-        const chrome = reportPanelChrome(layoutPrefs.panels.right_panel);
+        const chrome = reportPanelChrome(layoutPrefs.panels.right_panel, contentLeft);
         return (
         <aside className={chrome.className} style={chrome.style}>
           {/* Panel Header */}

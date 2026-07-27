@@ -182,7 +182,7 @@ const SURFACE_RE =
 // Layout action verbs. Includes bare comparatives ("wider", "smaller") so
 // "make the panel wider" is recognized even with a noun between verb and adjective.
 const ACTION_RE =
-  /\b(move|reposition|relocate|dock|put|place|shift|send|hide|show|collapse|expand|open|close|minimi[sz]e|maximi[sz]e|resize|widen|wider|narrow|narrower|shrink|shrunk|enlarge|enlarged|grow|bigger|smaller|larger|compact|comfortable|spacious|denser?|roomier)\b/i;
+  /\b(move|reposition|relocate|dock|put|place|shift|send|hide|show|collapse|expand|open|close|minimi[sz]e|maximi[sz]e|resize|widen|wider|wide|narrow|narrower|shrink|shrunk|enlarge|enlarged|grow|bigger|smaller|larger|compact|comfortable|spacious|denser?|roomier)\b/i;
 
 // Density-only phrasing that needs no surface noun.
 const DENSITY_RE = /\b(compact|comfortable|spacious|densit(?:y|ies)|denser|roomier|more\s+(?:compact|spacious|dense))\b/i;
@@ -312,9 +312,9 @@ export function deterministicParse(query: string): LayoutDirective[] {
 
   // resize — widen/narrow/wider/smaller
   if (target) {
-    if (/\b(widen|wider|enlarge|bigger|larger|grow|expand\s+width)\b/i.test(q)) out.push({ op: 'resize', target, size: 'wide' });
+    if (/\b(widen|wider|wide|enlarge|bigger|larger|grow|expand\s+width)\b/i.test(q)) out.push({ op: 'resize', target, size: 'wide' });
     else if (/\b(narrow|narrower|shrink|smaller|reduce\s+width)\b/i.test(q)) out.push({ op: 'resize', target, size: 'narrow' });
-    else if (/\bfull\s?(width|screen)\b|\bmaximi[sz]e\s+width\b/i.test(q)) out.push({ op: 'resize', target, size: 'full' });
+    else if (/\bfull\s?(width|screen)\b|\bfull\b|\bmaximi[sz]e\s+width\b/i.test(q)) out.push({ op: 'resize', target, size: 'full' });
     else if (/\b(reset|default)\s+(?:the\s+)?(?:size|width)\b/i.test(q)) out.push({ op: 'resize', target, size: 'default' });
   }
 

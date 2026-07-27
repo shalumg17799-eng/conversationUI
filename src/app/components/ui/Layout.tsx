@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { cn } from "../../../lib/utils";
 import { usePersona, personas, PersonaType } from '../../context/PersonaContext';
+import { useLayoutPrefs } from '../../context/LayoutPrefsContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -92,6 +93,9 @@ export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { persona, personaType, setPersonaType, isMarketingDirector } = usePersona();
+  // Adaptive UI: the nav rail is a personalizable surface (nav_rail).
+  const { prefs: layoutPrefs } = useLayoutPrefs();
+  const navRailVisible = layoutPrefs.panels.nav_rail.visible;
   const [personaDropdownOpen, setPersonaDropdownOpen] = React.useState(false);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
 
@@ -270,7 +274,8 @@ export function Layout({ children }: LayoutProps) {
         </div>
       </header>
 
-      {/* Left Navigation — icon-only rail */}
+      {/* Left Navigation — icon-only rail (nav_rail) */}
+      {navRailVisible && (
       <aside className="fixed top-[52px] left-0 bottom-0 w-[64px] bg-white border-r border-[#ECEAE6] z-40 flex flex-col">
         {/* Primary Navigation */}
         <nav className="flex-1 py-3 px-1.5 space-y-0.5 overflow-y-auto">
@@ -336,9 +341,10 @@ export function Layout({ children }: LayoutProps) {
           })}
         </nav>
       </aside>
+      )}
 
       {/* Main Content */}
-      <main className="ml-[64px] pt-[52px] min-h-screen relative z-[1]">
+      <main className={`${navRailVisible ? 'ml-[64px]' : 'ml-0'} pt-[52px] min-h-screen relative z-[1]`}>
         <div className="p-8 max-w-[1400px] mx-auto space-y-8">
            {children}
         </div>

@@ -7,9 +7,14 @@
 //
 // Scope note: the backend recognizes four targets (right_panel, left_panel, nav_rail,
 // chat_panel) and four ops (move, toggle, resize, density). This store holds state for
-// all of them; the conversational page currently *applies* the report (right) panel
-// position/visibility/size and the global density — the remaining surfaces are wired
-// as the personalization rollout continues.
+// all of them and every surface is now rendered:
+//   • right_panel — move (right/left/top/bottom), resize, show/hide (Conversational page)
+//   • left_panel  — resize + show/hide, with left-edge reflow of the chat column
+//   • nav_rail    — show/hide (shared Layout shell), content shifts left when hidden
+//   • chat_panel  — show/hide
+//   • density     — global, reflected on <html data-density> for any surface to read
+// Repositioning (move) of the three secondary surfaces is intentionally a no-op — they
+// stay docked; only the report (right) panel supports free repositioning.
 
 import { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
 
