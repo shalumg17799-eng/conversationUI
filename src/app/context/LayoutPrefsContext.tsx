@@ -17,6 +17,7 @@
 //   • header_logo — show/hide JUST the "Report Hub" logo inside the header
 //   • header_search — show/hide JUST the global search bar inside the header
 //   • mode_toggle — show/hide the floating Static/LLM response-mode pill
+//   • style       — background/text recolor (bounded palette) for right/left/chat panels
 //   • density     — global, reflected on <html data-density> for any surface to read
 // Repositioning (move) of nav_rail / left_panel / chat_panel is intentionally a no-op —
 // they stay docked; the report panel repositions freely and the header docks top/bottom.
@@ -29,19 +30,40 @@ export type LayoutPosition = 'left' | 'right' | 'top' | 'bottom';
 export type LayoutVisibility = 'show' | 'hide' | 'toggle';
 export type LayoutSize = 'narrow' | 'default' | 'wide' | 'full';
 export type LayoutDensity = 'compact' | 'comfortable' | 'spacious';
+export type LayoutStyleProp = 'background' | 'text';
+export type LayoutColor = 'white' | 'black' | 'light' | 'dark' | 'neutral' | 'transparent' | 'default';
 
 export type LayoutDirective =
   | { op: 'move'; target: LayoutTarget; position: LayoutPosition }
   | { op: 'toggle'; target: LayoutTarget; visibility: LayoutVisibility }
   | { op: 'resize'; target: LayoutTarget; size: LayoutSize }
   | { op: 'density'; density: LayoutDensity }
+  | { op: 'style'; target: LayoutTarget; property: LayoutStyleProp; color: LayoutColor }
   | { op: 'reset' };
+
+// Bounded palette → CSS. Keeps recoloring safe (no unreadable states). "default"
+// clears the override so the surface falls back to its stylesheet color.
+const BG_CSS: Record<LayoutColor, string | undefined> = {
+  white: '#FFFFFF', black: '#1A1917', light: '#F7F6F3', dark: '#26241F',
+  neutral: '#EDEAE5', transparent: 'transparent', default: undefined,
+};
+const TEXT_CSS: Record<LayoutColor, string | undefined> = {
+  white: '#FFFFFF', black: '#1A1917', light: '#6B6965', dark: '#1A1917',
+  neutral: '#6B6965', transparent: 'transparent', default: undefined,
+};
+export function colorToCss(color: LayoutColor | undefined, kind: LayoutStyleProp): string | undefined {
+  if (!color) return undefined;
+  return (kind === 'text' ? TEXT_CSS : BG_CSS)[color];
+}
 
 // ── Persisted state ────────────────────────────────────────────────────────────
 interface PanelPrefs {
   position: LayoutPosition;
   visible: boolean;
   size: LayoutSize;
+  /** Adaptive UI style overrides (undefined = use the stylesheet default). */
+  background?: LayoutColor;
+  text?: LayoutColor;
 }
 
 export interface LayoutPrefs {
@@ -113,6 +135,12 @@ export function applyDirective(prefs: LayoutPrefs, d: LayoutDirective): LayoutPr
       return updatePanel(prefs, d.target, p => ({ ...p, position: d.position, visible: true }));
     case 'resize':
       return updatePanel(prefs, d.target, p => ({ ...p, size: d.size, visible: true }));
+    case 'style':
+      return updatePanel(prefs, d.target, p => ({
+        ...p,
+        // "default" clears the override.
+        [d.property]: d.color === 'default' ? undefined : d.color,
+      }));
     case 'toggle':
       return updatePanel(prefs, d.target, p => ({
         ...p,

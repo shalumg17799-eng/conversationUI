@@ -61,7 +61,7 @@ import {
 } from 'lucide-react';
 import MedallionIcon from '@/imports/Group5';
 import { usePersona } from '@/app/context/PersonaContext';
-import { useLayoutPrefs, chromeOffsets } from '@/app/context/LayoutPrefsContext';
+import { useLayoutPrefs, chromeOffsets, colorToCss } from '@/app/context/LayoutPrefsContext';
 
 // Backend base URL — set VITE_API_URL at build time for production. Falls back to localhost in dev.
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -6508,7 +6508,13 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
               : 0,
         }}
       >
-        <div className="h-full flex flex-col bg-[#F7F6F3]">
+        <div
+          className="h-full flex flex-col bg-[#F7F6F3]"
+          style={{
+            background: colorToCss(layoutPrefs.panels.chat_panel.background, 'background'),
+            color: colorToCss(layoutPrefs.panels.chat_panel.text, 'text'),
+          }}
+        >
           {/* STATE 1: NEW CONVERSATION */}
           {flowState === 'new' && messages.length === 0 && (() => {
             const freqReports = getRecentReports(5);

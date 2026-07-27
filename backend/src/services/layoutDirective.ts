@@ -44,7 +44,7 @@ export const LAYOUT_TARGETS = [
 export type LayoutTarget = (typeof LAYOUT_TARGETS)[number];
 
 /** Allowed operations. */
-export const LAYOUT_OPS = ['move', 'toggle', 'resize', 'density', 'reset'] as const;
+export const LAYOUT_OPS = ['move', 'toggle', 'resize', 'density', 'style', 'reset'] as const;
 export type LayoutOp = (typeof LAYOUT_OPS)[number];
 
 /** move — where a panel is docked. */
@@ -63,12 +63,23 @@ export type LayoutSize = (typeof LAYOUT_SIZES)[number];
 export const LAYOUT_DENSITIES = ['compact', 'comfortable', 'spacious'] as const;
 export type LayoutDensity = (typeof LAYOUT_DENSITIES)[number];
 
+/** style — which visual property a style directive changes. */
+export const LAYOUT_STYLE_PROPS = ['background', 'text'] as const;
+export type LayoutStyleProp = (typeof LAYOUT_STYLE_PROPS)[number];
+
+/** style — a bounded palette of safe named colors (no free-form hex, so a surface
+ *  can never be set to an unreadable or invisible combination). "default" restores
+ *  the surface's original color. */
+export const LAYOUT_COLORS = ['white', 'black', 'light', 'dark', 'neutral', 'transparent', 'default'] as const;
+export type LayoutColor = (typeof LAYOUT_COLORS)[number];
+
 // Discriminated union — one directive = one atomic layout change.
 export type LayoutDirective =
   | { op: 'move'; target: LayoutTarget; position: LayoutPosition }
   | { op: 'toggle'; target: LayoutTarget; visibility: LayoutVisibility }
   | { op: 'resize'; target: LayoutTarget; size: LayoutSize }
   | { op: 'density'; density: LayoutDensity }
+  | { op: 'style'; target: LayoutTarget; property: LayoutStyleProp; color: LayoutColor }
   | { op: 'reset' }; // restore every surface to its default layout
 
 export interface LayoutDirectiveBatch {
@@ -116,6 +127,17 @@ const OP_SCHEMAS: Record<LayoutOp, object> = {
     required: ['op', 'density'],
     additionalProperties: false,
   },
+  style: {
+    type: 'object',
+    properties: {
+      op: { const: 'style' },
+      target: targetEnum,
+      property: { type: 'string', enum: [...LAYOUT_STYLE_PROPS] },
+      color: { type: 'string', enum: [...LAYOUT_COLORS] },
+    },
+    required: ['op', 'target', 'property', 'color'],
+    additionalProperties: false,
+  },
   reset: {
     type: 'object',
     properties: { op: { const: 'reset' } },
@@ -129,12 +151,50 @@ const OP_VALIDATORS: Record<LayoutOp, ValidateFunction> = {
   toggle: ajv.compile(OP_SCHEMAS.toggle),
   resize: ajv.compile(OP_SCHEMAS.resize),
   density: ajv.compile(OP_SCHEMAS.density),
+  style: ajv.compile(OP_SCHEMAS.style),
   reset: ajv.compile(OP_SCHEMAS.reset),
 };
 
+// ── Per-surface capabilities ───────────────────────────────────────────────────
+// Which ops each surface ACTUALLY renders. A directive that is schema-valid but names
+// an op a surface cannot perform is rejected here with a clear reason — so the chat
+// never says "Done" for something that would not visibly change (the phantom-success
+// bug: "move the nav rail to the right" claimed success but did nothing).
+const TARGET_OPS: Record<LayoutTarget, LayoutOp[]> = {
+  right_panel: ['move', 'toggle', 'resize', 'style'],
+  left_panel: ['toggle', 'resize', 'style'],
+  chat_panel: ['toggle', 'style'],
+  nav_rail: ['toggle'],
+  header: ['move', 'toggle'],       // move: top/bottom only (checked below)
+  header_logo: ['toggle'],
+  header_search: ['toggle'],
+  mode_toggle: ['toggle'],
+};
+
+const TARGET_LABEL_FOR_REASON: Record<LayoutTarget, string> = {
+  right_panel: 'report panel', left_panel: 'history panel', nav_rail: 'navigation rail',
+  chat_panel: 'chat panel', header: 'header', header_logo: 'logo',
+  header_search: 'search bar', mode_toggle: 'Static/LLM toggle',
+};
+
+// Returns a rejection reason if the surface cannot perform this op, else null.
+function capabilityReason(d: LayoutDirective): string | null {
+  if (d.op === 'density' || d.op === 'reset') return null; // global, no target
+  const allowed = TARGET_OPS[d.target];
+  const label = TARGET_LABEL_FOR_REASON[d.target];
+  if (!allowed.includes(d.op)) {
+    const verbs = allowed.map(o => o === 'toggle' ? 'shown/hidden' : o === 'move' ? 'moved' : o === 'resize' ? 'resized' : 'restyled');
+    return `the ${label} can only be ${joinList(Array.from(new Set(verbs)))} — not ${d.op}d`;
+  }
+  if (d.op === 'move' && d.target === 'header' && (d.position === 'left' || d.position === 'right')) {
+    return `the header can only dock to the top or bottom, not the ${d.position}`;
+  }
+  return null;
+}
+
 /**
- * Validate one directive against the constrained schema.
- * Pure; never throws. Returns a typed directive on success, or a clear reason.
+ * Validate one directive against the constrained schema, then against what the target
+ * surface can actually render. Pure; never throws.
  */
 export function validateLayoutDirective(
   raw: unknown,
@@ -151,7 +211,10 @@ export function validateLayoutDirective(
   }
   const validate = OP_VALIDATORS[op as LayoutOp];
   if (validate(raw)) {
-    return { valid: true, directive: raw as LayoutDirective };
+    const directive = raw as LayoutDirective;
+    const capReason = capabilityReason(directive);
+    if (capReason) return { valid: false, reason: capReason };
+    return { valid: true, directive };
   }
   // Build a human-readable reason from the most meaningful Ajv error.
   const reason = summarizeAjvErrors(op, validate.errors ?? []);
@@ -189,12 +252,12 @@ function summarizeAjvErrors(op: string, errors: NonNullable<ValidateFunction['er
 
 // Surface nouns that mean "a chrome/layout region", not report content.
 const SURFACE_RE =
-  /\b(panel|panels|sidebar|side\s?bar|side\s?panel|rail|nav(?:igation)?\s?(?:rail|bar)?|pane|layout|density|spacing|screen\s?layout|workspace|history\s?(?:panel|list|sidebar)|headers?|top\s?bar|tool\s?bar|mode\s?toggle|response\s?mode|static\s?\/?\s?llm|logo|brand(?:mark|ing)?|word\s?mark|search\s?(?:bar|box|field|input))\b/i;
+  /\b(panel|panels|sidebar|side\s?bar|side\s?panel|rail|nav(?:igation)?\s?(?:rail|bar)?|pane|layout|density|spacing|screen\s?layout|workspace|history\s?(?:panel|list|sidebar)|headers?|top\s?bar|tool\s?bar|mode\s?toggle|response\s?mode|static\s?\/?\s?llm|logo|brand(?:mark|ing)?|word\s?mark|search\s?(?:bar|box|field|input)|chat|conversation|background|backdrop)\b/i;
 
 // Layout action verbs. Includes bare comparatives ("wider", "smaller") so
 // "make the panel wider" is recognized even with a noun between verb and adjective.
 const ACTION_RE =
-  /\b(move|reposition|relocate|dock|put|place|shift|send|hide|show|collapse|expand|open|close|minimi[sz]e|maximi[sz]e|resize|widen|wider|wide|narrow|narrower|shrink|shrunk|enlarge|enlarged|grow|bigger|smaller|larger|compact|comfortable|spacious|denser?|roomier|remove|get\s+rid|delete|dismiss|restore|reveal|unhide|bring\s+back)\b/i;
+  /\b(move|reposition|relocate|dock|put|place|shift|send|hide|show|collapse|expand|open|close|minimi[sz]e|maximi[sz]e|resize|widen|wider|wide|narrow|narrower|shrink|shrunk|enlarge|enlarged|grow|bigger|smaller|larger|compact|comfortable|spacious|denser?|roomier|remove|get\s+rid|delete|dismiss|restore|reveal|unhide|bring\s+back|change|set|recolou?r|paint|colou?r)\b/i;
 
 // Density-only phrasing that needs no surface noun.
 const DENSITY_RE = /\b(compact|comfortable|spacious|densit(?:y|ies)|denser|roomier|more\s+(?:compact|spacious|dense))\b/i;
@@ -277,7 +340,7 @@ function resolveTarget(q: string): LayoutTarget | null {
   // Header SUB-elements must be checked before the whole header — "the logo in the
   // header" names the logo, not the bar.
   if (/\blogo\b|\bbrand(?:mark|ing)?\b|\bword\s?mark\b|\bproduct\s?mark\b|\breport\s?hub\s+(?:logo|mark|name)\b/i.test(q)) return 'header_logo';
-  if (/\bsearch\s?(?:bar|box|field|input)\b|\bsearch\b(?=.*\b(?:bar|box|field|input|remove|hide|show)\b)/i.test(q)) return 'header_search';
+  if (/\bsearch\s?(?:bar|box|field|input)\b|\b(?:the\s+)?search\b(?!\s+for\b)/i.test(q)) return 'header_search';
   if (/\bheaders?\b|\btop\s?bar\b|\btool\s?bar\b/i.test(q)) return 'header';
   if (/\b(report|preview|right)\b.*\bpanel\b|\bright\s?panel\b|\breport\s?panel\b|\bpreview\s?panel\b/i.test(q)) return 'right_panel';
   if (/\b(history|talk|left)\b.*\b(panel|sidebar|list)\b|\bleft\s?panel\b|\bleft\s?sidebar\b|\bhistory\s?(panel|sidebar|list)\b/i.test(q)) return 'left_panel';
@@ -347,8 +410,30 @@ export function deterministicParse(query: string): LayoutDirective[] {
     else if (/\b(reset|default)\s+(?:the\s+)?(?:size|width)\b/i.test(q)) out.push({ op: 'resize', target, size: 'default' });
   }
 
+  // style — background / text color from the safe palette
+  if (target) {
+    const color = resolveColor(q);
+    const isText = /\b(text|font|foreground)\b/i.test(q);
+    const isBg = /\b(background|bg|backdrop|fill)\b/i.test(q);
+    if (color && (isBg || isText || /\bcolou?r\b/i.test(q))) {
+      out.push({ op: 'style', target, property: isText ? 'text' : 'background', color });
+    }
+  }
+
   // De-dupe (a query like "hide the panel" shouldn't emit twice).
   return dedupe(out);
+}
+
+// Map free-text color words → the bounded palette. Returns null if none named.
+function resolveColor(q: string): LayoutColor | null {
+  if (/\btransparent|see-through|clear\b/i.test(q)) return 'transparent';
+  if (/\bwhite\b/i.test(q)) return 'white';
+  if (/\bblack\b/i.test(q)) return 'black';
+  if (/\b(dark|darker|charcoal)\b/i.test(q)) return 'dark';
+  if (/\b(light|lighter|pale)\b/i.test(q)) return 'light';
+  if (/\b(neutral|gr[ae]y|beige|cream)\b/i.test(q)) return 'neutral';
+  if (/\b(default|original|reset)\s+(colou?r|background)\b/i.test(q)) return 'default';
+  return null;
 }
 
 function dedupe(directives: LayoutDirective[]): LayoutDirective[] {
@@ -377,7 +462,13 @@ Each directive is exactly ONE of these shapes. Do not invent fields or values.
    { "op": "resize", "target": <TARGET>, "size": "narrow" | "default" | "wide" | "full" }
 4. Change spacing density (global — no target):
    { "op": "density", "density": "compact" | "comfortable" | "spacious" }
-5. Reset the whole layout to defaults (no target — "reset the layout", "restore defaults",
+5. Recolor a surface (background or text) from a bounded palette:
+   { "op": "style", "target": <TARGET>, "property": "background" | "text",
+     "color": "white" | "black" | "light" | "dark" | "neutral" | "transparent" | "default" }
+   Only "right_panel", "left_panel", "chat_panel" support style. Map an arbitrary color
+   the user names to the CLOSEST palette value (e.g. "grey"→"neutral"); "default" restores
+   the original. There is no free-form hex — if no palette value fits, omit the directive.
+6. Reset the whole layout to defaults (no target — "reset the layout", "restore defaults",
    "undo my changes", "put everything back"):
    { "op": "reset" }
 
@@ -495,7 +586,9 @@ Each directive is exactly ONE of these shapes. Do not invent fields or values.
 2. Show / hide a surface:     { "op": "toggle", "target": <TARGET>, "visibility": "show" | "hide" | "toggle" }
 3. Resize a surface:          { "op": "resize", "target": <TARGET>, "size": "narrow" | "default" | "wide" | "full" }
 4. Change spacing density:    { "op": "density", "density": "compact" | "comfortable" | "spacious" }
-5. Reset layout to defaults:  { "op": "reset" }   // "reset the layout", "restore defaults", "undo my changes"
+5. Recolor a surface:         { "op": "style", "target": <TARGET>, "property": "background" | "text", "color": "white" | "black" | "light" | "dark" | "neutral" | "transparent" | "default" }
+   (only right_panel / left_panel / chat_panel; map arbitrary colors to the closest value; no hex)
+6. Reset layout to defaults:  { "op": "reset" }   // "reset the layout", "restore defaults", "undo my changes"
 
 <TARGET> is one of: "right_panel" (the report / preview panel), "left_panel" (the Talk-history
 sidebar), "nav_rail" (the icon navigation rail), "chat_panel" (the main conversation column),
@@ -521,9 +614,9 @@ app can tell them it is unsupported.`;
  *  over-inclusive (favor a false positive → let the LLM decide) but rejects the bulk
  *  of pure data queries so the LLM is not called on every message. */
 const MAYBE_UI_NOUN_RE =
-  /\b(panel|panels|sidebar|side\s?bar|rail|nav|navigation|header|top\s?bar|tool\s?bar|toolbar|layout|screen|density|spacing|workspace|pane|chrome|column|toggle|switch|pill|button|control|response\s?mode|static\s?\/?\s?llm|logo|brand|word\s?mark|search\s?(?:bar|box|field|input))\b/i;
+  /\b(panel|panels|sidebar|side\s?bar|rail|nav|navigation|header|top\s?bar|tool\s?bar|toolbar|layout|screen|density|spacing|workspace|pane|chrome|column|toggle|switch|pill|button|control|response\s?mode|static\s?\/?\s?llm|logo|brand|word\s?mark|search\s?(?:bar|box|field|input)|chat|conversation|background|backdrop)\b/i;
 const MAYBE_LAYOUT_VERB_RE =
-  /\b(move|reposition|relocate|dock|shift|hide|show|collapse|expand|minimi[sz]e|maximi[sz]e|resize|widen|wider|wide|narrow|shrink|enlarge|bigger|smaller|larger|compact|spacious|comfortable|denser|roomier|remove|get\s+rid|delete|dismiss)\b/i;
+  /\b(move|reposition|relocate|dock|shift|hide|show|collapse|expand|minimi[sz]e|maximi[sz]e|resize|widen|wider|wide|narrow|shrink|enlarge|bigger|smaller|larger|compact|spacious|comfortable|denser|roomier|remove|get\s+rid|delete|dismiss|recolou?r|paint|colou?r)\b/i;
 const MAYBE_DIRECTION_RE = /\b(top|bottom|left|right|side|up|down)\b/i;
 
 export function mightBeLayout(query: string): boolean {
@@ -611,6 +704,9 @@ function describe(d: LayoutDirective): string {
     case 'toggle': return `${d.visibility === 'hide' ? 'hid' : d.visibility === 'show' ? 'showed' : 'toggled'} the ${TARGET_LABEL[d.target]}`;
     case 'resize': return `set the ${TARGET_LABEL[d.target]} to ${d.size} width`;
     case 'density': return `switched to a ${d.density} layout`;
+    case 'style': return d.color === 'default'
+      ? `restored the ${TARGET_LABEL[d.target]} ${d.property === 'text' ? 'text color' : 'background'}`
+      : `set the ${TARGET_LABEL[d.target]} ${d.property === 'text' ? 'text' : 'background'} to ${d.color}`;
     case 'reset': return `reset the layout to its defaults`;
   }
 }
