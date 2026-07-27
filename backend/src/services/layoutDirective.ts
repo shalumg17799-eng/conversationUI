@@ -44,7 +44,7 @@ export const LAYOUT_TARGETS = [
 export type LayoutTarget = (typeof LAYOUT_TARGETS)[number];
 
 /** Allowed operations. */
-export const LAYOUT_OPS = ['move', 'toggle', 'resize', 'density'] as const;
+export const LAYOUT_OPS = ['move', 'toggle', 'resize', 'density', 'reset'] as const;
 export type LayoutOp = (typeof LAYOUT_OPS)[number];
 
 /** move — where a panel is docked. */
@@ -68,7 +68,8 @@ export type LayoutDirective =
   | { op: 'move'; target: LayoutTarget; position: LayoutPosition }
   | { op: 'toggle'; target: LayoutTarget; visibility: LayoutVisibility }
   | { op: 'resize'; target: LayoutTarget; size: LayoutSize }
-  | { op: 'density'; density: LayoutDensity };
+  | { op: 'density'; density: LayoutDensity }
+  | { op: 'reset' }; // restore every surface to its default layout
 
 export interface LayoutDirectiveBatch {
   directives: LayoutDirective[];
@@ -115,6 +116,12 @@ const OP_SCHEMAS: Record<LayoutOp, object> = {
     required: ['op', 'density'],
     additionalProperties: false,
   },
+  reset: {
+    type: 'object',
+    properties: { op: { const: 'reset' } },
+    required: ['op'],
+    additionalProperties: false,
+  },
 };
 
 const OP_VALIDATORS: Record<LayoutOp, ValidateFunction> = {
@@ -122,6 +129,7 @@ const OP_VALIDATORS: Record<LayoutOp, ValidateFunction> = {
   toggle: ajv.compile(OP_SCHEMAS.toggle),
   resize: ajv.compile(OP_SCHEMAS.resize),
   density: ajv.compile(OP_SCHEMAS.density),
+  reset: ajv.compile(OP_SCHEMAS.reset),
 };
 
 /**
@@ -191,6 +199,11 @@ const ACTION_RE =
 // Density-only phrasing that needs no surface noun.
 const DENSITY_RE = /\b(compact|comfortable|spacious|densit(?:y|ies)|denser|roomier|more\s+(?:compact|spacious|dense))\b/i;
 
+// Reset phrasing — restore every surface to its default. Recognized on its own
+// (no surface noun needed): "reset the layout", "restore defaults", "undo my changes".
+const RESET_RE =
+  /\b(reset|restore|revert|undo)\b[\s\w]*\b(layout|ui|interface|defaults?|everything|changes|customi[sz]ations?|adaptive)\b|\breset\s+(?:the\s+)?(?:adaptive\s+)?(?:ui|layout|view)\b|\bdefault\s+layout\b|\bback\s+to\s+(?:the\s+)?defaults?\b|\bstart\s+over\b/i;
+
 // Position phrasing ("to the bottom", "on the left").
 const POSITION_RE = /\b(?:to\s+the\s+|on\s+the\s+|at\s+the\s+|move\s+.*\b)?(top|bottom|left|right)\b/i;
 
@@ -214,6 +227,9 @@ export interface LayoutIntentSignal {
 export function detectLayoutIntent(query: string): LayoutIntentSignal {
   const q = (query ?? '').toLowerCase();
   const matched: string[] = [];
+
+  // Reset is a standalone layout command — no surface noun required.
+  if (RESET_RE.test(q)) { matched.push('reset'); return { isLayout: true, confidence: 0.9, matched }; }
 
   const hasSurface = SURFACE_RE.test(q);
   const hasAction = ACTION_RE.test(q);
@@ -299,6 +315,9 @@ export function deterministicParse(query: string): LayoutDirective[] {
   const q = (query ?? '').toLowerCase();
   const out: LayoutDirective[] = [];
 
+  // reset — restore defaults; standalone, overrides everything else in the query.
+  if (RESET_RE.test(q)) return [{ op: 'reset' }];
+
   // density — global, no target needed
   if (DENSITY_RE.test(q)) {
     const density = resolveDensity(q);
@@ -358,6 +377,9 @@ Each directive is exactly ONE of these shapes. Do not invent fields or values.
    { "op": "resize", "target": <TARGET>, "size": "narrow" | "default" | "wide" | "full" }
 4. Change spacing density (global — no target):
    { "op": "density", "density": "compact" | "comfortable" | "spacious" }
+5. Reset the whole layout to defaults (no target — "reset the layout", "restore defaults",
+   "undo my changes", "put everything back"):
+   { "op": "reset" }
 
 <TARGET> is one of: "right_panel" (report/preview panel), "left_panel" (talk history),
 "nav_rail" (icon nav), "chat_panel" (main conversation), "header" (the WHOLE top bar),
@@ -473,6 +495,7 @@ Each directive is exactly ONE of these shapes. Do not invent fields or values.
 2. Show / hide a surface:     { "op": "toggle", "target": <TARGET>, "visibility": "show" | "hide" | "toggle" }
 3. Resize a surface:          { "op": "resize", "target": <TARGET>, "size": "narrow" | "default" | "wide" | "full" }
 4. Change spacing density:    { "op": "density", "density": "compact" | "comfortable" | "spacious" }
+5. Reset layout to defaults:  { "op": "reset" }   // "reset the layout", "restore defaults", "undo my changes"
 
 <TARGET> is one of: "right_panel" (the report / preview panel), "left_panel" (the Talk-history
 sidebar), "nav_rail" (the icon navigation rail), "chat_panel" (the main conversation column),
@@ -588,6 +611,7 @@ function describe(d: LayoutDirective): string {
     case 'toggle': return `${d.visibility === 'hide' ? 'hid' : d.visibility === 'show' ? 'showed' : 'toggled'} the ${TARGET_LABEL[d.target]}`;
     case 'resize': return `set the ${TARGET_LABEL[d.target]} to ${d.size} width`;
     case 'density': return `switched to a ${d.density} layout`;
+    case 'reset': return `reset the layout to its defaults`;
   }
 }
 

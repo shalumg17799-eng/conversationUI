@@ -34,7 +34,8 @@ export type LayoutDirective =
   | { op: 'move'; target: LayoutTarget; position: LayoutPosition }
   | { op: 'toggle'; target: LayoutTarget; visibility: LayoutVisibility }
   | { op: 'resize'; target: LayoutTarget; size: LayoutSize }
-  | { op: 'density'; density: LayoutDensity };
+  | { op: 'density'; density: LayoutDensity }
+  | { op: 'reset' };
 
 // ── Persisted state ────────────────────────────────────────────────────────────
 interface PanelPrefs {
@@ -104,6 +105,8 @@ export function chromeOffsets(prefs: LayoutPrefs): ChromeOffsets {
 // ── Pure reducer: apply one directive to prefs ────────────────────────────────
 export function applyDirective(prefs: LayoutPrefs, d: LayoutDirective): LayoutPrefs {
   switch (d.op) {
+    case 'reset':
+      return DEFAULT_PREFS;
     case 'density':
       return { ...prefs, density: d.density };
     case 'move':
@@ -129,6 +132,8 @@ interface Ctx {
   prefs: LayoutPrefs;
   applyDirectives: (directives: LayoutDirective[]) => void;
   resetPrefs: () => void;
+  /** True when the user has customized any surface away from the defaults. */
+  isCustomized: boolean;
 }
 
 const LayoutPrefsContext = createContext<Ctx | null>(null);
@@ -153,7 +158,15 @@ export function LayoutPrefsProvider({ children }: { children: React.ReactNode })
 
   const resetPrefs = useCallback(() => setPrefs(DEFAULT_PREFS), []);
 
-  const value = useMemo(() => ({ prefs, applyDirectives, resetPrefs }), [prefs, applyDirectives, resetPrefs]);
+  const isCustomized = useMemo(
+    () => JSON.stringify(prefs) !== JSON.stringify(DEFAULT_PREFS),
+    [prefs],
+  );
+
+  const value = useMemo(
+    () => ({ prefs, applyDirectives, resetPrefs, isCustomized }),
+    [prefs, applyDirectives, resetPrefs, isCustomized],
+  );
   return <LayoutPrefsContext.Provider value={value}>{children}</LayoutPrefsContext.Provider>;
 }
 

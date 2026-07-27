@@ -17,6 +17,7 @@ import {
   ChevronDown,
   Sparkles,
   BarChart2,
+  RotateCcw,
 } from 'lucide-react';
 import { cn } from "../../../lib/utils";
 import { usePersona, personas, PersonaType } from '../../context/PersonaContext';
@@ -94,7 +95,7 @@ export function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
   const { persona, personaType, setPersonaType, isMarketingDirector } = usePersona();
   // Adaptive UI: the nav rail and header are personalizable surfaces.
-  const { prefs: layoutPrefs } = useLayoutPrefs();
+  const { prefs: layoutPrefs, resetPrefs, isCustomized } = useLayoutPrefs();
   const navRailVisible = layoutPrefs.panels.nav_rail.visible;
   const headerVisible = layoutPrefs.panels.header.visible;
   const chrome = chromeOffsets(layoutPrefs);
@@ -362,6 +363,20 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Floating Mode Toggle (mode_toggle surface — hideable via Adaptive UI) */}
       {layoutPrefs.panels.mode_toggle.visible && <ModeToggle />}
+
+      {/* Adaptive UI: Reset control. Always reachable (fixed, top z-index) so a user
+          can never lock themselves out after hiding panels/header/chrome. Only shown
+          once something has actually been customized. */}
+      {isCustomized && (
+        <button
+          onClick={resetPrefs}
+          title="Restore the default layout"
+          className="fixed bottom-4 left-4 z-[100] flex items-center gap-1.5 px-3 py-2 rounded-full bg-[#1A1917] text-white text-[12px] font-medium shadow-lg hover:bg-[#333029] transition-colors"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+          Reset layout
+        </button>
+      )}
     </div>
   );
 }
