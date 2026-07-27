@@ -61,7 +61,7 @@ import {
 } from 'lucide-react';
 import MedallionIcon from '@/imports/Group5';
 import { usePersona } from '@/app/context/PersonaContext';
-import { useLayoutPrefs } from '@/app/context/LayoutPrefsContext';
+import { useLayoutPrefs, chromeOffsets } from '@/app/context/LayoutPrefsContext';
 
 // Backend base URL — set VITE_API_URL at build time for production. Falls back to localhost in dev.
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -141,23 +141,26 @@ function layoutMetrics(prefs: {
 
 // Adaptive UI: translate the persisted right-panel preferences (position / size /
 // visibility) into the report-panel aside's chrome. Docks right (default), left,
-// top, or bottom; the panel starts past the current content-left reflow.
+// top, or bottom; the panel starts past the current content-left reflow and clears
+// the header wherever it sits (top/bottom offsets).
 function reportPanelChrome(
   panel: { position: string; size: string },
   contentLeft: number,
+  chrome: { top: number; bottom: number },
 ): { className: string; style: React.CSSProperties } {
   const w = RIGHT_PANEL_WIDTHS[panel.size] ?? 480;
   const base = 'fixed bg-white z-30 flex flex-col shadow-xl';
+  const gap = 8; // small breathing room from the header edge on side docks
   switch (panel.position) {
     case 'bottom':
-      return { className: `${base} right-0 bottom-0 border-t border-[var(--border)]`, style: { left: contentLeft, height: '46vh' } };
+      return { className: `${base} right-0 border-t border-[var(--border)]`, style: { left: contentLeft, bottom: chrome.bottom, height: '46vh' } };
     case 'top':
-      return { className: `${base} right-0 top-[52px] border-b border-[var(--border)]`, style: { left: contentLeft, height: '46vh' } };
+      return { className: `${base} right-0 border-b border-[var(--border)]`, style: { left: contentLeft, top: chrome.top, height: '46vh' } };
     case 'left':
-      return { className: `${base} top-[60px] bottom-0 border-r border-[var(--border)]`, style: { left: contentLeft, width: w } };
+      return { className: `${base} border-r border-[var(--border)]`, style: { left: contentLeft, top: chrome.top + gap, bottom: chrome.bottom, width: w } };
     case 'right':
     default:
-      return { className: `${base} top-[60px] right-0 bottom-0 border-l border-[var(--border)]`, style: { width: w } };
+      return { className: `${base} right-0 border-l border-[var(--border)]`, style: { top: chrome.top + gap, bottom: chrome.bottom, width: w } };
   }
 }
 
@@ -397,6 +400,8 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
   const leftPanelVisible = layoutPrefs.panels.left_panel.visible;
   const chatPanelVisible = layoutPrefs.panels.chat_panel.visible;
   const rightPanelPrefs = layoutPrefs.panels.right_panel;
+  // Adaptive UI: top/bottom reflow driven by the header (top bar) position/visibility.
+  const chrome = chromeOffsets(layoutPrefs);
   const allReports = getAllReports();
   const allDatasets = getAllDatasets();
   const reportsCount = catalogReports.length;
@@ -6353,8 +6358,8 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
       {/* SECONDARY NAV — TALK HISTORY (left_panel) */}
       {leftPanelVisible && (
       <aside
-        className="fixed top-[52px] bottom-0 bg-white border-r border-[#ECEAE6] z-30 flex flex-col transition-all duration-300"
-        style={{ left: contentLeft - leftPanelW, width: leftPanelW }}
+        className="fixed bg-white border-r border-[#ECEAE6] z-30 flex flex-col transition-all duration-300"
+        style={{ left: contentLeft - leftPanelW, width: leftPanelW, top: chrome.top, bottom: chrome.bottom }}
       >
         <div className="p-4 border-b border-[#ECEAE6]">
           <div className="flex items-center justify-between mb-3">
@@ -6490,8 +6495,10 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
       {/* MAIN TALK WORKSPACE (chat_panel) */}
       {chatPanelVisible && (
       <div
-        className="fixed top-[52px] bottom-0 overflow-hidden transition-all duration-300"
+        className="fixed overflow-hidden transition-all duration-300"
         style={{
+          top: chrome.top,
+          bottom: chrome.bottom,
           left: contentLeft,
           right:
             isDatasetPanelOpen
@@ -7663,9 +7670,9 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
       {/* SHARED PANEL: Used for both My Reports → Explore Report AND Talk → Create Report (draft) */}
       {/* Draft mode indicated by selectedReport.isDraft flag */}
       {isReportPanelOpen && selectedReport && layoutPrefs.panels.right_panel.visible && (() => {
-        const chrome = reportPanelChrome(layoutPrefs.panels.right_panel, contentLeft);
+        const chromeStyle = reportPanelChrome(layoutPrefs.panels.right_panel, contentLeft, chrome);
         return (
-        <aside className={chrome.className} style={chrome.style}>
+        <aside className={chromeStyle.className} style={chromeStyle.style}>
           {/* Panel Header */}
           <div className="p-5 border-b border-[var(--border)]">
             <div className="flex items-start justify-between mb-3">
@@ -7971,7 +7978,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
 
       {/* DATASET DETAILS PANEL (RIGHT) */}
       {isDatasetPanelOpen && selectedDataset && (
-        <aside className="fixed top-[60px] right-0 bottom-0 w-[480px] bg-white border-l border-[var(--border)] z-30 flex flex-col shadow-xl">
+        <aside className="fixed right-0 w-[480px] bg-white border-l border-[var(--border)] z-30 flex flex-col shadow-xl" style={{ top: chrome.top + 8, bottom: chrome.bottom }}>
           {/* Panel Header */}
           <div className="p-5 border-b border-[var(--border)]">
             <div className="flex items-start justify-between mb-3">

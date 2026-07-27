@@ -303,11 +303,12 @@ interesting than "we added a second model.")*
 **5 · Adaptive UI — DONE.**
 > "Conversational personalisation. You type 'move the report panel to the bottom', 'hide the
 > sidebar', or 'use a compact layout' in chat — and the UI re-arranges itself and remembers
-> it across sessions. A typed contract underneath: four surfaces, four operations, backend
-> intent-detection, schema validation, telemetry, a persisted preference store. All four
-> surfaces render — report panel moves/resizes/hides, the history panel and nav rail hide
-> and the layout reflows around them, density switches globally. Repositioning is scoped to
-> the report panel by design; the secondary surfaces toggle and resize, they don't float."
+> it across sessions. A typed contract underneath: five surfaces, four operations, backend
+> intent-detection, schema validation, telemetry, a persisted preference store. All five
+> surfaces render — the report panel moves/resizes/hides, the history panel and nav rail
+> hide, the header docks to the top or the bottom, and the whole layout reflows around
+> whatever moved; density switches globally. Free repositioning is scoped to the report
+> panel and the header by design; the other surfaces toggle and resize, they don't float."
 
 Then — **this is where you cash the slide-1 tease:**
 

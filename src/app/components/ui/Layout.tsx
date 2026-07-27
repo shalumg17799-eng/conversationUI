@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { cn } from "../../../lib/utils";
 import { usePersona, personas, PersonaType } from '../../context/PersonaContext';
-import { useLayoutPrefs } from '../../context/LayoutPrefsContext';
+import { useLayoutPrefs, chromeOffsets } from '../../context/LayoutPrefsContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -93,9 +93,11 @@ export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { persona, personaType, setPersonaType, isMarketingDirector } = usePersona();
-  // Adaptive UI: the nav rail is a personalizable surface (nav_rail).
+  // Adaptive UI: the nav rail and header are personalizable surfaces.
   const { prefs: layoutPrefs } = useLayoutPrefs();
   const navRailVisible = layoutPrefs.panels.nav_rail.visible;
+  const headerVisible = layoutPrefs.panels.header.visible;
+  const chrome = chromeOffsets(layoutPrefs);
   const [personaDropdownOpen, setPersonaDropdownOpen] = React.useState(false);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
 
@@ -162,9 +164,10 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <div className="min-h-screen bg-[#F7F6F3] text-[#1C1917] page-atmosphere" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
-      {/* Header — frosted glass */}
+      {/* Header — frosted glass (header surface: dockable top/bottom, hideable) */}
+      {headerVisible && (
       <header
-        className="fixed top-0 left-0 right-0 h-[52px] border-b border-[#ECEAE6] z-50 flex items-center justify-between px-6"
+        className={`fixed left-0 right-0 h-[52px] z-50 flex items-center justify-between px-6 ${chrome.headerBottom ? 'top-auto bottom-0 border-t' : 'top-0 bottom-auto border-b'} border-[#ECEAE6]`}
         style={{ background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
       >
         {/* Left: Product mark */}
@@ -273,10 +276,14 @@ export function Layout({ children }: LayoutProps) {
           </button>
         </div>
       </header>
+      )}
 
       {/* Left Navigation — icon-only rail (nav_rail) */}
       {navRailVisible && (
-      <aside className="fixed top-[52px] left-0 bottom-0 w-[64px] bg-white border-r border-[#ECEAE6] z-40 flex flex-col">
+      <aside
+        className="fixed left-0 w-[64px] bg-white border-r border-[#ECEAE6] z-40 flex flex-col"
+        style={{ top: chrome.top, bottom: chrome.bottom }}
+      >
         {/* Primary Navigation */}
         <nav className="flex-1 py-3 px-1.5 space-y-0.5 overflow-y-auto">
           {navItems.map((item) => {
@@ -344,7 +351,10 @@ export function Layout({ children }: LayoutProps) {
       )}
 
       {/* Main Content */}
-      <main className={`${navRailVisible ? 'ml-[64px]' : 'ml-0'} pt-[52px] min-h-screen relative z-[1]`}>
+      <main
+        className={`${navRailVisible ? 'ml-[64px]' : 'ml-0'} min-h-screen relative z-[1]`}
+        style={{ paddingTop: chrome.top, paddingBottom: chrome.bottom }}
+      >
         <div className="p-8 max-w-[1400px] mx-auto space-y-8">
            {children}
         </div>

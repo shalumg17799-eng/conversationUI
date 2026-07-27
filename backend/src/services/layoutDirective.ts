@@ -36,6 +36,7 @@ export const LAYOUT_TARGETS = [
   'left_panel',    // the Talk-history secondary nav
   'nav_rail',      // the icon navigation rail
   'chat_panel',    // the main conversation column
+  'header',        // the top bar (logo / search / persona) — dockable top or bottom
 ] as const;
 export type LayoutTarget = (typeof LAYOUT_TARGETS)[number];
 
@@ -177,7 +178,7 @@ function summarizeAjvErrors(op: string, errors: NonNullable<ValidateFunction['er
 
 // Surface nouns that mean "a chrome/layout region", not report content.
 const SURFACE_RE =
-  /\b(panel|panels|sidebar|side\s?bar|side\s?panel|rail|nav(?:igation)?\s?(?:rail|bar)?|pane|layout|density|spacing|screen\s?layout|workspace|history\s?(?:panel|list|sidebar))\b/i;
+  /\b(panel|panels|sidebar|side\s?bar|side\s?panel|rail|nav(?:igation)?\s?(?:rail|bar)?|pane|layout|density|spacing|screen\s?layout|workspace|history\s?(?:panel|list|sidebar)|headers?|top\s?bar|tool\s?bar)\b/i;
 
 // Layout action verbs. Includes bare comparatives ("wider", "smaller") so
 // "make the panel wider" is recognized even with a noun between verb and adjective.
@@ -253,6 +254,7 @@ export function detectLayoutIntent(query: string): LayoutIntentSignal {
 
 // Map free-text target phrases → canonical LayoutTarget.
 function resolveTarget(q: string): LayoutTarget | null {
+  if (/\bheaders?\b|\btop\s?bar\b|\btool\s?bar\b/i.test(q)) return 'header';
   if (/\b(report|preview|right)\b.*\bpanel\b|\bright\s?panel\b|\breport\s?panel\b|\bpreview\s?panel\b/i.test(q)) return 'right_panel';
   if (/\b(history|talk|left)\b.*\b(panel|sidebar|list)\b|\bleft\s?panel\b|\bleft\s?sidebar\b|\bhistory\s?(panel|sidebar|list)\b/i.test(q)) return 'left_panel';
   if (/\bnav(?:igation)?\s?(?:rail|bar)?\b|\brail\b|\bicon\s?(?:rail|bar)\b/i.test(q)) return 'nav_rail';
@@ -266,7 +268,7 @@ function resolveTarget(q: string): LayoutTarget | null {
 function resolvePosition(q: string): LayoutPosition | null {
   // Prefer a position that follows a directional preposition ("to the bottom",
   // "on the left", "at the top") — this avoids picking the "right" in "right panel".
-  const directed = q.match(/\b(?:to|at|on|into|toward|towards|dock(?:ed)?(?:\s+(?:at|to))?)\s+(?:the\s+)?(top|bottom|left|right)\b/i);
+  const directed = q.match(/\b(?:to|at|on|in|into|toward|towards|dock(?:ed)?(?:\s+(?:at|to|in))?)\s+(?:the\s+)?(top|bottom|left|right)\b/i);
   if (directed) return directed[1].toLowerCase() as LayoutPosition;
   // Fall back to the LAST bare position word (target descriptors like "right panel"
   // come first; the destination usually comes last).
@@ -350,7 +352,7 @@ Each directive is exactly ONE of these shapes. Do not invent fields or values.
    { "op": "density", "density": "compact" | "comfortable" | "spacious" }
 
 <TARGET> is one of: "right_panel" (report/preview panel), "left_panel" (talk history),
-"nav_rail" (icon nav), "chat_panel" (main conversation).
+"nav_rail" (icon nav), "chat_panel" (main conversation), "header" (top bar / toolbar).
 
 If the command asks for something outside this set, return { "directives": [] }.`;
 
@@ -441,6 +443,7 @@ const TARGET_LABEL: Record<LayoutTarget, string> = {
   left_panel: 'history panel',
   nav_rail: 'navigation rail',
   chat_panel: 'chat panel',
+  header: 'header',
 };
 
 function describe(d: LayoutDirective): string {
