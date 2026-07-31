@@ -1,0 +1,43 @@
+# Local Neo4j for KAG development.
+#
+# There is no other Docker in this repo — this file exists solely so a developer can
+# run the knowledge graph locally without installing Neo4j Desktop. Shared dev and
+# demo environments use Neo4j AuraDB instead (see docs/KAG_IMPLEMENTATION_PLAN.md §3.1).
+#
+#   docker compose -f docker-compose.kag.yml up -d
+#   # Browser: http://localhost:7474   (neo4j / localdevpassword)
+#   cd backend && npm run kag:ping
+#
+# Matching backend/.env for local dev:
+#   NEO4J_URI=bolt://localhost:7687
+#   NEO4J_USER=neo4j
+#   NEO4J_PASSWORD=localdevpassword
+
+services:
+  neo4j:
+    image: neo4j:5-community
+    container_name: kag-neo4j
+    ports:
+      - "7474:7474"   # HTTP / Neo4j Browser
+      - "7687:7687"   # Bolt
+    environment:
+      # Local development credentials only. Never reuse these anywhere else.
+      NEO4J_AUTH: neo4j/localdevpassword
+      # APOC Core — the retriever prefers apoc.path.expandConfig and falls back to
+      # plain variable-length Cypher when it is unavailable (plan §4.3).
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_dbms_security_procedures_unrestricted: apoc.*
+      NEO4J_server_memory_heap_max__size: 1G
+    volumes:
+      - kag-neo4j-data:/data
+      - kag-neo4j-logs:/logs
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p localdevpassword 'RETURN 1' || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  kag-neo4j-data:
+  kag-neo4j-logs:
