@@ -10,6 +10,13 @@ import { getValidationSummary, resetValidationMetrics } from './services/validat
 import { getConstraintSummary, resetConstraintMetrics } from './services/constraintTelemetry';
 import { getGovernorSummary, resetGovernorMetrics } from './services/governorTelemetry';
 import { getLayoutSummary, resetLayoutMetrics } from './services/layoutDirectiveTelemetry';
+import { KAG_CONFIG, isKagConfigured } from './kag/config';
+import { verifyConnectivity, hasApocPathExpand, closeDriver } from './kag/neo4jClient';
+import { applySchema, getGraphStats } from './kag/schema';
+import { getKagSummary, resetKagMetrics } from './kag/kagTelemetry';
+import { refreshKagGraph } from './kag/kagRefresh';
+import { retrieve, getBreakerState } from './kag/kagRetriever';
+import { buildGroundingPack } from './kag/groundingPack';
 import { createJob, getJob, listJobs, cancelJob, deleteJob, videoPath, loadPersistedJobs, AUDIO_ROOT, VIDEO_ROOT, FOOTAGE_ROOT } from './services/videoJobs';
 import { warmupRenderer } from './services/videoRenderer';
 import { ttsEnabled } from './services/ttsService';
@@ -338,11 +345,14 @@ app.post('/api/chat', async (req: Request, res: Response) => {
   }
 });
 
-// Manual catalog refresh endpoint (admin/debug use)
+// Manual catalog refresh endpoint (admin/debug use).
+// Rebuilds the KAG graph from the same BigQuery schema read, so the graph and the
+// markdown catalog can never disagree about physical reality.
 app.post('/api/catalog/refresh', async (_req: Request, res: Response) => {
   try {
     await refreshCatalog();
-    res.json({ success: true, message: 'Catalog refreshed successfully' });
+    const kag = await refreshKagGraph('manual');
+    res.json({ success: true, message: 'Catalog refreshed successfully', kag });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -393,6 +403,66 @@ app.post('/api/metrics/layout/reset', (_req: Request, res: Response) => {
   res.json({ success: true });
 });
 
+// KAG — retrieval telemetry. `shadow.agreementRate` is the Phase 2 gate: it must
+// reach 0.90 before KAG_ENABLED is turned on.
+app.get('/api/metrics/kag', (_req: Request, res: Response) => {
+  // `shadowMode` is the flag; `shadow` (from the summary) is the agreement data.
+  res.json({ enabled: KAG_CONFIG.enabled, shadowMode: KAG_CONFIG.shadow, configured: isKagConfigured(), ...getKagSummary() });
+});
+app.post('/api/metrics/kag/reset', (_req: Request, res: Response) => {
+  resetKagMetrics();
+  res.json({ success: true });
+});
+
+// KAG — graph contents and connection health (admin/debug).
+// NOTE: deliberately NO endpoint that executes arbitrary Cypher, in any environment.
+// Use Neo4j Browser against the instance for ad-hoc exploration.
+// KAG — inspect what retrieval returns for a query. The single most useful endpoint
+// for triaging a bad route: it shows the seeds, the scored candidates, the pack the
+// model would see, and whether the answer came from Neo4j, cache or the fallback.
+app.get('/api/kag/retrieve', async (req: Request, res: Response) => {
+  const q = String(req.query.q ?? '').trim();
+  if (!q) return res.status(400).json({ error: 'missing ?q=' });
+  if (!isKagConfigured()) return res.status(503).json({ configured: false, error: 'NEO4J_URI / NEO4J_PASSWORD not set' });
+
+  try {
+    const sub = await retrieve(q);
+    const pack = buildGroundingPack(sub);
+    res.json({
+      query: q,
+      source: sub.source,
+      latencyMs: sub.latencyMs,
+      truncated: sub.truncated,
+      seeds: sub.seeds,
+      candidateTables: sub.candidateTables,
+      nodeCount: sub.nodes.length,
+      edgeCount: sub.edges.length,
+      pack: { text: pack.text, tokens: pack.tokens, tables: pack.tablesIncluded, clipped: pack.clipped },
+      breaker: getBreakerState(),
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/kag/stats', async (_req: Request, res: Response) => {
+  if (!isKagConfigured()) {
+    return res.status(503).json({ configured: false, error: 'NEO4J_URI / NEO4J_PASSWORD not set' });
+  }
+  try {
+    const stats = await getGraphStats();
+    res.json({
+      configured: true,
+      enabled: KAG_CONFIG.enabled,
+      shadowMode: KAG_CONFIG.shadow,
+      breaker: getBreakerState(),
+      ...stats,
+    });
+  } catch (err: any) {
+    res.status(500).json({ configured: true, error: err.message });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Backend listening at http://localhost:${port}`);
 
@@ -404,8 +474,48 @@ app.listen(port, () => {
   // so the first user render doesn't pay the bundling cost.
   loadPersistedJobs().catch(err => console.error('[Startup] Video library load failed:', err));
   warmupRenderer();
+
+  // KAG warmup — deliberately non-blocking and failure-tolerant. An unreachable
+  // Neo4j means degraded KAG, never a failed server. The connectivity call also pays
+  // the TLS handshake so the first user query does not.
+  if (isKagConfigured()) {
+    (async () => {
+      const conn = await verifyConnectivity();
+      if (!conn.ok) {
+        console.warn(`[Startup] KAG: Neo4j unreachable (${conn.error}) — retrieval will fall back to the markdown catalog`);
+        return;
+      }
+      console.log(`[Startup] KAG: connected — ${conn.version}`);
+      await applySchema();
+      const apoc = await hasApocPathExpand();
+      if (!apoc) console.warn('[Startup] KAG: APOC path expansion unavailable — using plain-Cypher traversal');
+      const stats = await getGraphStats();
+      if (stats.totalNodes === 0) {
+        // Self-heal rather than telling a human to run a script.
+        console.warn('[Startup] KAG: graph is EMPTY — building now');
+        await refreshKagGraph('startup', true);
+      } else {
+        console.log(`[Startup] KAG: ${stats.totalNodes} nodes, ${stats.totalRels} rels, built ${stats.builtAt}`);
+      }
+    })().catch(err => console.error('[Startup] KAG warmup failed (non-fatal):', err));
+  } else if (KAG_CONFIG.enabled) {
+    console.warn('[Startup] KAG_ENABLED=true but NEO4J_URI/NEO4J_PASSWORD are not set — KAG stays inactive');
+  }
+
   if (!ttsEnabled()) console.warn('[Startup] ELEVENLABS_API_KEY not set — report videos will render WITHOUT narration.');
   setInterval(() => {
     refreshCatalog().catch(err => console.error('[Scheduler] Catalog refresh failed:', err));
+    // The graph is rebuilt on the SAME cadence as the markdown catalog. Refreshing one
+    // without the other is how the grounding layer drifts away from BigQuery unnoticed.
+    refreshKagGraph('scheduler').catch(err => console.error('[Scheduler] KAG refresh failed:', err));
   }, 24 * 60 * 60 * 1000);
 });
+
+// Drain the Neo4j connection pool on shutdown so Azure restarts are clean.
+for (const signal of ['SIGTERM', 'SIGINT'] as const) {
+  process.on(signal, () => {
+    closeDriver()
+      .catch(err => console.error('[Shutdown] Neo4j close failed:', err))
+      .finally(() => process.exit(0));
+  });
+}

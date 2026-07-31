@@ -2680,6 +2680,57 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
               console.log('Duration:', `${payload.durationMs}ms`);
               console.log('Intent  :', payload.intent, '| metric:', payload.metric, '| dimension:', payload.dimension);
               console.groupEnd();
+            } else if (event === 'kag_debug') {
+              // Demo surface for the knowledge graph. Mirrors the [BigQuery] group
+              // above so the two read as one story: KAG chose the table and the
+              // grounding, BigQuery then served it.
+              console.group('%c[KAG] Knowledge graph grounding', 'color:#7C3AED;font-weight:bold');
+              if (payload.retrieval) {
+                const r = payload.retrieval;
+                console.log(`Retrieval : ${r.source} in ${r.latencyMs}ms — ${r.nodes} nodes${r.truncated ? ' (truncated)' : ''}`);
+                if (r.seeds?.length) {
+                  console.log('Seeds     :', r.seeds.map((s: any) => `${s.id} (${s.score})`).join('  '));
+                }
+                if (r.candidates?.length) {
+                  console.log('Candidates:', r.candidates.map((c: any) => `${c.table} @ ${c.score}`).join('  |  '));
+                }
+              }
+              if (payload.grounding) {
+                const g = payload.grounding;
+                if (g.source === 'kag-pack') {
+                  const saved = g.catalogTokens - g.packTokens;
+                  const pct = g.catalogTokens ? Math.round((saved / g.catalogTokens) * 100) : 0;
+                  console.log(`%cPrompt    : ${g.packTokens} tokens vs ${g.catalogTokens} full catalog — saved ${saved} (${pct}%)`,
+                    'color:#1D9E75');
+                  console.log('Tables    :', g.tables?.join(', '));
+                } else {
+                  // Fallbacks are shown, not hidden — a demo that only ever shows the
+                  // happy path teaches nobody how to read the system.
+                  console.log(`%cPrompt    : fell back to full catalog (${g.fallbackReason})`, 'color:#D97706');
+                }
+              }
+              if (payload.routing) {
+                const rt = payload.routing;
+                if (rt.overridden) {
+                  console.log(`%cRouting   : OVERRODE model — ${rt.modelTable} → ${rt.kagTable} @ ${rt.score}`, 'color:#D4572A;font-weight:bold');
+                } else {
+                  console.log(`Routing   : agreed with model (${rt.kagTable ?? 'no opinion'}) — ${rt.reason}`);
+                }
+              }
+              if (payload.entityFilters?.length) {
+                console.log('Entities  :', payload.entityFilters
+                  .map((f: any) => `${f.column} IN [${f.values.join(', ')}]`).join(' AND '));
+              }
+              if (payload.validation) {
+                const v = payload.validation;
+                console.log(`Grounding : checked ${v.checked}, repaired ${v.repaired}, violations ${v.violations}`);
+                (v.examples ?? []).forEach((e: string) => console.log('            ', e));
+              }
+              // Two numbers, never one: the KAG cost is the claim being made, and the
+              // request time is dominated by the LLM call that follows it.
+              console.log(`%cKAG cost  : ${payload.kagMs}ms  (of ${payload.requestMs}ms total request — the rest is the LLM)`,
+                'color:#6B6965');
+              console.groupEnd();
             } else if (event === 'acknowledgment') {
               // Insert a text bubble above the updated report for the confirmation message
               setMessages(prev => {

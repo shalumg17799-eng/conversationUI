@@ -8,6 +8,8 @@ import { DATA_SOURCES, ALL_DOMAINS, ALL_TABLES, getSourcesByDomain, getAnglesByD
 import { loadCatalogContext } from './catalogRefresher';
 import { OutputMode } from '../registry/componentRegistry';
 import { isValidOutputMode, withOutputModeHint } from './outputMode';
+// Phase 3: grounding pack replaces the full-catalog injection when KAG is active.
+import { resolveGroundingContext } from '../kag/kagGrounding';
 
 dotenv.config();
 
@@ -224,7 +226,14 @@ function generateViaCLI(opts: GenOpts): Promise<string> {
     const childEnv = { ...process.env };
     delete childEnv.ANTHROPIC_API_KEY;
     delete childEnv.ANTHROPIC_AUTH_TOKEN;
-    const child = spawn('claude', args, { stdio: ['pipe', 'pipe', 'pipe'], env: childEnv });
+    // The `claude` binary is often NOT on PATH for a server process — the VS Code
+    // extension ships it at
+    //   ~/.vscode/extensions/anthropic.claude-code-<ver>-<plat>/resources/native-binary/claude.exe
+    // and nothing adds that directory to PATH. Depending on ambient PATH also makes
+    // behaviour differ by which terminal started the backend, which is how this broke
+    // once already. CLAUDE_CLI_PATH pins it explicitly; 'claude' remains the default.
+    const cliPath = process.env.CLAUDE_CLI_PATH?.trim() || 'claude';
+    const child = spawn(cliPath, args, { stdio: ['pipe', 'pipe', 'pipe'], env: childEnv });
 
     let stdout = '';
     let stderr = '';
@@ -811,11 +820,16 @@ async function buildAnalyzePrompt(query: string, history: ClarificationTurn[]): 
     `- domain="${s.domain}" report="${s.reportName}" table="${s.table}"`
   ).join('\n');
 
-  // Inject pre-built catalog context (real BQ column names, descriptions, KPIs).
-  const catalogContext = await loadCatalogContext();
-  const catalogContextSection = catalogContext
-    ? `\n\nDATASET FIELD REFERENCE (pre-built from BigQuery — use for smarter clarification):\n${catalogContext}`
-    : '';
+  // Phase 3: field reference comes from the KAG grounding pack when the graph is
+  // enabled, out of shadow, and confident; otherwise this resolves to the same
+  // full-catalog markdown that was injected before KAG existed. The availability
+  // filter is applied to the PACK, not just to the options — a probe-failed table
+  // must not be described to the model at all.
+  const grounding = await resolveGroundingContext(query, availableSources.map(s => s.table));
+  const catalogContextSection = grounding.text ? `\n\n${grounding.text}` : '';
+  console.log(`[KAG] grounding source=${grounding.source} tokens=${grounding.tokens}` +
+    `${grounding.tables.length ? ` tables=[${grounding.tables.join(',')}]` : ''}` +
+    `${grounding.fallbackReason ? ` reason="${grounding.fallbackReason}"` : ''}`);
 
   const isFollowUp = history.length > 0;
 
@@ -832,7 +846,7 @@ RULES:
 4. ${isFollowUp ? 'opener must be brief and move the conversation forward. No greetings, no "I\'m doing great". Example: "Great, since you\'re interested in Sales..."' : 'opener MUST be conversational and natural. If the user says "hey how are you", respond to that first, THEN transition to the business question.'}
 5. Never invent table names, domain names, or report names. Only use values from the AVAILABLE DATA list above.
 6. options array MUST come ONLY from the AVAILABLE DATA catalog above — domain names when domain unknown, report names when domain is known. Never include options that are not in AVAILABLE DATA.
-7. Use the DATASET FIELD REFERENCE to ask specific, field-aware clarification questions when relevant.
+7. Use the DATASET FIELD REFERENCE / RELEVANT DATA section to ask specific, field-aware clarification questions when relevant.
 8. Requests to DRAW/SKETCH a diagram/flow/topology/map, or to WRITE a brief/memo/document/one-pager, ARE supported — the report layer renders them. Treat them like any other request: route if a domain+report is clear, else clarify the domain/report normally. NEVER answer that diagrams or documents are unsupported or that the dataset lacks them.
 
 Respond with valid JSON only. No markdown. No code fences.

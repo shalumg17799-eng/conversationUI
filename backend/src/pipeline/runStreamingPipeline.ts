@@ -14,6 +14,15 @@ import { cacheService, generateKey } from '../services/cacheService';
 import { resolveOutputMode } from '../services/outputMode';
 import { recordOutputMode } from '../services/outputModeTelemetry';
 import { shadowValidateCards } from '../services/validationTelemetry';
+// KAG Phase 4: grounding validation against the graph schema.
+import { validateCardGrounding } from '../kag/kagValidator';
+// KAG Phase 5: entity → parameterized filter resolution.
+import { resolveEntityFilters, resolveRoutingOverride } from '../kag/kagGrounding';
+// KAG Phase 6: component affinity (advisory only).
+import { affinityFor, bumpAffinity } from '../kag/kagAffinity';
+// KAG Phase 2 shadow: records what retrieval would have chosen. Never affects output.
+import { runShadow } from '../kag/kagShadow';
+import { runWithTrace, currentTrace, logTraceBanner } from '../kag/kagTrace';
 import { deriveConstraints } from '../services/componentSelector';
 import { recordConstraints } from '../services/constraintTelemetry';
 import { governReport, governorMode, generateGovernedFallback } from '../services/governor';
@@ -370,6 +379,26 @@ export async function runStreamingPipeline(
   conversationHistory: ConversationTurn[] = [],
   provider: LLMProvider = 'gemma',
 ): Promise<void> {
+  // Bind a KAG trace to this request's async context. Every kag/* module writes into
+  // it without needing the object passed down; see kagTrace.ts for why that is
+  // AsyncLocalStorage rather than a module-level variable.
+  return runWithTrace(query, () => runStreamingPipelineInner(
+    query, send, skipClarification, clarificationHistory, priorContext,
+    activeTable, currentCards, conversationHistory, provider,
+  ));
+}
+
+async function runStreamingPipelineInner(
+  query: string,
+  send: SendFn,
+  skipClarification: boolean,
+  clarificationHistory: ClarificationTurn[],
+  priorContext: string | undefined,
+  activeTable: string | undefined,
+  currentCards: ReportCard[] | undefined,
+  conversationHistory: ConversationTurn[],
+  provider: LLMProvider,
+): Promise<void> {
   // Phase 1: provider is part of the key — gemma and sonnet must not share cache entries.
   const cacheKey = generateKey({ query, stream: true, v: 3, provider, history: clarificationHistory, prior: priorContext });
   const cached = cacheService.get<CachedReport>(cacheKey);
@@ -637,6 +666,44 @@ export async function runStreamingPipeline(
     }
   }
 
+  // ── KAG shadow: record what retrieval WOULD have chosen, vs what routing did ──
+  // Placed here, after every routing branch has converged on tableOverride, rather
+  // than inside analyzeQuery — which only covered two of its branches and so observed
+  // nothing on the Sonnet front-door, the clarify+forceGenerate path, or the
+  // deterministic fallback.
+  //
+  // Two corrections to WHAT gets compared, because agreementRate is the Phase 2 gate
+  // and a polluted numerator makes it unreachable no matter how good retrieval is:
+  //
+  //   1. Follow-ups are not routing decisions. "Compare to Q4" names no metric, domain
+  //      or entity — the live path reuses the table from conversation context, while
+  //      retrieval correctly finds zero seeds. Scoring that as a disagreement measured
+  //      the wrong population; the observed rate was 0.0 entirely from this case.
+  //   2. In a clarification flow the live path routes on the query PLUS the answers
+  //      given so far, so retrieval must see the same text or the comparison is unfair.
+  const isFollowUp = hasExistingReport && !inClarificationFlow;
+  if (!isFollowUp) {
+    const shadowText = inClarificationFlow
+      ? [query, ...clarificationHistory.map(t => t.answer)].join(' ')
+      : query;
+    // Fire-and-forget: overlaps the BigQuery call rather than sitting in front of it.
+    void runShadow(shadowText, tableOverride ?? null);
+  }
+
+  // Gaps 1 & 9 - retrieval becomes authoritative above a confidence bar. Inert while
+  // KAG is disabled or in shadow, so the pre-KAG path is byte-identical.
+  // Awaited, unlike the shadow call: it decides which table the next query hits.
+  {
+    const routing = await resolveRoutingOverride(query, tableOverride ?? activeTable ?? null, {
+      isFollowUp,
+      availableTables: getAvailableDataSources().map(s => s.table),
+    });
+    if (routing.overridden && routing.table) {
+      tableOverride = routing.table;
+      send('status', { message: 'Found a better-matching dataset...' });
+    }
+  }
+
   // ── Phase 2: classify + FREEZE output_mode (observed only — no enforcement) ──
   const outputModeDecision = resolveOutputMode({ query, intent: resolvedIntent, llmProposed: llmProposedMode });
   recordOutputMode(outputModeDecision, { query, provider });
@@ -644,7 +711,11 @@ export async function runStreamingPipeline(
 
   // Step 2 — fetch real BigQuery data
   send('status', { message: 'Querying BigQuery...' });
-  const allRows = await executeQuery(intent, (meta) => send('bq_debug', meta), tableOverride);
+  // KAG Phase 5: named entities in the query become parameterized WHERE predicates
+  // ("how did Dallas do" → territory_name = @f0). Empty unless KAG is active and out
+  // of shadow, so this is a no-op on the pre-KAG path.
+  const entityFilters = await resolveEntityFilters(query, tableOverride ?? activeTable ?? '');
+  const allRows = await executeQuery(intent, (meta) => send('bq_debug', meta), tableOverride, entityFilters);
 
   // Track which table ultimately produced data (for follow-up routing)
   const resolvedTable = tableOverride ?? activeTable;
@@ -718,6 +789,68 @@ export async function runStreamingPipeline(
 
   // Phase 3: shadow validation — passive, never blocks render.
   shadowValidateCards(report.cards, provider);
+
+  // KAG Phase 4: grounding validation against the graph schema. Runs AFTER
+  // fixColumnCasing so it only sees what casing repair could not fix — chiefly
+  // metric display names used where a physical column belongs. Reports only while
+  // KAG_SHADOW is on; returns the cards untouched when KAG is inactive.
+  {
+    const grounded = await validateCardGrounding(report.cards, resolvedTable ?? '');
+    report.cards = grounded.cards;
+  }
+
+  // KAG Phase 6: component affinity — ADVISORY. Log what the graph would have
+  // suggested next to what the LLM actually chose, and feed the actual choice back as
+  // a weight nudge. Nothing here changes the output; the signal is recorded so it can
+  // be judged on real usage before anyone wires it into a decision.
+  if (resolvedTable) {
+    void (async () => {
+      try {
+        const hints = await affinityFor(resolvedTable);
+        // Gap 12 — the hints now feed deriveConstraints (ordering only), so the signal
+        // reaches the governor and the constraint telemetry instead of only a log line.
+        if (hints.length) {
+          recordConstraints(
+            deriveConstraints(outputMode, dataShape, undefined, hints.map(h => h.component)),
+            provider,
+          );
+        }
+        if (hints.length) {
+          const chosen = [...new Set(report.cards.map(c => c.renderType))];
+          console.log(`[KAG Affinity] table=${resolvedTable} ` +
+            `suggested=[${hints.map(h => `${h.component}@${h.weight.toFixed(2)}`).join(',')}] ` +
+            `chosen=[${chosen.join(',')}]`);
+          // Affinity resolves after the report is sent, so it cannot join the
+          // kag_debug payload — the console banner is where it shows up.
+          for (const rt of chosen) await bumpAffinity(resolvedTable, rt);
+        }
+      } catch { /* advisory only */ }
+    })();
+  }
+
+  // Demo surface: one consolidated event describing everything KAG did for this
+  // request. Emitted BEFORE the components so it is already in the console when the
+  // report paints — during a demo you want the explanation visible as the answer
+  // appears, not scrolled off after it.
+  {
+    const t = currentTrace();
+    if (t) {
+      logTraceBanner(t);
+      // kagMs vs requestMs kept separate on purpose. A single "total" inside a KAG
+      // panel reads as "KAG took 134s" when that number is almost entirely the LLM
+      // call — the most misleading thing a demo could show about its own cost.
+      send('kag_debug', {
+        query: t.query,
+        kagMs: t.retrieval?.latencyMs ?? 0,
+        requestMs: Date.now() - t.startedAt,
+        retrieval: t.retrieval ?? null,
+        grounding: t.grounding ?? null,
+        routing: t.routing ?? null,
+        entityFilters: t.entities ?? [],
+        validation: t.validation ?? null,
+      });
+    }
+  }
 
   // Phase 5: governor. off → no-op; shadow → log only; enforce → modify output.
   const gMode = governorMode();
