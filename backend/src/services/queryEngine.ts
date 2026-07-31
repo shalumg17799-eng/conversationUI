@@ -1,6 +1,6 @@
 import { runQueryWithMeta, qualifiedTable } from '../lib/bigqueryClient';
 import { IntentResult } from '../types';
-import { DATA_SOURCES, buildQuerySQL } from './dataSourceMap';
+import { DATA_SOURCES, buildQuerySQL, QueryFilter } from './dataSourceMap';
 
 export interface BQQueryMeta {
   project: string;
@@ -17,13 +17,16 @@ export const executeQuery = async (
   intent: IntentResult,
   onMeta?: (meta: BQQueryMeta) => void,
   tableOverride?: string,
+  /** KAG Phase 5: resolved entity predicates. Always parameterized — see buildQuerySQL. */
+  filters: QueryFilter[] = [],
 ): Promise<any[]> => {
   const { intent: intentType } = intent;
 
-  console.log(`BQ Query — table: ${tableOverride ?? 'none'}, intent: ${intentType}`);
+  console.log(`BQ Query — table: ${tableOverride ?? 'none'}, intent: ${intentType}` +
+    `${filters.length ? `, filters: ${filters.map(f => `${f.column}=?`).join(' AND ')}` : ''}`);
 
-  const runTable = async (table: string, sql: string): Promise<any[]> => {
-    const result = await runQueryWithMeta(sql);
+  const runTable = async (table: string, sql: string, params: Record<string, any> = {}): Promise<any[]> => {
+    const result = await runQueryWithMeta(sql, params);
     onMeta?.({
       project: result.project,
       dataset: result.dataset,
@@ -42,8 +45,8 @@ export const executeQuery = async (
     if (tableOverride) {
       const source = DATA_SOURCES.find(ds => ds.table === tableOverride);
       if (source) {
-        const sql = buildQuerySQL(source, qualifiedTable);
-        return await runTable(tableOverride, sql);
+        const { sql, params } = buildQuerySQL(source, qualifiedTable, filters);
+        return await runTable(tableOverride, sql, params);
       }
       // tableOverride set but not in DATA_SOURCES — run as bare SELECT
       return await runTable(tableOverride,
@@ -55,7 +58,8 @@ export const executeQuery = async (
     // via analyzeQuery (LLM) or history-derived catalog lookup.
     const fallbackSource = DATA_SOURCES[0];
     console.warn(`[executeQuery] No tableOverride — falling back to catalog default: ${fallbackSource.table}`);
-    return await runTable(fallbackSource.table, buildQuerySQL(fallbackSource, qualifiedTable));
+    const fallback = buildQuerySQL(fallbackSource, qualifiedTable, filters);
+    return await runTable(fallbackSource.table, fallback.sql, fallback.params);
 
   } catch (err: any) {
     console.error('BigQuery executeQuery error:', err.message);
