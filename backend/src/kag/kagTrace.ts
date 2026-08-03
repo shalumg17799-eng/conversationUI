@@ -42,6 +42,12 @@ export interface KagTrace {
     overridden: boolean;
     reason: string;
   };
+  /**
+   * Shadow mode only: the pack KAG WOULD have sent. Kept separate from `grounding`,
+   * which records what actually went into the prompt (the markdown fallback while
+   * shadowing). Merging them would report a token saving that never happened.
+   */
+  shadowPack?: { packTokens: number; catalogTokens: number; tables: string[] };
   entities?: Array<{ column: string; values: string[] }>;
   validation?: { checked: number; repaired: number; violations: number; examples: string[] };
   affinity?: { suggested: string[]; chosen: string[] };
@@ -85,6 +91,10 @@ export function logTraceBanner(t: KagTrace): void {
       bits.push(t.grounding.source === 'kag-pack'
         ? `pack ${t.grounding.packTokens}tok (saved ${saved})`
         : `fallback:${t.grounding.fallbackReason ?? t.grounding.source}`);
+    }
+    if (t.shadowPack) {
+      const saved = t.shadowPack.catalogTokens - t.shadowPack.packTokens;
+      bits.push(`SHADOW pack would be ${t.shadowPack.packTokens}tok vs ${t.shadowPack.catalogTokens} (would save ${saved})`);
     }
     if (t.routing?.overridden) {
       bits.push(`OVERRODE ${t.routing.modelTable} → ${t.routing.kagTable}`);

@@ -213,7 +213,7 @@ async function findSeedsBlended(luceneQuery: string, rawQuery: string): Promise<
 
 interface ExpandRow { nodes: Record<string, any>[]; rels: Array<{ from: string; to: string; type: string; weight: number }> }
 
-async function expand(seedIds: string[]): Promise<{ nodes: KagNode[]; edges: KagEdge[]; truncated: boolean }> {
+async function expand(seedIds: string[], timeoutMs?: number): Promise<{ nodes: KagNode[]; edges: KagEdge[]; truncated: boolean }> {
   const useApoc = await apocIsAvailable();
 
   // Both branches return the same shape. relationshipFilter has no direction markers
@@ -253,7 +253,8 @@ async function expand(seedIds: string[]): Promise<{ nodes: KagNode[]; edges: Kag
       maxHops: KAG_CONFIG.maxHops,
       maxNodes: KAG_CONFIG.maxNodes,
     },
-    { quiet: true },
+    // Warmup passes a generous budget; request path uses the 800ms default.
+    { quiet: true, ...(timeoutMs ? { timeoutMs } : {}) },
   );
 
   const row = rows[0];
@@ -363,6 +364,29 @@ export function scoreCandidates(
       };
     })
     .sort((a, b) => b.score - a.score);
+}
+
+/**
+ * Prime everything retrieve() touches on a cold process, with a generous budget.
+ *
+ * Warming the full-text index alone was NOT enough — measured, the first real query
+ * still fell back at 813ms after a 439ms "warm". retrieve() also runs an APOC
+ * capability probe (SHOW PROCEDURES, a metadata query) and the first expansion, and
+ * both of those sit INSIDE the 800ms request budget on a cold process.
+ *
+ * So this warms the whole path: the APOC probe (whose result is then cached in
+ * apocAvailable) and one real expansion. Idempotent; never throws.
+ */
+export async function warmRetrieval(): Promise<number> {
+  const t0 = Date.now();
+  try {
+    await apocIsAvailable();                     // caches SHOW PROCEDURES
+    const seeds = await findSeeds(buildLuceneQuery('revenue'));
+    if (seeds.length) await expand(seeds.map(s => s.nodeId), 30_000);
+  } catch {
+    /* non-fatal — a cold first query is slower, not broken */
+  }
+  return Date.now() - t0;
 }
 
 // ── Public entry point ───────────────────────────────────────────────────────

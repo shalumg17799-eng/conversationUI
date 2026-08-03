@@ -1,5 +1,5 @@
 {
-  "builtAt": "2026-07-30T10:53:01.766Z",
+  "builtAt": "2026-07-31T11:08:27.819Z",
   "pasteReady": {
     "_howToUse": "Review each entry. Where the candidate is right, copy \"column\" into the matching metric in backend/src/kag/glossary.data.json and rebuild. Where it is wrong or absent, the metric has no backing data — fix upstream or remove the KPI from dataSourceMap.ts.",
     "metrics": {

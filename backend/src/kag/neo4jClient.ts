@@ -123,10 +123,52 @@ export async function hasApocPathExpand(): Promise<boolean> {
   }
 }
 
+/**
+ * Touch the indexes so the first REAL query does not pay their load cost.
+ *
+ * verifyConnectivity opens a socket but reads no index; the Lucene full-text index and
+ * the page cache load lazily on first use, which is what pushed a cold first query past
+ * the 800ms request budget and made it fall back. Measured cold: ~450ms here, after
+ * which real retrievals run at ~200ms.
+ *
+ * Uses its OWN generous timeout rather than KAG_CONFIG.timeoutMs, because that budget
+ * is the very cost this exists to absorb — warming through the request path just moved
+ * the timeout, it did not remove it.
+ *
+ * Every process needs this, not just the server: kag:verify and kag:eval open their own
+ * driver and pool, so without it their first probe reports a spurious failure.
+ * Idempotent and never throws.
+ *
+ * This covers the INDEXES only. The retriever additionally caches an APOC capability
+ * probe and pays a first-expansion cost, so callers should follow this with
+ * kagRetriever.warmRetrieval(). Kept separate to avoid a client -> retriever import cycle.
+ */
+let warmed = false;
+export async function warmUpIndexes(): Promise<number> {
+  if (warmed || !getDriver()) return 0;
+  const t0 = Date.now();
+  try {
+    await runCypher(
+      `CALL db.index.fulltext.queryNodes('kag_search', 'revenue~1', {limit: 5})
+       YIELD node RETURN count(node) AS n`,
+      {}, { timeoutMs: 30_000, quiet: true },
+    );
+    await runCypher(
+      `MATCH (t:Table)-[:HAS_COLUMN]->(c:Column) RETURN count(c) AS n`,
+      {}, { timeoutMs: 30_000, quiet: true },
+    );
+    warmed = true;
+  } catch {
+    /* non-fatal — a cold first query is slower, not broken */
+  }
+  return Date.now() - t0;
+}
+
 /** Close the shared driver. Wired to SIGTERM so Azure restarts drain cleanly. */
 export async function closeDriver(): Promise<void> {
   if (!_driver) return;
   await _driver.close();
   _driver = null;
+  warmed = false;
   console.log('[Neo4j] Driver closed');
 }

@@ -9,9 +9,9 @@
 // measurement of retrieval. This exercises retrieval alone, so it is fast, free and
 // repeatable — the properties you want when iterating on scoring.
 
-import { retrieve } from '../backend/src/kag/kagRetriever';
+import { retrieve, warmRetrieval } from '../backend/src/kag/kagRetriever';
 import { buildGroundingPack } from '../backend/src/kag/groundingPack';
-import { closeDriver } from '../backend/src/kag/neo4jClient';
+import { closeDriver, warmUpIndexes } from '../backend/src/kag/neo4jClient';
 import { isKagConfigured } from '../backend/src/kag/config';
 
 interface Case {
@@ -76,6 +76,10 @@ async function main() {
     console.error('❌ NEO4J_URI / NEO4J_PASSWORD not set — run `npm run kag:ping` first.');
     process.exit(1);
   }
+
+  // Warm first: this script owns its own pool, and a cold first probe would report
+  // a fallback that says nothing about routing quality.
+  await warmUpIndexes(); await warmRetrieval();
 
   console.log('── KAG routing evaluation ───────────────────────────────');
   console.log(`${CASES.length} cases\n`);

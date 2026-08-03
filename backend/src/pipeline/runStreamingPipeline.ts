@@ -845,6 +845,7 @@ async function runStreamingPipelineInner(
         requestMs: Date.now() - t.startedAt,
         retrieval: t.retrieval ?? null,
         grounding: t.grounding ?? null,
+        shadowPack: t.shadowPack ?? null,
         routing: t.routing ?? null,
         entityFilters: t.entities ?? [],
         validation: t.validation ?? null,

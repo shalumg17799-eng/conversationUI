@@ -11,11 +11,11 @@ import { getConstraintSummary, resetConstraintMetrics } from './services/constra
 import { getGovernorSummary, resetGovernorMetrics } from './services/governorTelemetry';
 import { getLayoutSummary, resetLayoutMetrics } from './services/layoutDirectiveTelemetry';
 import { KAG_CONFIG, isKagConfigured } from './kag/config';
-import { verifyConnectivity, hasApocPathExpand, closeDriver } from './kag/neo4jClient';
+import { verifyConnectivity, hasApocPathExpand, closeDriver, warmUpIndexes } from './kag/neo4jClient';
 import { applySchema, getGraphStats } from './kag/schema';
 import { getKagSummary, resetKagMetrics } from './kag/kagTelemetry';
 import { refreshKagGraph } from './kag/kagRefresh';
-import { retrieve, getBreakerState } from './kag/kagRetriever';
+import { retrieve, getBreakerState, warmRetrieval } from './kag/kagRetriever';
 import { buildGroundingPack } from './kag/groundingPack';
 import { createJob, getJob, listJobs, cancelJob, deleteJob, videoPath, loadPersistedJobs, AUDIO_ROOT, VIDEO_ROOT, FOOTAGE_ROOT } from './services/videoJobs';
 import { warmupRenderer } from './services/videoRenderer';
@@ -480,9 +480,21 @@ app.listen(port, () => {
   // the TLS handshake so the first user query does not.
   if (isKagConfigured()) {
     (async () => {
-      const conn = await verifyConnectivity();
+      // Retry rather than give up after one probe. Neo4j needs 20-30s to become
+      // healthy from cold while this backend is listening in ~10s, so a single check
+      // loses the race on every co-started stack. The old code logged "unreachable"
+      // once and stopped, leaving the pool cold until a user query reconnected it --
+      // and that query paid the 800ms timeout and silently fell back.
+      const WARMUP_ATTEMPTS = 6;
+      const WARMUP_GAP_MS = 5_000;
+      let conn = await verifyConnectivity();
+      for (let attempt = 2; !conn.ok && attempt <= WARMUP_ATTEMPTS; attempt++) {
+        console.warn(`[Startup] KAG: Neo4j not ready (attempt ${attempt - 1}/${WARMUP_ATTEMPTS}) — retrying in ${WARMUP_GAP_MS / 1000}s`);
+        await new Promise(r => setTimeout(r, WARMUP_GAP_MS));
+        conn = await verifyConnectivity();
+      }
       if (!conn.ok) {
-        console.warn(`[Startup] KAG: Neo4j unreachable (${conn.error}) — retrieval will fall back to the markdown catalog`);
+        console.warn(`[Startup] KAG: Neo4j unreachable after ${WARMUP_ATTEMPTS} attempts (${conn.error}) — retrieval will fall back to the markdown catalog`);
         return;
       }
       console.log(`[Startup] KAG: connected — ${conn.version}`);
@@ -497,6 +509,19 @@ app.listen(port, () => {
       } else {
         console.log(`[Startup] KAG: ${stats.totalNodes} nodes, ${stats.totalRels} rels, built ${stats.builtAt}`);
       }
+
+      // Warm the ACTUAL retrieval path, not just the connection. getServerInfo opens a
+      // socket but touches no index; the first real query still pays Lucene index load
+      // and page-cache warmup, which is what exceeded the 800ms budget and made the
+      // first queries after a restart fall back.
+      //
+      // Hits the indexes DIRECTLY rather than calling retrieve(), because retrieve()
+      // enforces the 800ms request-path budget — the very cost this is here to absorb.
+      // Measured: a cold warm-up via retrieve() timed out at 813ms and reported
+      // source=fallback-catalog, i.e. it failed at the one job it exists to do.
+      // Warmup is not on a user's critical path, so it gets a generous budget instead.
+      const warmMs = await warmUpIndexes() + await warmRetrieval();
+      console.log(`[Startup] KAG: retrieval path warm — ${warmMs}ms`);
     })().catch(err => console.error('[Startup] KAG warmup failed (non-fatal):', err));
   } else if (KAG_CONFIG.enabled) {
     console.warn('[Startup] KAG_ENABLED=true but NEO4J_URI/NEO4J_PASSWORD are not set — KAG stays inactive');

@@ -24,9 +24,9 @@ const add = (name: string, ok: boolean, detail: string, fatal = false) =>
 async function main() {
   // Imported dynamically so the env assignment above lands before config.ts reads it.
   const { KAG_CONFIG, isKagConfigured, isKagActive } = await import('../backend/src/kag/config');
-  const { verifyConnectivity, hasApocPathExpand, closeDriver, runCypher } = await import('../backend/src/kag/neo4jClient');
+  const { verifyConnectivity, hasApocPathExpand, closeDriver, runCypher, warmUpIndexes } = await import('../backend/src/kag/neo4jClient');
   const { getGraphStats } = await import('../backend/src/kag/schema');
-  const { retrieve, getBreakerState } = await import('../backend/src/kag/kagRetriever');
+  const { retrieve, getBreakerState, warmRetrieval } = await import('../backend/src/kag/kagRetriever');
   const { buildGroundingPack } = await import('../backend/src/kag/groundingPack');
   const { resolveGroundingContext, resolveEntityFilters, canonicalColumnsFor } = await import('../backend/src/kag/kagGrounding');
   const { checkCardGrounding } = await import('../backend/src/kag/kagValidator');
@@ -46,6 +46,12 @@ async function main() {
   const conn = await verifyConnectivity();
   add('L1 Neo4j reachable', conn.ok, conn.ok ? conn.version! : conn.error!, true);
   if (!conn.ok) return report();
+
+  // Warm before the L3 probes. This script owns its own driver and pool, so without
+  // this the FIRST probe pays index-load cost, exceeds the 800ms budget and reports a
+  // spurious failure — the tool would blame the graph for its own cold start.
+  const warmMs = await warmUpIndexes() + await warmRetrieval();
+  add('L1 Indexes warmed', true, `${warmMs}ms (so probe latencies below are steady-state)`);
 
   const apoc = await hasApocPathExpand();
   add('L1 APOC path expansion', true, apoc ? 'available' : 'unavailable — plain-Cypher fallback in use');

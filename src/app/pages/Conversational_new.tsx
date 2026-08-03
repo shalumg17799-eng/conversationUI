@@ -2709,6 +2709,13 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
                   console.log(`%cPrompt    : fell back to full catalog (${g.fallbackReason})`, 'color:#D97706');
                 }
               }
+              if (payload.shadowPack) {
+                const sp = payload.shadowPack;
+                const saved = sp.catalogTokens - sp.packTokens;
+                const pct = sp.catalogTokens ? Math.round((saved / sp.catalogTokens) * 100) : 0;
+                console.log(`%cShadow    : pack WOULD be ${sp.packTokens} tokens vs ${sp.catalogTokens} — would save ${saved} (${pct}%). Not applied: KAG is in shadow mode.`,
+                  'color:#6B6965');
+              }
               if (payload.routing) {
                 const rt = payload.routing;
                 if (rt.overridden) {
