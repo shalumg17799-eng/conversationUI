@@ -15,8 +15,7 @@
 import { runCypher } from './neo4jClient';
 import { isKagActive } from './config';
 import registry from '../registry/generated/componentRegistry.json';
-import { slugify } from './kagBuilder';
-import type { KagNode, KagEdge } from './types';
+import { slugify, type KagNode, type KagEdge } from './types';
 
 interface RegistryComponent {
   type: string;

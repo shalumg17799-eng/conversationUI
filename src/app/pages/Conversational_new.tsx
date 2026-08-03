@@ -2718,10 +2718,27 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
               }
               if (payload.routing) {
                 const rt = payload.routing;
-                if (rt.overridden) {
+                // Five outcomes, five distinct sentences. The old code had two branches
+                // and printed "agreed with model" for everything that was not an
+                // override — including every request where KAG was switched off and had
+                // formed no opinion at all, and every case where it named a DIFFERENT
+                // table but scored under the bar. Both read as the graph endorsing a
+                // choice it never made.
+                //
+                // Older payloads carry no verdict; derive the only two it can be.
+                const verdict = rt.verdict ?? (rt.overridden ? 'overrode' : rt.kagTable ? 'agreed' : 'not-consulted');
+                if (verdict === 'overrode') {
                   console.log(`%cRouting   : OVERRODE model — ${rt.modelTable} → ${rt.kagTable} @ ${rt.score}`, 'color:#D4572A;font-weight:bold');
+                } else if (verdict === 'agreed') {
+                  console.log(`%cRouting   : agreed with model — both chose ${rt.kagTable} @ ${rt.score}`, 'color:#1D9E75');
+                } else if (verdict === 'deferred') {
+                  // A disagreement, not an agreement: KAG wanted another table and the
+                  // confidence bar stopped it. Amber, because it is the case worth triaging.
+                  console.log(`%cRouting   : deferred to model — KAG preferred ${rt.kagTable} @ ${rt.score}, ${rt.reason}`, 'color:#D97706');
+                } else if (verdict === 'no-opinion') {
+                  console.log(`Routing   : no opinion — retrieval found no candidate table`);
                 } else {
-                  console.log(`Routing   : agreed with model (${rt.kagTable ?? 'no opinion'}) — ${rt.reason}`);
+                  console.log(`%cRouting   : not consulted (${rt.reason}) — KAG formed no opinion on this query`, 'color:#6B6965');
                 }
               }
               if (payload.entityFilters?.length) {

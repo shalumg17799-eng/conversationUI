@@ -21,7 +21,7 @@ import { applySchema } from './schema';
 import { buildAffinity } from './kagAffinity';
 import {
   KagNode, KagEdge, KagGraph, KagNodeType, KagRelType, KAG_REL_TYPES,
-  BuildReport, UnmappedMetric,
+  BuildReport, UnmappedMetric, slugify,
 } from './types';
 
 const UNMAPPED_PATH = path.resolve(__dirname, '../../data/kag/unmapped.json');
@@ -32,15 +32,6 @@ const BATCH_SIZE = 500;
 const MANAGED_PROVENANCE = ['catalog', 'bigquery', 'glossary'];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-
-export function slugify(input: string): string {
-  return input
-    .toLowerCase()
-    .replace(/%/g, 'pct')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 80);
-}
 
 function nodeId(type: KagNodeType, ...parts: string[]): string {
   return `${type}:${parts.map(slugify).filter(Boolean).join('--')}`;

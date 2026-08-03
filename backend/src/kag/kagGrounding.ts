@@ -14,17 +14,17 @@
 
 import { KAG_CONFIG, isKagActive } from './config';
 import { retrieve } from './kagRetriever';
+import { runCypher } from './neo4jClient';
 import { buildGroundingPack } from './groundingPack';
 import { recordRetrieval, recordTokens, recordLowConfidence } from './kagTelemetry';
 import { loadCatalogContext } from '../services/catalogRefresher';
-import type { RetrievedSubgraph } from './types';
+import type { RetrievedSubgraph, RoutingVerdict } from './types';
 import { trace } from './kagTrace';
 
 /** table → tables sharing a confirmed key. Empty object on any failure. */
 async function fetchJoins(tables: string[]): Promise<Record<string, string[]>> {
   if (tables.length === 0) return {};
   try {
-    const { runCypher } = await import('./neo4jClient');
     const rows = await runCypher<{ a: string; b: string }>(
       `MATCH (a:Table)-[:JOINS_ON]-(b:Table)
        WHERE a.label IN $tables
@@ -181,7 +181,6 @@ export async function findColumnAcrossWarehouse(
 ): Promise<Array<{ table: string; column: string; dataType: string; routable: boolean }>> {
   if (!isKagActive() || !term.trim()) return [];
   try {
-    const { runCypher } = await import('./neo4jClient');
     const needle = term.toLowerCase().replace(/[^a-z0-9]+/g, '');
     const rows = await runCypher<{ table: string; column: string; dataType: string; routable: boolean }>(
       `MATCH (t:Table)-[:HAS_COLUMN]->(c:Column)
@@ -203,6 +202,12 @@ export interface RoutingDecision {
   /** The table to actually query. Equals `currentTable` when KAG did not intervene. */
   table: string | null;
   overridden: boolean;
+  /**
+   * What actually happened, at more resolution than `overridden` can carry. Callers
+   * that only route can keep reading `overridden`; anything that REPORTS the decision
+   * must read this instead — see RoutingVerdict for why the boolean is not enough.
+   */
+  verdict: RoutingVerdict;
   /** Populated whenever KAG had an opinion, for logging and telemetry. */
   kagTable?: string | null;
   score?: number;
@@ -230,19 +235,27 @@ export async function resolveRoutingOverride(
   currentTable: string | null,
   opts: { isFollowUp?: boolean; availableTables?: string[] } = {},
 ): Promise<RoutingDecision> {
-  const keep = (reason: string, kagTable?: string | null, score?: number): RoutingDecision => {
+  // `verdict` is the first argument, not an afterthought, because every early return
+  // below has to answer it — and the ones that answer 'not-consulted' are exactly the
+  // ones that used to be reported as agreement.
+  const keep = (verdict: RoutingVerdict, reason: string,
+                kagTable?: string | null, score?: number): RoutingDecision => {
     // Traced on every path, including the no-op ones. A demo that only logs overrides
     // makes KAG look silent when it is in fact deliberately declining to interfere.
-    trace({ routing: { modelTable: currentTable, kagTable: kagTable ?? null, score, overridden: false, reason } });
-    return { table: currentTable, overridden: false, kagTable, score, reason };
+    trace({ routing: { modelTable: currentTable, kagTable: kagTable ?? null, score, overridden: false, verdict, reason } });
+    return { table: currentTable, overridden: false, verdict, kagTable, score, reason };
   };
 
-  if (!isKagActive() || KAG_CONFIG.shadow) return keep('kag inactive or shadow');
-  if (!KAG_CONFIG.enforceRouting) return keep('enforcement disabled');
+  // Four ways to reach a decision without KAG ever forming an opinion. None of them is
+  // agreement with the model — nothing was compared.
+  if (!isKagActive() || KAG_CONFIG.shadow) {
+    return keep('not-consulted', KAG_CONFIG.shadow ? 'shadow mode' : 'kag disabled');
+  }
+  if (!KAG_CONFIG.enforceRouting) return keep('not-consulted', 'enforcement disabled');
 
   try {
     const sub = await retrieve(query);
-    if (sub.source === 'fallback-catalog') return keep('retrieval degraded');
+    if (sub.source === 'fallback-catalog') return keep('not-consulted', 'retrieval degraded');
 
     const allowed = opts.availableTables?.length ? new Set(opts.availableTables) : null;
     const candidates = allowed
@@ -250,25 +263,29 @@ export async function resolveRoutingOverride(
       : sub.candidateTables;
 
     const top = candidates[0];
-    if (!top) return keep('no candidate');
-    if (top.table === currentTable) return keep('agrees', top.table, top.score);
+    if (!top) return keep('no-opinion', 'no candidate');
+    if (top.table === currentTable) return keep('agreed', 'agrees', top.table, top.score);
 
     const bar = opts.isFollowUp ? KAG_CONFIG.switchMinConfidence : KAG_CONFIG.enforceMinConfidence;
     if (top.score < bar) {
-      return keep(`below ${opts.isFollowUp ? 'switch' : 'enforce'} bar (${top.score.toFixed(2)} < ${bar})`,
+      // A DISAGREEMENT the threshold declined to act on. Reporting this as agreement was
+      // the worst case of the old wording: KAG named a different table and the panel
+      // said the two concurred.
+      return keep('deferred',
+        `below ${opts.isFollowUp ? 'switch' : 'enforce'} bar (${top.score.toFixed(2)} < ${bar})`,
         top.table, top.score);
     }
 
     console.log(`[KAG] ROUTING OVERRIDE${opts.isFollowUp ? ' (follow-up table switch)' : ''}: ` +
       `${currentTable ?? 'none'} → ${top.table} @ ${top.score.toFixed(2)} for "${query.slice(0, 60)}"`);
     trace({ routing: { modelTable: currentTable, kagTable: top.table, score: +top.score.toFixed(3), overridden: true,
-                       reason: opts.isFollowUp ? 'follow-up switched' : 'overrode model' } });
+                       verdict: 'overrode', reason: opts.isFollowUp ? 'follow-up switched' : 'overrode model' } });
     return {
-      table: top.table, overridden: true, kagTable: top.table, score: top.score,
+      table: top.table, overridden: true, verdict: 'overrode', kagTable: top.table, score: top.score,
       reason: opts.isFollowUp ? 'follow-up switched' : 'overrode model',
     };
   } catch (err) {
-    return keep(`error: ${(err as Error).message?.slice(0, 60)}`);
+    return keep('not-consulted', `error: ${(err as Error).message?.slice(0, 60)}`);
   }
 }
 
@@ -291,7 +308,6 @@ export async function resolveEntityFilters(
   if (!isKagActive() || KAG_CONFIG.shadow || !table) return [];
 
   try {
-    const { runCypher } = await import('./neo4jClient');
     const rows = await runCypher<{ label: string; column: string }>(
       `MATCH (e:Entity) WHERE e.table = $table
        RETURN e.label AS label, e.column AS column`,
@@ -359,7 +375,6 @@ export async function canonicalColumnsFor(table: string): Promise<
 > {
   if (!isKagActive()) return null;
   try {
-    const { runCypher } = await import('./neo4jClient');
     const rows = await runCypher<{ column: string; dataType: string; role: string; metric: string | null }>(
       `MATCH (t:Table {label: $table})-[:HAS_COLUMN]->(c:Column)
        OPTIONAL MATCH (m:Metric)-[:MEASURED_BY]->(c)

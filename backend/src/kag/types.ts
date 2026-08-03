@@ -50,6 +50,22 @@ export const KAG_REL_TYPES: readonly KagRelType[] = [
   'JOINS_ON',
 ];
 
+/**
+ * Node-id slug. Lives here, not in kagBuilder, because kagAffinity needs it too and
+ * importing it from the builder created a genuine kagBuilder <-> kagAffinity cycle.
+ * It resolved at runtime only through module hoisting — a latent ordering hazard, and
+ * the kind of thing that breaks when someone converts a module to ESM.
+ * types.ts already owns the id contract (see KagNode.id), so the helper belongs here.
+ */
+export function slugify(input: string): string {
+  return input
+    .toLowerCase()
+    .replace(/%/g, 'pct')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80);
+}
+
 export type KagProvenance =
   | 'catalog'    // DATA_SOURCES / REPORT_ANGLES — hand-maintained, authoritative
   | 'bigquery'   // INFORMATION_SCHEMA — physical truth
@@ -132,6 +148,33 @@ export interface UnmappedMetric {
   tables: string[];
   candidates: Array<{ table: string; column: string; dataType: string; similarity: number }>;
 }
+
+/**
+ * The five distinct outcomes of a routing decision.
+ *
+ * Lives here, in L1, because both kagGrounding (which produces it) and kagTrace (which
+ * carries it to the demo surface) need it and neither may import the other.
+ *
+ * It exists because `overridden: boolean` is not enough to describe what happened.
+ * False covers "KAG looked and agreed", "KAG looked and disagreed but was under the
+ * confidence bar", and "KAG never ran at all" — three claims of very different strength.
+ * The console reported all of them as "agreed with model", which credits the graph with
+ * a decision on every request where it was switched off.
+ *
+ *   overrode       KAG moved the table. The model's choice was discarded.
+ *   agreed         KAG ran, and its top candidate WAS the model's table.
+ *   deferred       KAG ran and preferred a DIFFERENT table, but scored under the bar.
+ *                  A disagreement the threshold declined to act on — not an agreement.
+ *   no-opinion     KAG ran and produced no candidate (correct for a vague query).
+ *   not-consulted  KAG never compared: disabled, shadowing, enforcement off, retrieval
+ *                  degraded, or it threw. No opinion was formed, so none may be claimed.
+ */
+export type RoutingVerdict =
+  | 'overrode'
+  | 'agreed'
+  | 'deferred'
+  | 'no-opinion'
+  | 'not-consulted';
 
 export interface BuildReport {
   builtAt: string;

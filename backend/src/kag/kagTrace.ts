@@ -15,6 +15,7 @@
 // report must not.
 
 import { AsyncLocalStorage } from 'async_hooks';
+import type { RoutingVerdict } from './types';
 
 export interface KagTrace {
   query: string;
@@ -40,6 +41,13 @@ export interface KagTrace {
     kagTable: string | null;
     score?: number;
     overridden: boolean;
+    /**
+     * WHY the table was or wasn't changed. `overridden` is a boolean, and a boolean
+     * cannot tell "KAG agreed" apart from "KAG never ran" — both are false. Reporting
+     * the second as the first credits KAG with a decision it did not make, which is the
+     * one thing a demo surface must never do. See RoutingVerdict in kagGrounding.
+     */
+    verdict: RoutingVerdict;
     reason: string;
   };
   /**
@@ -96,10 +104,15 @@ export function logTraceBanner(t: KagTrace): void {
       const saved = t.shadowPack.catalogTokens - t.shadowPack.packTokens;
       bits.push(`SHADOW pack would be ${t.shadowPack.packTokens}tok vs ${t.shadowPack.catalogTokens} (would save ${saved})`);
     }
-    if (t.routing?.overridden) {
-      bits.push(`OVERRODE ${t.routing.modelTable} → ${t.routing.kagTable}`);
-    } else if (t.routing?.kagTable) {
-      bits.push(`routing ${t.routing.reason} (${t.routing.kagTable})`);
+    // Same distinction as the browser panel: never print a verdict that implies KAG
+    // had an opinion when it did not. `not-consulted` prints nothing at all — silence
+    // is the honest report for a request KAG sat out.
+    if (t.routing) {
+      const r = t.routing;
+      if (r.verdict === 'overrode') bits.push(`OVERRODE ${r.modelTable} → ${r.kagTable}`);
+      else if (r.verdict === 'agreed') bits.push(`routing agreed (${r.kagTable})`);
+      else if (r.verdict === 'deferred') bits.push(`routing DEFERRED — preferred ${r.kagTable}, ${r.reason}`);
+      else if (r.verdict === 'no-opinion') bits.push('routing no candidate');
     }
     if (t.entities?.length) bits.push(`filters ${t.entities.map(e => `${e.column}=${e.values.join('|')}`).join(',')}`);
     if (t.validation && (t.validation.repaired || t.validation.violations)) {
