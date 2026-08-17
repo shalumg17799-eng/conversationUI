@@ -4,6 +4,7 @@ import {
   ArtifactKind, isArtifactRenderType, artifactKindOf, sanitizeArtifact,
   MAX_ARTIFACT_BYTES, MIN_RETENTION_RATIO,
 } from './artifactSanitizer';
+import { guardMermaid, MAX_MERMAID_BYTES } from './mermaidGuard';
 
 // Phase 3: registry-driven structural validation, SHADOW MODE ONLY.
 // Rewired from the legacy JSON registry to componentRegistry.ts (single source of truth).
@@ -129,6 +130,27 @@ export function assessArtifactNode(node: ValidatableNode): ArtifactAssessment | 
   const renderType = node.renderType as string;
   const kind = artifactKindOf(renderType);
   const props = (node.props ?? {}) as Record<string, unknown>;
+
+  // A mermaid-artifact's `content` is Mermaid SOURCE, not markup. Running the
+  // markup sanitizer over it would report meaningless `removed` classes and a
+  // retention ratio computed against text that was never markup to begin with —
+  // so the source guard is the correct instrument here. The SVG that Mermaid
+  // later produces IS sanitized, but that happens on the client, after render;
+  // the backend never sees it.
+  if (kind === 'mermaid') {
+    const g = guardMermaid(props.content);
+    return {
+      renderType, kind,
+      safe: g.code,
+      removed: g.removed,
+      // Binary by nature: the guard refuses whole payloads, it never strips, so
+      // there is no partial retention to report.
+      retention: g.ok ? 1 : 0,
+      oversized: g.removed.includes('oversized'),
+      shouldDowngrade: !g.ok,
+    };
+  }
+
   const r = sanitizeArtifact(props.content, kind);
   return {
     renderType, kind,
@@ -150,9 +172,21 @@ function validateArtifactNode(node: ValidatableNode, path: string, out: Validati
     return;
   }
   if (a.oversized) {
-    out.push({ component: a.renderType, category: 'unsafe_artifact_content', detail: `oversized: ${props.content.length} > ${MAX_ARTIFACT_BYTES}`, path });
+    const cap = a.kind === 'mermaid' ? MAX_MERMAID_BYTES : MAX_ARTIFACT_BYTES;
+    out.push({ component: a.renderType, category: 'unsafe_artifact_content', detail: `oversized: ${props.content.length} > ${cap}`, path });
     return;
   }
+
+  // The guard refuses whole payloads rather than stripping parts of them, so a
+  // mermaid node yields exactly one violation naming the rules that fired —
+  // "stripped"/"retention" wording would misdescribe what happened.
+  if (a.kind === 'mermaid') {
+    if (a.shouldDowngrade) {
+      out.push({ component: a.renderType, category: 'unsafe_artifact_content', detail: `refused: ${a.removed.join(',')}`, path });
+    }
+    return;
+  }
+
   // Deduplicate so one violation per class of removal, not one per occurrence.
   const classes = Array.from(new Set(a.removed));
   if (classes.length) {

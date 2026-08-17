@@ -15,7 +15,9 @@ export const RENDER_TYPES = [
   // Rich artifacts (Phase 2, Track D) — rendered via a sandboxed iframe, never
   // as raw injected markup. Kebab-case matches the registry entries in
   // backend/src/registry/componentRegistry.ts.
-  'html-artifact', 'svg-artifact',
+  // 'mermaid-artifact' carries Mermaid source rather than markup; it is compiled
+  // to SVG client-side and then travels the identical sandbox path.
+  'html-artifact', 'svg-artifact', 'mermaid-artifact',
 ] as const;
 
 export type RenderType = typeof RENDER_TYPES[number];

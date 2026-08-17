@@ -89,6 +89,12 @@ export const COMPONENT_REGISTRY: ComponentSpec[] = [
   // payload first. See scripts/test_artifacts.ts.
   { type: 'html-artifact', tier: 'organism', family: 'narrative', requiredProps: ['content'], optionalProps: ['title','variant','caption','explanation'], dataNeeds: 'none', outputModes: ['narrative','full_dashboard'], whenToUse: 'Self-contained rich HTML fragment (formatted prose, nested tables, structured layout) that no existing component expresses. Static markup only — never scripts or interactive widgets.' },
   { type: 'svg-artifact',  tier: 'organism', family: 'narrative', requiredProps: ['content'], optionalProps: ['title','variant','caption','explanation'], dataNeeds: 'none', outputModes: ['narrative','full_dashboard'], whenToUse: 'Bespoke vector diagram (flow, topology, annotated schematic) that the chart family cannot express. Prefer a real chart component whenever the data is tabular.' },
+  // Third artifact type. `content` is Mermaid SOURCE, not markup — it is compiled
+  // to SVG on the client and only that inert SVG enters the sandboxed iframe, so
+  // the render path is unchanged. Source is checked by mermaidGuard.ts, which does
+  // NOT strip: an unsupported diagram type or a click/init directive refuses the
+  // whole payload and the card downgrades to plain text.
+  { type: 'mermaid-artifact', tier: 'organism', family: 'narrative', requiredProps: ['content'], optionalProps: ['title','variant','caption','explanation'], dataNeeds: 'none', outputModes: ['narrative','full_dashboard'], whenToUse: 'Structural diagram from Mermaid source — flowchart, sequence, state, ER, or org/dependency graph. Prefer over svg-artifact whenever the diagram is a graph of nodes and edges rather than a bespoke annotated drawing.' },
 ];
 
 export const REGISTRY_BY_TYPE: Record<string, ComponentSpec> =

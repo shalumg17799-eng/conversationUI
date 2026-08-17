@@ -8,10 +8,17 @@
 // Pass --dry to assemble the graph and write unmapped.json WITHOUT touching Neo4j —
 // useful for reviewing what would be built, and it needs no graph database at all.
 
+import { writeFileSync } from 'fs';
+import { join } from 'path';
 import { assembleGraph, buildKagGraph, writeUnmappedReport } from '../backend/src/kag/kagBuilder';
+import { graphToMermaid } from '../backend/src/kag/graphToMermaid';
 import { embedGraph, embeddingsAvailable } from '../backend/src/kag/kagEmbeddings';
 import { closeDriver } from '../backend/src/kag/neo4jClient';
 import { isKagConfigured } from '../backend/src/kag/config';
+
+// Written alongside unmapped.json so the committed graph is diffable in PRs
+// without needing a running backend or Neo4j to inspect it.
+const GRAPH_MMD_PATH = join(__dirname, '../backend/data/kag/graph.mmd');
 
 const dry = process.argv.includes('--dry');
 // Phase 5 entity scan costs one BigQuery query per STRING dimension column.
@@ -42,6 +49,8 @@ async function main() {
     if (g.unmapped.length > 10) console.log(`  … and ${g.unmapped.length - 10} more`);
 
     await writeUnmappedReport(new Date().toISOString(), g.tablesWithoutSchema, g.unmapped);
+    writeFileSync(GRAPH_MMD_PATH, graphToMermaid(g) + '\n');
+    console.log(`Mermaid graph written: ${GRAPH_MMD_PATH}`);
 
     // Distinguish "BigQuery is unreachable" (nothing resolved) from "some tables are
     // missing" (most resolved). The old single message claimed total failure whenever
@@ -80,6 +89,12 @@ async function main() {
     for (const s of e.columnsSkipped) console.log(`  skipped ${s}`);
   }
   console.log(`Duration: ${report.durationMs}ms`);
+
+  // buildKagGraph writes to Neo4j but returns a report, not the assembled graph —
+  // re-assemble (no entity scan, this is a structure view) to serialize it.
+  const g = await assembleGraph(false);
+  writeFileSync(GRAPH_MMD_PATH, graphToMermaid(g) + '\n');
+  console.log(`Mermaid graph written: ${GRAPH_MMD_PATH}`);
 
   if (withEmbeddings) {
     if (!embeddingsAvailable()) {

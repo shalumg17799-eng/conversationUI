@@ -5,8 +5,11 @@ import {
   generateReport, analyzeQuery, sonnetRespond,
   classifyAndEditReport, buildHydrationMap, rehydrateEditedCards,
   ReportCard, ConversationTurn, LLMProvider,
-  getAvailableDataSources,
+  getAvailableDataSources, detectDrawingIntent, detectStructureIntent,
+  recoverDrawRequest,
 } from '../services/llmHandler';
+// Track M2 → live: structure questions are answered from the graph, not the model.
+import { structureDiagramFor, isGraphWarm } from '../kag/structureDiagram';
 import { runQueryWithMeta, qualifiedTable } from '../lib/bigqueryClient';
 import { DATA_SOURCES, ALL_DOMAINS, getSourcesByDomain } from '../services/dataSourceMap';
 import { UITypeTree, ShapeSignature, CachedReport } from '../types';
@@ -399,8 +402,36 @@ async function runStreamingPipelineInner(
   conversationHistory: ConversationTurn[],
   provider: LLMProvider,
 ): Promise<void> {
+  // Recover a DRAWING request that the clarification round-trip dropped.
+  //
+  // When the user answers a clarifying question the frontend sends the ANSWER as
+  // `query` and the Q/A pair as clarificationHistory — the original request appears
+  // in neither. So "draw the escalation flow for T-007" → "which report?" →
+  // "Churn & Retention Metrics" reaches generation as a bare report name and the
+  // model builds a dashboard. Confirmed against a live backend: the same request
+  // yields a mermaid-artifact with the drawing words present and a KPI/chart report
+  // without them.
+  //
+  // The original wording survives in conversationHistory, which is already sent but
+  // was only read on the edit path. Scoped as tightly as possible: this fires ONLY
+  // when a drawing request exists earlier in the conversation, so no ordinary flow
+  // can take the branch. Applies to svg-artifact too — a pre-existing gap for every
+  // artifact type, not one Mermaid introduced.
+  //
+  // recoverDrawRequest, not detectDrawingIntent, because the regex-only version could
+  // recover only the phrasings the regex already enumerated — so an unenumerated request
+  // ("the lifecycle of a support ticket") was dropped here for a SECOND time, and the
+  // answer turn reached generation as a bare report name. That is what produced a report
+  // whose narration said "the flow below" with no diagram anywhere below it.
+  const priorUserTurns = conversationHistory.filter(t => t.role === 'user').map(t => t.content);
+  const recovered = await recoverDrawRequest(priorUserTurns, provider);
+  const recoveredDrawRequest = recovered.request;
+
   // Phase 1: provider is part of the key — gemma and sonnet must not share cache entries.
-  const cacheKey = generateKey({ query, stream: true, v: 3, provider, history: clarificationHistory, prior: priorContext });
+  // `draw` is part of the key because the recovery above changes the generated report
+  // while query/history/prior stay identical; without it, the first non-drawing answer
+  // to a question would be replayed for the drawing one (observed in testing).
+  const cacheKey = generateKey({ query, stream: true, v: 3, provider, history: clarificationHistory, prior: priorContext, draw: recoveredDrawRequest ?? '' });
   const cached = cacheService.get<CachedReport>(cacheKey);
 
   console.log(`[Pipeline] query="${query}" skipClarification=${skipClarification} history=${clarificationHistory.length} activeTable=${activeTable ?? 'none'} cacheHit=${!!cached}`);
@@ -435,6 +466,60 @@ async function runStreamingPipelineInner(
       source: layout.result.source,
     });
     return;
+  }
+
+  // ── Structure-of-data questions: answered from KAG, no model in the loop ───
+  //
+  // "what feeds into take rate", "show me the schema", "the tables behind this report".
+  // The answer is a graph we already hold exactly, so serializing it beats asking a model
+  // to describe it from a 100-row sample: zero hallucination risk, and no BigQuery read
+  // or report round-trip. graphToMermaid's output is guard-clean by construction (there
+  // is a test asserting exactly that), which is why it is emitted directly.
+  //
+  // Placed BEFORE drawing intent because the two overlap — "show me the data lineage for
+  // take rate" satisfies both, and the deterministic answer is the better one. Process
+  // diagrams (escalation flows, journeys) still take the BigQuery+LLM path below, because
+  // their structure exists nowhere in our data and they want measured values in labels.
+  //
+  // Regex only, deliberately. Routing a structure question needs an answer BEFORE any
+  // other work starts, so a classifier here would put its full cost (~8s measured) in
+  // front of every ordinary query too, to say "no" almost every time. The enumerated
+  // phrasings carry this path; the semantic net is spent where a miss actually broke
+  // something — recovering a dropped drawing request.
+  const structureTexts = [query, ...clarificationHistory.map((t) => t.answer)];
+  if (detectStructureIntent(structureTexts)) {
+    console.log(`[Pipeline] structure intent → KAG diagram (graph warm=${isGraphWarm()}) for "${query.slice(0, 80)}"`);
+    // Honest status: a cold graph is a ~28s BigQuery schema scan, and silently
+    // pretending otherwise is how a working feature gets reported as hung.
+    send('status', { message: isGraphWarm() ? 'Reading the knowledge graph...' : 'Mapping the warehouse schema...' });
+    try {
+      const started = Date.now();
+      const diagram = await structureDiagramFor(structureTexts);
+      const card = {
+        renderType: 'mermaid-artifact',
+        props: { content: diagram.content, title: diagram.title, caption: diagram.caption },
+      };
+      send('meta', {
+        title: diagram.title,
+        description: diagram.caption,
+        rowCount: null,
+        template: 'summary',
+        outputMode: 'narrative',
+        source: 'kag-graph',
+      });
+      send('component', card);
+      send('followUp', [
+        { label: 'Show the full data model', intent: 'show me the data model' },
+        { label: 'Explain this lineage', intent: `explain how ${diagram.title.replace(/^Data lineage — /, '')} is calculated` },
+      ]);
+      console.log(`[Pipeline] KAG diagram served in ${Date.now() - started}ms (root=${diagram.rootId ?? 'none'})`);
+      return;
+    } catch (err: any) {
+      // Fall through to the ordinary path rather than failing the turn: KAG needs
+      // BigQuery credentials, and a deployment without them should degrade to the
+      // model-authored diagram, not to an error.
+      console.warn(`[Pipeline] structure path failed, falling through: ${err?.message ?? err}`);
+    }
   }
 
   // ── LLM intent classification ─────────────────────────────────────────────
@@ -596,9 +681,19 @@ async function runStreamingPipelineInner(
   const start = Date.now();
 
   // Build enriched query from clarification history if present
-  const enrichedQuery = clarificationHistory.length > 0
+  const baseEnrichedQuery = clarificationHistory.length > 0
     ? `${query}. Context: ${clarificationHistory.map(t => `${t.question} → ${t.answer}`).join('; ')}`
     : query;
+
+  // Apply the drawing request recovered above (see the comment at the cache key).
+  // Only when the enriched query has genuinely lost it — if the user restated the
+  // request in this turn, leave their wording alone.
+  //
+  let enrichedQuery = baseEnrichedQuery;
+  if (recoveredDrawRequest && !detectDrawingIntent([baseEnrichedQuery])) {
+    enrichedQuery = `${recoveredDrawRequest}. Use this data context: ${baseEnrichedQuery}`;
+    console.log('[Pipeline] recovered drawing request from conversation history');
+  }
 
   // Step 0+1 — decide clarify vs route (normal new-report flow)
   // Always use the LLM-driven analyzeQuery — never keyword classification.
@@ -609,6 +704,9 @@ async function runStreamingPipelineInner(
   const intent = { metric: 'unknown', dimension: 'unknown', intent: 'metric_by_dimension' as const };
   let resolvedIntent = 'metric_by_dimension';
   let llmProposedMode: OutputMode | undefined;
+  // Drawing intent as reported by analyzeQuery — either its regex fast path or its LLM
+  // safety net. Undefined on the sonnet branch and whenever no route was produced.
+  let analyzedDrawKind: 'svg' | 'html' | undefined;
 
   send('status', { message: provider === 'sonnet' ? 'Thinking…' : 'Understanding your query...' });
 
@@ -653,6 +751,10 @@ async function runStreamingPipelineInner(
       tableOverride = analysis.table;
       resolvedIntent = analysis.intent;
       llmProposedMode = analysis.outputMode;
+      // The analyze step can see drawing intent the regex missed (it reads the whole
+      // sentence rather than matching enumerated phrasings). Carry that forward so the
+      // output mode admits the artifact components.
+      analyzedDrawKind = analysis.drawKind;
     } else {
       // forceGenerate or LLM couldn't route — derive table from history/query text
       const allTexts = [query, ...clarificationHistory.map(t => t.answer)];
@@ -705,7 +807,24 @@ async function runStreamingPipelineInner(
   }
 
   // ── Phase 2: classify + FREEZE output_mode (observed only — no enforcement) ──
-  const outputModeDecision = resolveOutputMode({ query, intent: resolvedIntent, llmProposed: llmProposedMode });
+  // Read the draw signal off `enrichedQuery`, not `query`: enrichedQuery is what the
+  // clarification round-trip and the history-recovery above have already folded the
+  // request into. A user who typed "show me the data lineage for take rate" and then
+  // answered "Sales" sends query="Sales" on the turn that actually builds the report,
+  // so testing `query` alone would miss every diagram that needed a clarification —
+  // which is exactly the flow in the bug report.
+  // Regex first (free), then whatever the analyze step concluded. The regex reads the
+  // enriched query, which is where a clarification round-trip leaves the request (§12.11).
+  //
+  // `recovered.draw` is the last resort and costs nothing extra — it is the verdict the
+  // recovery above already reached. It is load-bearing on the clarification-answer turn:
+  // the recovered wording is by definition wording the regex cannot read, so the regex
+  // test on enrichedQuery still returns null even after the request has been folded back
+  // in, and analyzeQuery's `diagram` field never arrives because a named report short
+  // circuits it before any LLM call. Without this the report generates as an ordinary
+  // dashboard while its narration talks about the flow it was never told to draw.
+  const drawIntent = detectDrawingIntent([enrichedQuery, query]) ?? analyzedDrawKind ?? recovered.draw ?? null;
+  const outputModeDecision = resolveOutputMode({ query, intent: resolvedIntent, llmProposed: llmProposedMode, drawIntent });
   recordOutputMode(outputModeDecision, { query, provider });
   const outputMode = outputModeDecision.outputMode;
 
@@ -772,7 +891,7 @@ async function runStreamingPipelineInner(
   // Step 4 — single LLM call: decides everything (enriched query gives the model full context)
   const providerLabel = provider === 'sonnet' ? 'Sonnet' : 'Gemma';
   send('status', { message: `Analysing ${allRows.length} rows with ${providerLabel}...` });
-  const report = await generateReport(enrichedQuery, dataShape, sampleRows, priorContext, provider, outputMode);
+  const report = await generateReport(enrichedQuery, dataShape, sampleRows, priorContext, provider, outputMode, drawIntent);
 
   // Fix column casing: LLM often lowercases BQ column names which breaks charts
   const actualColumns = Object.keys(dataShape.columnTypes);
@@ -864,7 +983,7 @@ async function runStreamingPipelineInner(
       mode: gMode,
       regenerate: async (errs) => {
         const retryQuery = `${enrichedQuery}\n\nThe previous attempt was invalid — fix these issues and try again: ${errs.join('; ')}`;
-        const r = await generateReport(retryQuery, dataShape, sampleRows, priorContext, provider, outputMode);
+        const r = await generateReport(retryQuery, dataShape, sampleRows, priorContext, provider, outputMode, drawIntent);
         return fixColumnCasing(r.cards, actualColumns);
       },
       fallback: () => generateGovernedFallback(dataShape, constraints),

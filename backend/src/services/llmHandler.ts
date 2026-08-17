@@ -1,6 +1,9 @@
 import { GoogleGenAI, Type, Tool } from '@google/genai';
 import Anthropic from '@anthropic-ai/sdk';
 import { spawn } from 'child_process';
+import { existsSync, readdirSync } from 'fs';
+import { homedir } from 'os';
+import { join } from 'path';
 import dotenv from 'dotenv';
 import { ShapeSignature } from '../types';
 import { runQueryWithMeta, qualifiedTable } from '../lib/bigqueryClient';
@@ -10,6 +13,8 @@ import { OutputMode } from '../registry/componentRegistry';
 import { isValidOutputMode, withOutputModeHint } from './outputMode';
 // Phase 3: grounding pack replaces the full-catalog injection when KAG is active.
 import { resolveGroundingContext } from '../kag/kagGrounding';
+// Semantic net under DRAW_INTENT_RE — consulted only when the regex has nothing to say.
+import { classifyIntent, AskFn, IntentKind } from './drawIntentClassifier';
 
 dotenv.config();
 
@@ -120,7 +125,19 @@ export interface ClarifyResult {
 
 export type AnalyzeResult =
   | { action: 'clarify'; opener: string; question: string; options: string[] }
-  | { action: 'route'; table: string; intent: 'trend' | 'comparison' | 'metric_by_dimension'; outputMode?: OutputMode };
+  | {
+      action: 'route';
+      table: string;
+      intent: 'trend' | 'comparison' | 'metric_by_dimension';
+      outputMode?: OutputMode;
+      /**
+       * Set when this route is serving a DRAWING request. Carries the signal that
+       * DRAW_INTENT_RE found (fast path) or that the analyze LLM reported (safety net)
+       * out to the pipeline, which needs it to pick an output mode whose allowed
+       * components include the artifact types — see outputMode.ts.
+       */
+      drawKind?: 'svg' | 'html';
+    };
 
 export interface ReportCard {
   renderType: string;
@@ -156,6 +173,51 @@ function extractJSON(text: string): string {
   return text;
 }
 
+// ── Thinking-model token budgeting ───────────────────────────────────────────
+//
+// MODEL is a THINKING model — the Google AI model metadata for gemma-4-31b-it
+// literally reports `"thinking": true`. Its maxOutputTokens covers REASONING tokens
+// AND the answer, but every call site here sized its budget for the ANSWER alone.
+//
+// That is not a tuning nit, it is a hard failure: reasoning costs hundreds to
+// thousands of tokens (measured 125 on the smallest prompt in this file, 2155 on a
+// routing prompt). analyzeQuery asked for 768; the model spent all 768 thinking,
+// finished with MAX_TOKENS, and emitted NO answer — so `response.text` was ''.
+// Three frames later JSON.parse('') threw "Unexpected end of JSON input" and the
+// user saw "I encountered an error generating the report." classifyFollowUpIntent's
+// 128-token budget could never have returned anything at all.
+//
+// Raising the cap is close to free: you are billed for tokens GENERATED, not for the
+// ceiling, and reasoning does not inflate to fill the room (measured: ~230-320
+// thinking tokens whether the cap was 512 or 3072). The clamp is the model's own
+// declared outputTokenLimit.
+const MODEL_OUTPUT_TOKEN_LIMIT = 32_768;
+
+function withThinkingHeadroom(answerTokens: number): number {
+  return Math.min(Math.max(answerTokens * 4, 4096), MODEL_OUTPUT_TOKEN_LIMIT);
+}
+
+/**
+ * Read the text off a Gemma response, refusing an empty one.
+ *
+ * When reasoning exhausts the budget the API returns 200 with no text part at all.
+ * Every caller in this file then runs JSON.parse on '' and reports a JSON syntax
+ * error — which names neither the model, nor the budget, nor the real cause, and
+ * sent this exact bug to a user as a generic "error generating the report". Fail
+ * here instead, carrying the numbers needed to size the budget correctly.
+ */
+function requireText(response: any, label: string): string {
+  const text = response?.text ?? '';
+  if (text.trim()) return text;
+  const finish = response?.candidates?.[0]?.finishReason;
+  const usage = response?.usageMetadata ?? {};
+  throw new Error(
+    `${MODEL} returned no text for ${label} — finishReason=${finish}, ` +
+    `thinking=${usage.thoughtsTokenCount ?? 0} tokens, answer=${usage.candidatesTokenCount ?? 0} tokens` +
+    (finish === 'MAX_TOKENS' ? '. Reasoning consumed the entire output budget; raise maxOutputTokens.' : ''),
+  );
+}
+
 let _ai: GoogleGenAI | null = null;
 function getAI() {
   if (!_ai) _ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY || '' });
@@ -186,12 +248,14 @@ async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> {
 // ── Provider abstraction ──────────────────────────────────────────────────────
 // Two LLM backends, selected per-request based on the logged-in user:
 //   'gemma'  → internal users → Google Gemma via @google/genai (production path)
-//   'sonnet' → client users   → Anthropic Sonnet via the `claude` CLI (temporary
-//              stopgap until a Sonnet API key is available; swap generateViaCLI
-//              for a direct SDK call when the key arrives — nothing else changes).
+//   'sonnet' → client users   → Anthropic Claude. Transport chosen at call time:
+//              ANTHROPIC_API_KEY set → API SDK (fast, cached); else the `claude` CLI.
+// NOTE: the provider key is still named 'sonnet' for frontend compatibility, but the
+// underlying model is now Opus 4.8 (SONNET_API_MODEL / SONNET_MODEL below). Override
+// either env var to pin a different model without touching code.
 export type LLMProvider = 'gemma' | 'sonnet';
 
-const SONNET_MODEL = process.env.SONNET_MODEL || 'sonnet'; // CLI alias for latest Sonnet
+const SONNET_MODEL = process.env.SONNET_MODEL || 'opus'; // CLI alias for latest Opus
 
 export function resolveProvider(raw: unknown): LLMProvider {
   return raw === 'sonnet' ? 'sonnet' : 'gemma';
@@ -212,6 +276,76 @@ interface GenOpts {
 // do NOT pass --bare (which would force ANTHROPIC_API_KEY-only auth). --system-prompt
 // REPLACES Claude Code's default agent prompt with ours; the user text goes on stdin
 // to avoid any shell-escaping issues (spawn runs without a shell).
+/**
+ * Find a `claude` binary this process can actually spawn.
+ *
+ * WHY THIS IS NOT JUST `'claude'`. On Windows, `npm i -g @anthropic-ai/claude-code`
+ * installs SHIMS — `claude` (a sh script), `claude.cmd` and `claude.ps1`. None of
+ * them is an executable image, and Node's spawn() goes through CreateProcess, which
+ * cannot run a .cmd/.ps1 without a shell. So `spawn('claude')` fails with
+ * `ENOENT` even when `claude` works perfectly in the developer's terminal — which is
+ * exactly how every 'sonnet' request died with "I encountered an error generating the
+ * report" while the CLI looked healthy from the command line.
+ *
+ * The VS Code extension ships a REAL executable (claude.exe), so prefer that. Passing
+ * a shell isn't an option here: the args carry an arbitrary system prompt, and routing
+ * that through cmd.exe quoting is a correctness and injection hazard.
+ *
+ * Resolution order — first hit wins, result cached for the process:
+ *   1. CLAUDE_CLI_PATH, if it points at something that exists (explicit override).
+ *   2. Newest anthropic.claude-code-* VS Code extension's native-binary/claude.exe.
+ *   3. claude.exe on PATH.
+ *   4. 'claude' — correct on macOS/Linux, and the honest last resort elsewhere.
+ */
+let _claudeCli: string | null = null;
+
+function resolveClaudeCli(): string {
+  if (_claudeCli) return _claudeCli;
+
+  const pinned = process.env.CLAUDE_CLI_PATH?.trim();
+  if (pinned) {
+    if (existsSync(pinned)) return (_claudeCli = pinned);
+    console.warn(`[Sonnet CLI] CLAUDE_CLI_PATH is set but does not exist: ${pinned}`);
+  }
+
+  if (process.platform === 'win32') {
+    const extRoot = join(homedir(), '.vscode', 'extensions');
+    try {
+      const candidates = readdirSync(extRoot)
+        .filter((d) => d.startsWith('anthropic.claude-code-'))
+        // Sort by version descending so a stale older extension never wins.
+        .sort((a, b) => {
+          const ver = (s: string) => (s.match(/(\d+)\.(\d+)\.(\d+)/) ?? []).slice(1).map(Number);
+          const [x, y] = [ver(a), ver(b)];
+          for (let i = 0; i < 3; i++) if ((y[i] ?? 0) !== (x[i] ?? 0)) return (y[i] ?? 0) - (x[i] ?? 0);
+          return 0;
+        })
+        .map((d) => join(extRoot, d, 'resources', 'native-binary', 'claude.exe'));
+      const found = candidates.find(existsSync);
+      if (found) {
+        console.log(`[Sonnet CLI] using VS Code extension binary: ${found}`);
+        return (_claudeCli = found);
+      }
+    } catch { /* no extensions dir — fall through */ }
+
+    for (const dir of (process.env.PATH ?? '').split(';')) {
+      if (!dir.trim()) continue;
+      const exe = join(dir.trim(), 'claude.exe');
+      if (existsSync(exe)) {
+        console.log(`[Sonnet CLI] using claude.exe from PATH: ${exe}`);
+        return (_claudeCli = exe);
+      }
+    }
+
+    console.warn(
+      '[Sonnet CLI] No spawnable claude.exe found. The npm shims (claude.cmd/.ps1) ' +
+      'cannot be spawned without a shell — set CLAUDE_CLI_PATH to a real executable.',
+    );
+  }
+
+  return (_claudeCli = 'claude');
+}
+
 function generateViaCLI(opts: GenOpts): Promise<string> {
   return new Promise((resolve, reject) => {
     const args = [
@@ -232,14 +366,18 @@ function generateViaCLI(opts: GenOpts): Promise<string> {
     // and nothing adds that directory to PATH. Depending on ambient PATH also makes
     // behaviour differ by which terminal started the backend, which is how this broke
     // once already. CLAUDE_CLI_PATH pins it explicitly; 'claude' remains the default.
-    const cliPath = process.env.CLAUDE_CLI_PATH?.trim() || 'claude';
+    const cliPath = resolveClaudeCli();
     const child = spawn(cliPath, args, { stdio: ['pipe', 'pipe', 'pipe'], env: childEnv });
 
     let stdout = '';
     let stderr = '';
     child.stdout.on('data', d => { stdout += d.toString(); });
     child.stderr.on('data', d => { stderr += d.toString(); });
-    child.on('error', err => reject(new Error(`Sonnet CLI spawn failed: ${err.message}. Is the \`claude\` CLI installed and logged in?`)));
+    child.on('error', err => reject(new Error(
+      `Sonnet CLI spawn failed: ${err.message} (tried "${cliPath}"). ` +
+      'Is the `claude` CLI installed and logged in? On Windows the npm shims ' +
+      '(claude.cmd/.ps1) are not spawnable — point CLAUDE_CLI_PATH at a real claude.exe.',
+    )));
     child.on('close', code => {
       if (code !== 0) {
         return reject(new Error(`Sonnet CLI exited ${code}: ${stderr.trim() || stdout.trim() || 'no output'}`));
@@ -268,29 +406,55 @@ function getAnthropic(): Anthropic {
   return _anthropic;
 }
 
-const SONNET_API_MODEL = process.env.SONNET_API_MODEL || 'claude-sonnet-4-6';
+const SONNET_API_MODEL = process.env.SONNET_API_MODEL || 'claude-opus-4-8';
+
+// Opus 4.8 / 4.7, Sonnet 5, and Fable 5 REJECT temperature/top_p/top_k with a 400 —
+// steering is done via the prompt instead. Older models (Sonnet 4.6 and earlier) still
+// accept them. Omitting temperature is valid on every model, so we only send it when the
+// pinned model is one of the legacy sampling-capable ones.
+function modelAcceptsSampling(model: string): boolean {
+  return /sonnet-4-6|sonnet-4-5|opus-4-6|opus-4-5|opus-4-1|opus-4-0|haiku|sonnet-4-0/i.test(model);
+}
+
+// Fast Mode: same Opus model at up to 2.5x output tokens/sec, at premium pricing.
+// Research preview, Opus 4.8/4.7 only, first-party Anthropic API only. Opt-in via
+// SONNET_FAST_MODE so it never silently bills premium rates — set it to 1 to enable.
+function fastModeEnabled(model: string): boolean {
+  const on = /^(1|true|on|yes)$/i.test(process.env.SONNET_FAST_MODE || '');
+  return on && /opus-4-(7|8)/i.test(model);
+}
 
 async function generateViaAPI(opts: GenOpts): Promise<string> {
   const client = getAnthropic();
-  const msg = await client.messages.create({
-    model: SONNET_API_MODEL,
+  const model = SONNET_API_MODEL;
+  const params: Anthropic.MessageCreateParamsNonStreaming = {
+    model,
     max_tokens: opts.maxOutputTokens ?? 2048,
-    temperature: opts.temperature ?? 0.3,
     system: [{ type: 'text', text: opts.system, cache_control: { type: 'ephemeral' } }],
     messages: [{ role: 'user', content: opts.user }],
-  });
+  };
+  if (opts.temperature !== undefined && modelAcceptsSampling(model)) {
+    params.temperature = opts.temperature;
+  }
+
+  const msg = fastModeEnabled(model)
+    ? await client.beta.messages.create({ ...params, speed: 'fast', betas: ['fast-mode-2026-02-01'] })
+    : await client.messages.create(params);
+
   return msg.content
     .filter((b): b is Anthropic.TextBlock => b.type === 'text')
     .map(b => b.text)
     .join('');
 }
 
-// The Sonnet transport is chosen at call time, not hard-wired:
-//   • ANTHROPIC_API_KEY set  → API SDK (fast, cached)
-//   • no key                 → `claude` CLI on the user's OAuth login (stopgap)
-// Add the key to .env and Sonnet auto-upgrades to the API with zero code changes.
+// Transport for the Claude ('sonnet' key) provider. Default is the `claude` CLI
+// running Opus (SONNET_MODEL='opus') on the user's OAuth/subscription login — this is
+// the intended path. The API SDK is only used when the operator explicitly opts in
+// with SONNET_USE_API=1 AND an ANTHROPIC_API_KEY is present; otherwise we always use
+// the CLI (even if a key happens to be in the env for other features).
 function useSonnetApi(): boolean {
-  return !!(process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY.trim());
+  const optedIn = /^(1|true|on|yes)$/i.test(process.env.SONNET_USE_API || '');
+  return optedIn && !!(process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY.trim());
 }
 
 // Rewrite report-video narration lines into natural spoken voiceover, keeping
@@ -330,6 +494,7 @@ export interface NarrationScene {
   kind: string;               // cover | kpis | chart | insight | table | outro
   heading?: string;
   onScreen?: string[];        // text already visible on the slide
+  facts?: string[];           // ground truth measured from the rendered chart
   dataHint?: string;          // factual summary (numbers) the line may draw from
 }
 
@@ -356,13 +521,15 @@ export async function writeVideoNarration(
     '- Each line is 1–2 sentences of natural, spoken English (a person talking, not a caption).\n' +
     '- DO NOT read the on-screen text verbatim. Complement it — add the narrative connective tissue between slides.\n' +
     '- Every number, percentage, and name must stay accurate to the data hints. Never invent figures.\n' +
+    '- A scene\'s "facts" are measured directly from the chart the viewer is looking at. They OUTRANK everything else. Any superlative you use (highest, lowest, leads, peaks, best performer) and any figure you attribute to a named item must agree with that scene\'s facts.\n' +
+    '- Describe only the scene you are on. Never name an item as the leader or the laggard unless that scene\'s facts say so — the viewer is watching that chart while you speak, and naming a different one makes the voiceover contradict the screen.\n' +
     '- Write for text-to-speech: spell months in full (say "April", never "Apr" or "A P R"); say "percent" and "dollars"; expand or drop codes and abbreviations (e.g. say "territory nine", not "T-009"; never read "(APR)" as letters).\n' +
     '- Vary sentence openings; keep it warm and confident, not robotic.';
 
   const user = JSON.stringify({
     title: meta.title ?? 'Report',
     description: meta.description ?? '',
-    scenes: scenes.map((s, i) => ({ scene: i + 1, kind: s.kind, heading: s.heading, onScreen: s.onScreen, dataHint: s.dataHint })),
+    scenes: scenes.map((s, i) => ({ scene: i + 1, kind: s.kind, heading: s.heading, onScreen: s.onScreen, facts: s.facts, dataHint: s.dataHint })),
   });
 
   try {
@@ -417,13 +584,13 @@ export async function modelGenerate(provider: LLMProvider, opts: GenOpts): Promi
     model: MODEL,
     config: {
       temperature: opts.temperature ?? 0.3,
-      maxOutputTokens: opts.maxOutputTokens ?? 2048,
+      maxOutputTokens: withThinkingHeadroom(opts.maxOutputTokens ?? 2048),
       responseMimeType: 'application/json',
       systemInstruction: opts.system,
     },
     contents: [{ role: 'user', parts: [{ text: opts.user }] }],
   });
-  return response.text ?? '';
+  return requireText(response, 'modelGenerate');
 }
 
 function getFunctionCall(response: any): { name: string; args: Record<string, any> } | null {
@@ -661,6 +828,294 @@ function hasReportSpecificity(texts: string[], domainName?: string): boolean {
   return tokens.some(t => t.length > 1 && !STOP.has(t) && !domainWords.has(t));
 }
 
+// Explicit request to DRAW a structural diagram or WRITE a formatted document —
+// the rich-artifact tiers (mermaid-artifact / svg-artifact / html-artifact). Kept in
+// lockstep with the "USE WHEN" lists in the generateReport artifact guidance below.
+// Returns 'svg' for any drawing request and 'html' for a document request; the choice
+// BETWEEN mermaid-artifact and svg-artifact is made by the model in the report prompt,
+// so this only needs to distinguish "draw something" from "write something".
+// Deliberately tight: a plain data question ("network latency by region") that merely
+// COULD be drawn must NOT match — only explicit draw/sketch/write intent does.
+//
+// NAMED "<noun> flow" PHRASES, not a bare `flow`. Users type the structure they want
+// without ever using a verb — "contact center call escalation flow" was a real request
+// that produced a narrative paragraph instead of a diagram, because only
+// "escalation PATH" was listed here. A bare /\bflow\b/ would fix that case and break
+// two others that must stay negative: "cash flow by month" and "flow rate by device
+// group" are measures, not structures. So each qualifier is enumerated, and every one
+// of them has a test case in scripts/test_drawIntent.ts.
+// `sequence of|when` is enumerated for the same reason as the flow phrases above, and
+// from the same kind of real miss: "show me the sequence when a report is generated"
+// returned prose. A bare /\bsequence\b/ would be wrong — "sequence number by outlet" is
+// a column, not a structure — so the qualifier carries the intent, never the noun alone.
+// Deliberately NOT added: "visualise"/"visualize"/"chart out". Users reach for those for
+// ORDINARY CHARTS far more often than for structural diagrams, and a false positive here
+// is expensive — it forces outputMode to `narrative`, which drops the chart families the
+// question actually wanted. Those phrasings are covered by the LLM net in analyzeQuery
+// instead, which can read the sentence rather than pattern-match a verb.
+const DRAW_INTENT_RE = /\b(draw|sketch|diagram|topology|flow\s?chart|process\s+diagram|architecture\s+(?:diagram|map)|escalation\s+(?:path|flow)|(?:call|routing|process|approval|onboarding)\s+flow|customer\s+journey|state\s+machine|org(?:anisation|anization)?\s+chart|data\s+lineage|dependency\s+(?:map|graph)|map\s+(?:the|out)\b.*\b(?:architecture|topology|flow|network)|how\s+(?:does|do)\s+.+\bconnect|flow\s+of\b|sequence\s+(?:of|when)\b)/i;
+const DOC_INTENT_RE = /\b(write\s+(?:a|me|up)\b.*\b(brief|memo|write-?up|one-?pager|document|report)|formatted\s+document|write-?up\s+with\s+headings|one-?pager|memo\b|document\s+with\s+(?:sections|headings))/i;
+// STRUCTURE-OF-DATA questions — a different question shape from DRAW_INTENT_RE above.
+//
+// DRAW_INTENT_RE asks for a PROCESS (escalation flow, customer journey): structure that
+// exists nowhere in our data, so the model must invent it and wants real measured values
+// in the labels. These ask about the SHAPE OF THE WAREHOUSE — what feeds what, which
+// table backs which report. That answer is already held exactly in KAG, so it is served
+// deterministically from the graph with no model in the loop (see kag/structureDiagram).
+//
+// Enumerated, like DRAW_INTENT_RE, and for the same reason. The negatives that must stay
+// negative are ordinary data questions that happen to share a noun: "revenue by data
+// centre" is not a schema request, and "what feeds the top territories" is about values.
+// Each phrasing below has a case in scripts/test_structureDiagram.ts.
+const STRUCTURE_INTENT_RE = new RegExp(
+  [
+    /\b(?:data\s+model|schema)\b/,                     // "show me the schema", "the data model"
+    /\bkag\b.*\bgraph\b|\bknowledge\s+graph\b/,        // "show me the KAG graph"
+    /\bwhat\s+feeds\s+(?:in)?to\b/,                    // "what feeds into take rate"
+    /\bhow\s+is\s+the\s+data\s+(?:organi[sz]ed|structured|modell?ed)\b/,
+    /\bwhere\s+does\s+.+\bcome\s+from\b/,              // "where does take rate come from"
+    /\b(?:table|column|field)s?\s+behind\b/,           // "the tables behind this report"
+  ].map((r) => r.source).join('|'),
+  'i',
+);
+
+/**
+ * True when the user is asking about the structure of the DATA itself, which KAG can
+ * answer exactly. Checked BEFORE detectDrawingIntent by callers that support the
+ * deterministic path, because "show me the data lineage for take rate" satisfies both
+ * and the graph-sourced answer is the better one — no LLM, no hallucinated columns.
+ */
+export function detectStructureIntent(texts: string[]): boolean {
+  const joined = texts.join(' ');
+  // "data lineage" lives in DRAW_INTENT_RE for historical reasons and is genuinely a
+  // structure question, so it counts here too rather than being duplicated there.
+  return STRUCTURE_INTENT_RE.test(joined) || /\bdata\s+lineage\b/i.test(joined);
+}
+
+export function detectDrawingIntent(texts: string[]): 'svg' | 'html' | null {
+  const joined = texts.join(' ');
+  if (DRAW_INTENT_RE.test(joined)) return 'svg';
+  if (DOC_INTENT_RE.test(joined)) return 'html';
+  return null;
+}
+
+/**
+ * Provider-neutral outcome of the rich-artifact fast-path.
+ *
+ * `null` means "no drawing/writing intent — carry on with normal routing".
+ */
+export type DrawingRoute =
+  | { action: 'generate'; table: string; drawKind: 'svg' | 'html' }
+  | { action: 'clarify'; question: string; options: string[]; drawKind: 'svg' | 'html' }
+  | null;
+
+/**
+ * Rich-artifact fast-path (draw a diagram / write a document).
+ *
+ * Explicit drawing/writing language is a SUPPORTED request the report layer renders as
+ * a mermaid-/svg-/html-artifact. Without this, an LLM front-door can pick "answer" and
+ * politely decline ("that's outside what I can build"), or fall through to a bare-domain
+ * report menu — either way the artifact never generates. Route straight to generation
+ * when a domain is known so it renders on the FIRST turn; if the domain is still
+ * unknown, ask for it deterministically (a menu) rather than letting the model refuse.
+ *
+ * WHY THIS IS A SHARED FUNCTION rather than a block inside sonnetRespond, where it
+ * used to live: it was Sonnet-only, and `internal` logins resolve to Gemma
+ * (see getAuthUsers in index.ts). So the provider most people were actually using had
+ * no safety net at all — "draw a sequence diagram of how a contact center call gets
+ * escalated" came back as a "Which report would you like to see?" menu with zero
+ * component events. Measured, not inferred. Both front doors now call this.
+ *
+ * PURE apart from the data-source lookups, and those fall back to the full catalog
+ * before the availability probe completes — so it is unit-testable with no BigQuery
+ * and no LLM. See scripts/test_drawIntent.ts.
+ */
+export function resolveDrawingRoute(allTexts: string[]): DrawingRoute {
+  const drawKind = detectDrawingIntent(allTexts);
+  if (!drawKind) return null;
+  return routeForDrawKind(allTexts, drawKind);
+}
+
+/**
+ * The routing half of resolveDrawingRoute, once the KIND is already decided.
+ *
+ * Split out so the regex path and the classifier path cannot drift: whichever decides
+ * that a diagram was asked for, the table/clarify choice below is the same code.
+ */
+function routeForDrawKind(allTexts: string[], drawKind: 'svg' | 'html'): DrawingRoute {
+  const available = getAvailableDataSources();
+  const availableTables = new Set(available.map(s => s.table));
+  const { domain: knownDomain } = extractContextFromText(allTexts);
+
+  if (knownDomain) {
+    const domainSources = available.filter(s => s.domain.toLowerCase() === knownDomain.toLowerCase());
+    const table = domainSources[0]?.table
+      ?? getAnglesByDomain(knownDomain).find(a => availableTables.has(a.table))?.table;
+    if (table) return { action: 'generate', table, drawKind };
+  }
+
+  const drawDomains = [...new Set(available.map(s => s.domain))];
+  if (drawDomains.length === 1) {
+    const only = available.find(s => s.domain === drawDomains[0]);
+    if (only) return { action: 'generate', table: only.table, drawKind };
+  }
+
+  return {
+    action: 'clarify',
+    question: `Sure — I can ${drawKind === 'svg' ? 'draw that' : 'write that up'}. Which area should it cover?`,
+    options: drawDomains,
+    drawKind,
+  };
+}
+
+// ── Semantic intent resolution (regex fast path + model fallback) ─────────────
+
+/** One LLM call, provider-shaped, for the intent classifier to borrow. */
+function askFor(provider: LLMProvider): AskFn {
+  return async (system, user) => {
+    if (provider === 'sonnet') {
+      return generateViaCLI({ system, user, temperature: 0, maxOutputTokens: 256 });
+    }
+    const ai = getAI();
+    const response = await ai.models.generateContent({
+      model: MODEL,
+      config: {
+        temperature: 0,
+        // withThinkingHeadroom because MODEL is a thinking model and a 256-token budget
+        // would be spent entirely on reasoning, returning no answer at all — the exact
+        // failure documented above requireText.
+        maxOutputTokens: withThinkingHeadroom(256),
+        responseMimeType: 'application/json',
+        systemInstruction: system,
+      },
+      contents: [{ role: 'user', parts: [{ text: user }] }],
+    });
+    return stripThinkTags(requireText(response, 'classifyIntent'));
+  };
+}
+
+export interface IntentResolution {
+  /** Artifact kind to draw/write, or null for an ordinary data question. */
+  draw: 'svg' | 'html' | null;
+  /** True when the question is about the shape of the warehouse (the KAG path). */
+  structure: boolean;
+  /** 'regex' when the enumerated patterns decided it, 'model' when they missed. */
+  source: 'regex' | 'model' | 'cache' | 'none';
+  why?: string;
+}
+
+/**
+ * What is this user asking for? Regex first, model only on a miss.
+ *
+ * The ordering is the whole design. DRAW_INTENT_RE / STRUCTURE_INTENT_RE stay
+ * authoritative for every phrasing they enumerate — free, instant, and pinned by
+ * test_drawIntent.ts — so this adds no latency to the requests that already worked. The
+ * classifier exists for the long tail those lists cannot enumerate, which used to fall
+ * through to a text answer with no error anywhere (see drawIntentClassifier.ts).
+ *
+ * Structure is checked before drawing for the same reason the pipeline does: "show me
+ * the data lineage for take rate" satisfies both, and the graph-sourced answer is exact
+ * where a model-drawn one would be invented.
+ */
+export async function resolveIntent(
+  texts: string[],
+  provider: LLMProvider = 'gemma',
+  // Test seam. The regex half of this function is pure, but the fallback is not, and the
+  // branches worth pinning are the failure ones — timeout, unparseable output, unknown
+  // label. Injecting `ask` lets scripts/test_drawIntent.ts drive all of them with no
+  // network and no API key, the same way the drawing route is testable with no BigQuery.
+  ask: AskFn = askFor(provider),
+): Promise<IntentResolution> {
+  if (detectStructureIntent(texts)) return { draw: null, structure: true, source: 'regex' };
+  const regexDraw = detectDrawingIntent(texts);
+  if (regexDraw) return { draw: regexDraw, structure: false, source: 'regex' };
+
+  const verdict = await classifyIntent(texts, ask);
+  const source = verdict.source === 'cache' ? 'cache' : verdict.kind === 'none' ? 'none' : 'model';
+  if (verdict.kind !== 'none') {
+    console.log(`[intent] regex missed → model says ${verdict.kind}${verdict.why ? ` (${verdict.why})` : ''} for "${(texts[texts.length - 1] ?? '').slice(0, 80)}"`);
+  }
+
+  return {
+    draw: verdict.kind === 'diagram' ? 'svg' : verdict.kind === 'document' ? 'html' : null,
+    structure: verdict.kind === 'structure',
+    source: source as IntentResolution['source'],
+    why: verdict.why,
+  };
+}
+
+// NO `resolveDrawingRouteSmart` / `detectStructureIntentSmart` wrappers here, and that is
+// a decision rather than an omission. Both existed briefly and were removed: putting the
+// classifier in front of the FRONT DOOR means every ordinary data question pays a
+// classification (measured ~8s) to be told what it already was, since every ordinary
+// question is a regex miss. analyzeQuery's `diagram` field already covers that case for
+// free, off a call it was making anyway. The classifier earns its cost in exactly one
+// place — recoverDrawRequest, below, where the fast path returns before any LLM call runs
+// and the request would otherwise be lost in silence.
+
+/** How many individual earlier turns may be classified when locating the request. */
+const RECOVERY_SCAN_LIMIT = 3;
+
+/**
+ * Find the earlier turn that asked for a drawing, for the clarification-answer recovery
+ * in runStreamingPipeline.
+ *
+ * The regex pass runs first and alone decides whenever it matches, so the recovery keeps
+ * its existing, tested behaviour unchanged. Only when it finds nothing does the model
+ * get asked — first over the turns TOGETHER (one call: is this conversation asking for a
+ * picture at all?), and only if that says yes does it look at individual turns to find
+ * which one carried the request.
+ *
+ * The turns are classified CONCURRENTLY, and that is a latency decision rather than a
+ * style one. A classification costs ~8s against this provider (measured — see
+ * CLASSIFY_TIMEOUT_MS), so the obvious sequential loop over three turns is a ~24s stall
+ * on a request the user is already waiting on. In parallel the whole scan costs about one
+ * classification. The scan is still capped at RECOVERY_SCAN_LIMIT newest-first, because a
+ * drawing request the user has since talked past is not the one they are waiting on.
+ *
+ * Newest-first also cannot be skipped: the user's ANSWER to the clarifying question is
+ * itself a prior turn by this point, so "the most recent turn" is usually "Contact
+ * Center" and not the request. Each candidate is judged on its own.
+ */
+export interface RecoveredDrawRequest {
+  /** The earlier wording to fold back into the query, or undefined if there is none. */
+  request?: string;
+  /**
+   * The kind that was recovered. Carried out of here because the caller needs it for the
+   * output-mode decision and re-deriving it would mean a second classification: the
+   * recovered wording is by definition wording the regex cannot read.
+   */
+  draw: 'svg' | 'html' | null;
+}
+
+export async function recoverDrawRequest(
+  priorUserTurns: string[],
+  provider: LLMProvider = 'gemma',
+  ask: AskFn = askFor(provider),
+): Promise<RecoveredDrawRequest> {
+  const turns = priorUserTurns.map((t) => String(t ?? '').trim()).filter(Boolean);
+  if (!turns.length) return { draw: null };
+
+  // Enumerated patterns: free, deterministic, and unchanged from before the classifier.
+  const regexKind = detectDrawingIntent(turns);
+  if (regexKind) {
+    return { request: [...turns].reverse().find((t) => detectDrawingIntent([t])), draw: regexKind };
+  }
+
+  const candidates = [...turns].reverse().slice(0, RECOVERY_SCAN_LIMIT);
+  const verdicts = await Promise.all(candidates.map((t) => resolveIntent([t], provider, ask)));
+
+  // Newest-first: the first candidate that reads as a drawing request on its own.
+  const i = verdicts.findIndex((v) => v.draw);
+  if (i === -1) return { draw: null };
+
+  console.log(`[intent] recovered a drawing request the regex could not see: "${candidates[i].slice(0, 80)}"`);
+  return { request: candidates[i], draw: verdicts[i].draw };
+}
+
+/** Re-exported so the pipeline can log/telemeter classifier behaviour. */
+export type { IntentKind };
+
 export async function sonnetRespond(
   query: string,
   history: ClarificationTurn[] = [],
@@ -683,6 +1138,19 @@ export async function sonnetRespond(
   // A specific catalog report is identifiable → generate now (no LLM, no questions).
   if (knownSource && availableTables.has(knownSource.table)) {
     return { action: 'generate', table: knownSource.table, intent: 'metric_by_dimension' };
+  }
+
+  // ── Rich-artifact fast-path (draw a diagram / write a document) ──────────────
+  // Shared with analyzeQuery (the Gemma front door) — see resolveDrawingRoute for why
+  // this must not live in one provider's path only. "diagram"/"topology" also read as
+  // report-specificity, so the bare-domain menu below is skipped.
+  const draw = resolveDrawingRoute(allTexts);
+  if (draw) {
+    console.log(`[sonnetRespond] drawing intent (${draw.drawKind}) → ${draw.action}` +
+      (draw.action === 'generate' ? ` table=${draw.table}` : '') + ` for "${query.slice(0, 80)}"`);
+    return draw.action === 'generate'
+      ? { action: 'generate', table: draw.table, intent: 'metric_by_dimension' }
+      : { action: 'clarify', question: draw.question, options: draw.options };
   }
 
   // Domain known but the request is BARE (no specific metric/dimension) → offer the
@@ -736,6 +1204,7 @@ Guidance:
 - If the user gave only a DOMAIN with no specific report/metric/chart in mind (e.g. "create a sales report", "I want a network report"), you MUST CLARIFY *which report* and list that domain's reports as options. Do NOT arbitrarily pick one.
 - GENERATE only when the request names or strongly implies a specific report, metric, dimension, or chart (e.g. "sales revenue trend", "compare territories", "churn over time", "top territories by take rate"). Then pick the matching table.
 - One-off factual questions with no need for a visual → "answer". Greetings/small talk → "chat".
+- Requests to DRAW/SKETCH a diagram/flow/topology/map, or to WRITE a brief/memo/document/one-pager, ARE supported — the report layer renders them as rich artifacts. Treat them like any other request: "generate" when a domain+report is clear, else "clarify" the domain/report. NEVER use "answer" to say a diagram or document is unsupported or that the dataset lacks it.
 
 Respond with valid JSON only, no markdown:
 { "action": "chat"|"answer"|"clarify"|"generate", "message": "...", "options": ["..."], "table": "...", "intent": "trend"|"comparison"|"metric_by_dimension" }
@@ -856,9 +1325,16 @@ Respond with valid JSON only. No markdown. No code fences.
   "question": "...",
   "options": ["...", "..."],
   "table": "...",
-  "intent": "trend" | "comparison" | "metric_by_dimension"
+  "intent": "trend" | "comparison" | "metric_by_dimension",
+  "diagram": true | false
 }
-(omit "question"/"options" if action=route; omit "table"/"intent" if action=clarify)`;
+(omit "question"/"options" if action=route; omit "table"/"intent" if action=clarify)
+
+"diagram": set TRUE only when the user is asking to SEE A STRUCTURE — a flow, a process,
+a sequence of steps, a hierarchy, a topology, how things connect — i.e. something drawn
+as boxes and arrows. Set FALSE for every request about measured VALUES (totals, trends,
+rankings, comparisons, breakdowns), even when the user says "show me" or "visualise".
+"walk me through how a call gets escalated" → true. "visualise revenue by region" → false.`;
 
   const user = `USER QUERY: "${query}"${historyText}
 
@@ -881,6 +1357,31 @@ export async function analyzeQuery(
     return { action: 'route', table: directSource.table, intent: 'metric_by_dimension' };
   }
 
+  // ── Rich-artifact fast-path (draw a diagram / write a document) ──────────────
+  // The same net sonnetRespond has. It was Sonnet-only, and `internal` logins resolve
+  // to Gemma — so the provider most sessions actually used sent "draw a sequence
+  // diagram of how a contact center call gets escalated" into the ordinary
+  // "Which report would you like to see?" menu and returned zero components.
+  //
+  // Placed AFTER the direct-source route (an explicitly named report still wins, which
+  // is what carries the drawing request through a clarification round-trip) and BEFORE
+  // the LLM call, so a drawing request never depends on the model volunteering a route.
+  //
+  // Deliberately the REGEX route, not the classifier one. An unenumerated phrasing is
+  // caught for free by `parsed.diagram` on the LLM path below — see the note there — and
+  // a classifier here would fire on every ordinary question to tell us what that field
+  // already says. The gap the classifier does close is the clarification-answer turn,
+  // where the fast path above returns before any LLM call: that lives in
+  // recoverDrawRequest, called from runStreamingPipeline.
+  const draw = resolveDrawingRoute(allTexts);
+  if (draw) {
+    console.log(`[analyzeQuery] drawing intent (${draw.drawKind}) → ${draw.action}` +
+      (draw.action === 'generate' ? ` table=${draw.table}` : '') + ` for "${query.slice(0, 80)}"`);
+    return draw.action === 'generate'
+      ? { action: 'route', table: draw.table, intent: 'metric_by_dimension', drawKind: draw.drawKind }
+      : { action: 'clarify', opener: '', question: draw.question, options: draw.options };
+  }
+
   // LLM path: ask Gemma to interpret the query and decide what's missing
   try {
     const { system, user } = await buildAnalyzePrompt(query, history);
@@ -898,12 +1399,25 @@ export async function analyzeQuery(
       const availableSources = getAvailableDataSources();
       const validSource = availableSources.find(s => s.table === parsed.table);
       if (validSource) {
+        // SAFETY NET for drawing intent, at zero added latency.
+        //
+        // DRAW_INTENT_RE is a hand-enumerated list, so its coverage is capped at what
+        // someone thought to write down — and a miss is silent: the request routes
+        // normally and the model narrates the diagram in prose instead of drawing it.
+        // "show me the sequence when a report is generated" missed exactly that way.
+        //
+        // A separate classifier "only when the regex misses" would fire on EVERY
+        // ordinary question, since every one of them misses. This call has already
+        // happened, so reading one more field off its answer costs nothing.
+        const llmDraw = parsed.diagram === true;
+        if (llmDraw) console.log(`[analyzeQuery] LLM flagged drawing intent for "${query.slice(0, 80)}"`);
         console.log(`[analyzeQuery] LLM route → table: ${parsed.table}`);
         return {
           action: 'route',
           table: parsed.table,
           intent: parsed.intent ?? 'metric_by_dimension',
           outputMode: isValidOutputMode(parsed.output_mode) ? parsed.output_mode : undefined,
+          drawKind: llmDraw ? 'svg' : undefined,
         };
       }
       console.warn(`[analyzeQuery] LLM returned unavailable table "${parsed.table}" — falling back`);
@@ -982,14 +1496,14 @@ Respond with valid JSON only. No markdown.
       model: MODEL,
       config: {
         temperature: 0.1,
-        maxOutputTokens: 128,
+        maxOutputTokens: withThinkingHeadroom(128),
         responseMimeType: 'application/json',
         systemInstruction: system,
       },
       contents: [{ role: 'user', parts: [{ text: `USER MESSAGE: "${query}"` }] }],
     });
 
-    const raw = response.text ?? '';
+    const raw = requireText(response, 'classifyFollowUpIntent');
     const parsed = JSON.parse(extractJSON(stripThinkTags(raw)));
     console.log(`[classifyFollowUpIntent] action=${parsed.action} — ${parsed.reasoning}`);
 
@@ -1301,10 +1815,37 @@ LAYOUT:
   Section      { title?, description?, children: [1-4] }
 
 RICH ARTIFACTS — only when the user explicitly asks for a drawing or a formatted document.
+  mermaid-artifact { content, title?, caption?, explanation? }
+    USE WHEN the request is for a STRUCTURAL diagram that is a graph of nodes and edges:
+      "flow chart", "process flow", "escalation path", "sequence diagram", "state machine",
+      "how does X connect to Y", "org chart", "data lineage", "dependency map".
+    content = Mermaid source ONLY — no code fences, no prose, no leading blank line.
+    The FIRST line MUST be exactly one of:
+      flowchart TD | flowchart LR | graph TD | graph LR | sequenceDiagram | classDiagram |
+      stateDiagram-v2 | erDiagram | mindmap | timeline
+    Ground node labels in the real domain entities from the data sample.
+    Node ids must be simple alphanumerics; put readable text in the label:
+      flowchart TD
+        A["Territory T-007"] --> B{"Take rate below target?"}
+        B -->|Yes| C["Escalate to Region Lead"]
+    FORBIDDEN, and the whole card is refused (not cleaned up) if present:
+      %%{init}%% directives, click/href/call statements, and any HTML tag such as <b> or
+      <br>. Arrows (-->, ->>, <|--) are fine — only tag-like "<" followed by a letter is not.
+    NOT SUPPORTED, do not attempt: pie, gantt, journey, quadrantChart, sankey. Those are
+      charts — use PieChart / TimelineCard / ProgressBar with real data instead.
+    ALWAYS wrap label text in double quotes: A["Take rate below 60%"], not A[Take rate...].
+      Quoted labels are the only form where punctuation and comparison signs are safe.
+    Colours, fonts and layout are applied by the app; classDef/style/linkStyle statements
+      are ignored, so do not spend tokens on them.
+    PREFER mermaid-artifact over svg-artifact whenever the diagram is nodes-and-edges.
+    NEVER as a substitute for a chart — measured values use BarChart/LineChart/PieChart/etc.
+    A diagram shows STRUCTURE (how things connect or flow), never measured values.
+
   svg-artifact  { content, title?, caption?, explanation? }
-    USE WHEN the query explicitly asks to draw/sketch/map something structural:
-      "draw a diagram", "sketch the flow", "show the topology", "map the architecture",
-      "flow chart", "process diagram", "escalation path", "how does X connect to Y".
+    USE WHEN the drawing is a BESPOKE annotated visual that Mermaid cannot express —
+      a schematic, a floor plan, a labelled illustration, a diagram with free-placed
+      callouts. If the answer is a graph of boxes and arrows, use mermaid-artifact
+      instead: it lays itself out, so it is far more reliable than hand-placed geometry.
     content = one self-contained static SVG document laying out that structure — labelled
     boxes/nodes connected by lines or arrows. Use a viewBox, readable <text> labels, and
     the palette #2563EB #1D9E75 #D97706 #7C3AED on #EFF6FF/#F0FDF4/#FEF3C7 fills.
@@ -1313,8 +1854,9 @@ RICH ARTIFACTS — only when the user explicitly asks for a drawing or a formatt
     DATA must use BarChart/LineChart/AreaChart/PieChart/etc. A diagram shows STRUCTURE
     (how things connect or flow), never measured values.
     DECISIVE: when the request explicitly uses drawing language (draw / sketch / diagram /
-    map / topology / flow), the svg-artifact IS the answer — build the structure from the
-    domain entities (e.g. territories or nodes as boxes) and DO NOT fall back to a chart
+    map / topology / flow), an artifact IS the answer — mermaid-artifact for a
+    nodes-and-edges graph, svg-artifact otherwise. Build the structure from the domain
+    entities (e.g. territories or nodes as boxes) and DO NOT fall back to a chart
     dashboard just because the underlying data is numeric. The "not a substitute for a
     chart" rule applies to data questions that merely COULD be drawn, not to an explicit
     request to draw.
@@ -1329,10 +1871,13 @@ RICH ARTIFACTS — only when the user explicitly asks for a drawing or a formatt
     NEVER for a plain data answer: tabular data uses Table/PivotTable, metrics use
     KPICard/KPIGrid, and short narrative text uses SummaryText/InsightCard/Callout.
 
-  Both are rendered sandboxed with scripts disabled. content MUST be static markup only:
-  no <script>, no on* event handlers, no style="" attributes, no javascript:/data: URIs,
-  no external resource loads. Such content is stripped and the card downgrades to plain text.
+  All THREE artifact types render sandboxed with scripts disabled.
+  For svg-artifact and html-artifact, content MUST be static markup only: no <script>,
+  no on* event handlers, no style="" attributes, no javascript:/data: URIs, no external
+  resource loads. Such content is stripped and the card downgrades to plain text.
   Use SVG presentation attributes (fill=, stroke=) rather than style="".
+  For mermaid-artifact, content is diagram SOURCE and contains no markup at all; a
+  forbidden construct refuses the whole card rather than being cleaned up.
   Emit at most ONE artifact card per report, and only when the query explicitly asked for it.
 
 ── ENTITY SPECIFICITY (critical) ────────────────────────────────────────────
@@ -1422,6 +1967,47 @@ function buildEntityHighlight(rows: any[], shape: ShapeSignature, entities: stri
   return `\nQUERY-RELEVANT ROWS (use these for KPI values — NOT global averages):\n${formatted}\n`;
 }
 
+/**
+ * Told, not inferred.
+ *
+ * REPORT_SYSTEM_PROMPT's mermaid-artifact entry lists the phrasings that should produce a
+ * diagram — "process flow", "escalation path", "sequence diagram". That list is a second,
+ * independent enumeration of English, with the same blind spots as the first: measured
+ * live, "the lifecycle of a support ticket" reached generation with the drawing request
+ * recovered and folded back into the query, output mode overridden to `narrative`, and
+ * mermaid-artifact in the allowed set — and the model STILL returned a KPI grid, a bar
+ * chart and a table, because "lifecycle" is not a word on its list.
+ *
+ * By this point the pipeline is not guessing: the request was classified before generation
+ * began. Restating that as an instruction is strictly better than hoping the generator
+ * re-derives it from wording, and it means a phrasing added to nobody's list still draws.
+ *
+ * Deliberately NOT enforcement — generation stays a single model call whose output the
+ * governor observes. If the model ignores this, the card list is what it is.
+ */
+function drawDirective(drawKind?: 'svg' | 'html' | null): string {
+  if (drawKind === 'svg') {
+    return `
+
+DRAWING REQUEST — ALREADY ESTABLISHED. The user asked for a DIAGRAM, not a dashboard. This
+was determined from their own wording before you were called; do not re-litigate it from
+the query text, which a clarification round-trip may have reduced to a report name.
+  • Emit exactly ONE artifact card and NO chart, KPI, ranked-list or table cards.
+  • Prefer mermaid-artifact — this is a graph of nodes and edges. Reserve svg-artifact for
+    a bespoke annotated drawing Mermaid genuinely cannot express.
+  • Ground the node labels in real figures from the DATA SAMPLE above, so the diagram
+    carries measured values rather than invented ones.`;
+  }
+  if (drawKind === 'html') {
+    return `
+
+DOCUMENT REQUEST — ALREADY ESTABLISHED. The user asked for a formatted written document,
+not a dashboard. Emit exactly ONE html-artifact card with real headings and prose, and no
+chart or KPI cards. Ground every figure in the DATA SAMPLE above.`;
+  }
+  return '';
+}
+
 export async function generateReport(
   query: string,
   shape: ShapeSignature,
@@ -1429,6 +2015,10 @@ export async function generateReport(
   priorContext?: string,
   provider: LLMProvider = 'gemma',
   outputMode?: OutputMode,   // Phase 2: inert — logged for observability, never enforced
+  // Set when the request has ALREADY been established as a drawing/writing request, by
+  // the enumerated patterns or by the classifier. See DRAW_DIRECTIVE for why telling the
+  // generator beats leaving it to re-read the wording.
+  drawKind?: 'svg' | 'html' | null,
 ): Promise<LLMReport> {
   if (outputMode) console.log(`[generateReport] outputMode=${outputMode} (observed, not enforced)`);
   const allColumns = Object.keys(shape.columnTypes);
@@ -1448,7 +2038,7 @@ ${entityHighlight}
 DATA SAMPLE (${Math.min(sampleRows.length, MAX_SAMPLE_ROWS)} rows, query-relevant entities first):
 ${compactSample}
 
-Design the best response to this query. Use EXACT_COLUMNS for all key fields. Respond with JSON only.`;
+Design the best response to this query. Use EXACT_COLUMNS for all key fields. Respond with JSON only.${drawDirective(drawKind)}`;
 
   try {
     const raw = await withRetry(() => modelGenerate(provider, {
@@ -1575,14 +2165,14 @@ Apply the edit and return the full modified card tree as JSON.`;
       model: MODEL,
       config: {
         temperature: 0.2,
-        maxOutputTokens: 4000,
+        maxOutputTokens: withThinkingHeadroom(4000),
         responseMimeType: 'application/json',
         systemInstruction: EDIT_REPORT_SYSTEM_PROMPT,
       },
       contents: [{ role: 'user', parts: [{ text: userMessage }] }],
     });
 
-    const raw = response.text ?? '';
+    const raw = requireText(response, 'editReport');
     const cleaned = stripThinkTags(raw);
     const jsonStr = extractJSON(cleaned);
     const parsed = JSON.parse(jsonStr);
@@ -1637,13 +2227,13 @@ export async function callLLM(
       model: MODEL,
       config: {
         temperature: 0.3,
-        maxOutputTokens: 2048,
+        maxOutputTokens: withThinkingHeadroom(2048),
         responseMimeType: 'application/json',
         systemInstruction: system,
       },
       contents: messages,
     });
-    raw = response.text ?? '';
+    raw = requireText(response, 'callLLM');
   }
 
   const cleaned = stripThinkTags(raw);

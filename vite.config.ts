@@ -16,4 +16,13 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  optimizeDeps: {
+    // Pre-bundle mermaid at dev-server start. It is only reached through a dynamic
+    // import inside MermaidArtifact, so Vite would otherwise discover it the first
+    // time a report contains a diagram — and re-optimizing mid-session kills the
+    // in-flight request with "504 (Outdated Optimize Dep)", leaving the card stuck
+    // on its loading placeholder until a manual reload. Observed in dev; production
+    // builds are unaffected, and this does NOT put mermaid in the initial bundle.
+    include: ['mermaid'],
+  },
 })

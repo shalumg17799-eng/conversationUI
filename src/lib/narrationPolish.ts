@@ -6,14 +6,19 @@
 // in-app preview consistent with the exported video.)
 
 import type { VideoScript } from '@/remotion/types';
+import { factLines } from '@/lib/chartFacts';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export async function polishScriptNarration(script: VideoScript, signal?: AbortSignal): Promise<VideoScript> {
+  // Same context shape the render path builds (see videoJobs.ts): what is actually
+  // on the slide, plus the facts measured from the chart being drawn. The facts
+  // outrank the prose, so the preview's voiceover names the same peak the bars show.
   const scenes = script.scenes.map(s => ({
     kind: s.visual.kind,
     heading: s.onScreenText.heading,
     onScreen: [s.onScreenText.heading, s.onScreenText.sub, ...(s.onScreenText.bullets ?? [])].filter(Boolean),
+    facts: factLines(s.visual.chart),
     dataHint: s.narration,
   }));
   try {

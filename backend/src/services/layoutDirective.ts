@@ -30,22 +30,144 @@ import { modelGenerate, LLMProvider } from './llmHandler';
 // These enums ARE the contract. Anything outside them is rejected. Keep them small
 // and deliberate — every value here must have a corresponding frontend behavior.
 
-/** Which layout surface the operation targets. */
-export const LAYOUT_TARGETS = [
-  'right_panel',   // the report / preview panel (the "right panel" users refer to)
-  'left_panel',    // the Talk-history secondary nav
-  'nav_rail',      // the icon navigation rail
-  'chat_panel',    // the main conversation column
-  'header',        // the whole top bar (logo / search / persona) — dockable top or bottom
-  'header_logo',   // just the "Report Hub" logo / product mark inside the header — show/hide
-  'header_search', // just the global search bar inside the header — show/hide
-  'mode_toggle',   // the floating Static/LLM response-mode pill — show/hide only
-] as const;
-export type LayoutTarget = (typeof LAYOUT_TARGETS)[number];
-
 /** Allowed operations. */
-export const LAYOUT_OPS = ['move', 'toggle', 'resize', 'density', 'style', 'reset'] as const;
+export const LAYOUT_OPS = [
+  'move', 'toggle', 'resize', 'density', 'style', 'reset',
+  // Added in the registry refactor. Every one is bounded by its own enum below —
+  // there is deliberately no op that accepts a free-form value.
+  'split',       // chat <-> report ratio
+  'focus',       // maximize one surface, collapse the rest
+  'text_scale',  // accessibility text sizing
+  'theme',       // light / dark / system
+  'high_contrast',
+  'preset',      // named bundle that expands to several of the above
+] as const;
 export type LayoutOp = (typeof LAYOUT_OPS)[number];
+
+/** Which broad kind of surface a target is — drives grouping in the Customize menu. */
+export const LAYOUT_CATEGORIES = ['panel', 'element', 'control'] as const;
+export type LayoutCategory = (typeof LAYOUT_CATEGORIES)[number];
+
+/**
+ * One registered, customizable surface.
+ *
+ * THE REGISTRY IS THE CONTRACT. Natural language never reaches a DOM node or a CSS
+ * property — it resolves to an `id` in this list, or it is refused. Adding a surface
+ * here is the ONLY way to make it customizable, and every entry must have real
+ * rendering behind it (see the frontend mirror in LayoutPrefsContext.tsx).
+ *
+ * `aliases` are what users actually say. They are matched case-insensitively on word
+ * boundaries, so they need to be the natural phrasings ("profile icon", "avatar",
+ * "bell"), not synonyms of the internal id.
+ */
+export interface LayoutTargetSpec {
+  readonly id: string;
+  readonly label: string;
+  readonly aliases: readonly string[];
+  readonly category: LayoutCategory;
+  readonly allowedOps: readonly LayoutOp[];
+  readonly default: {
+    readonly position: 'left' | 'right' | 'top' | 'bottom';
+    readonly visible: boolean;
+    readonly size: 'narrow' | 'default' | 'wide' | 'full';
+  };
+  /**
+   * true => this surface is the user's escape hatch and can never be hidden.
+   * Enforced in capabilityReason, so "hide everything" cannot lock anyone out.
+   */
+  readonly essential?: boolean;
+}
+
+export const LAYOUT_TARGET_REGISTRY = [
+  // ── Panels — the major surfaces ────────────────────────────────────────────
+  {
+    id: 'right_panel', label: 'report panel', category: 'panel',
+    aliases: ['report panel', 'right panel', 'preview panel', 'report', 'preview', 'side panel'],
+    allowedOps: ['move', 'toggle', 'resize', 'style', 'density', 'focus', 'split'],
+    default: { position: 'right', visible: true, size: 'default' },
+  },
+  {
+    id: 'left_panel', label: 'history panel', category: 'panel',
+    aliases: ['history panel', 'left panel', 'talk history', 'history', 'conversation list', 'sidebar'],
+    allowedOps: ['toggle', 'resize', 'style'],
+    default: { position: 'left', visible: true, size: 'default' },
+  },
+  {
+    id: 'nav_rail', label: 'navigation rail', category: 'panel',
+    aliases: ['navigation rail', 'nav rail', 'nav bar', 'icon rail', 'navigation', 'left rail'],
+    allowedOps: ['toggle'],
+    default: { position: 'left', visible: true, size: 'default' },
+  },
+  {
+    id: 'chat_panel', label: 'chat panel', category: 'panel',
+    aliases: ['chat panel', 'chat', 'conversation', 'workspace', 'main panel', 'talk panel'],
+    allowedOps: ['toggle', 'style', 'density', 'focus', 'split'],
+    default: { position: 'left', visible: true, size: 'default' },
+  },
+  {
+    id: 'header', label: 'header', category: 'panel',
+    aliases: ['header', 'top bar', 'toolbar', 'app bar', 'title bar'],
+    allowedOps: ['move', 'toggle'],
+    default: { position: 'top', visible: true, size: 'default' },
+  },
+
+  // ── Elements — individual controls inside the chrome ───────────────────────
+  {
+    id: 'header_logo', label: 'logo', category: 'element',
+    aliases: ['logo', 'brand', 'product mark', 'report hub logo', 'wordmark'],
+    allowedOps: ['toggle'],
+    default: { position: 'left', visible: true, size: 'default' },
+  },
+  {
+    id: 'header_search', label: 'search bar', category: 'element',
+    aliases: ['search bar', 'search', 'search box', 'search field', 'global search'],
+    allowedOps: ['toggle'],
+    default: { position: 'top', visible: true, size: 'default' },
+  },
+  {
+    id: 'profile', label: 'profile icon', category: 'element',
+    aliases: ['profile icon', 'profile', 'avatar', 'user icon', 'account icon', 'account', 'user avatar', 'my profile'],
+    allowedOps: ['toggle'],
+    default: { position: 'right', visible: true, size: 'default' },
+  },
+  {
+    id: 'notifications', label: 'notifications', category: 'element',
+    aliases: ['notifications', 'notification icon', 'notification bell', 'bell', 'alerts', 'alert icon'],
+    allowedOps: ['toggle'],
+    default: { position: 'right', visible: true, size: 'default' },
+  },
+  {
+    id: 'persona_selector', label: 'persona selector', category: 'element',
+    aliases: ['persona selector', 'persona switcher', 'persona picker', 'persona', 'role selector', 'role switcher'],
+    allowedOps: ['toggle'],
+    default: { position: 'right', visible: true, size: 'default' },
+  },
+
+  // ── Controls ───────────────────────────────────────────────────────────────
+  {
+    id: 'mode_toggle', label: 'Static/LLM toggle', category: 'control',
+    aliases: ['mode toggle', 'static llm toggle', 'llm toggle', 'response mode', 'static toggle', 'mode pill'],
+    allowedOps: ['toggle'],
+    default: { position: 'bottom', visible: true, size: 'default' },
+  },
+  {
+    id: 'layout_controls', label: 'layout controls', category: 'control',
+    aliases: ['layout controls', 'customize button', 'customise button', 'reset layout', 'layout button', 'customize menu'],
+    // Deliberately NO 'toggle': this is the control that undoes everything else.
+    // Hiding it is how a user locks themselves out of their own UI.
+    allowedOps: [],
+    default: { position: 'bottom', visible: true, size: 'default' },
+    essential: true,
+  },
+] as const satisfies readonly LayoutTargetSpec[];
+
+export type LayoutTarget = (typeof LAYOUT_TARGET_REGISTRY)[number]['id'];
+
+/** Ordered id list — kept for the Ajv enum and for callers that just want the ids. */
+export const LAYOUT_TARGETS = LAYOUT_TARGET_REGISTRY.map(t => t.id) as readonly LayoutTarget[];
+
+export const TARGET_BY_ID: Record<LayoutTarget, LayoutTargetSpec> =
+  Object.fromEntries(LAYOUT_TARGET_REGISTRY.map(t => [t.id, t])) as unknown as Record<LayoutTarget, LayoutTargetSpec>;
 
 /** move — where a panel is docked. */
 export const LAYOUT_POSITIONS = ['left', 'right', 'top', 'bottom'] as const;
@@ -73,14 +195,100 @@ export type LayoutStyleProp = (typeof LAYOUT_STYLE_PROPS)[number];
 export const LAYOUT_COLORS = ['white', 'black', 'light', 'dark', 'neutral', 'transparent', 'default'] as const;
 export type LayoutColor = (typeof LAYOUT_COLORS)[number];
 
+/** split — the REPORT panel's share of the chat/report split, as a percentage step.
+ *  Strings, not numbers, so the value set stays a closed enum Ajv can police. */
+export const LAYOUT_SPLITS = ['30', '50', '70'] as const;
+export type LayoutSplit = (typeof LAYOUT_SPLITS)[number];
+
+/** focus — which surface is maximized. 'none' leaves focus mode. Only the two
+ *  primary work surfaces can be focused; focusing a header element is meaningless. */
+export const LAYOUT_FOCUS_TARGETS = ['chat_panel', 'right_panel', 'none'] as const;
+export type LayoutFocusTarget = (typeof LAYOUT_FOCUS_TARGETS)[number];
+
+/** text_scale — accessibility text sizing. Named steps, never a px value. */
+export const LAYOUT_TEXT_SCALES = ['small', 'default', 'large', 'xl'] as const;
+export type LayoutTextScale = (typeof LAYOUT_TEXT_SCALES)[number];
+
+/** theme — 'system' follows the OS setting. */
+export const LAYOUT_THEMES = ['light', 'dark', 'system'] as const;
+export type LayoutTheme = (typeof LAYOUT_THEMES)[number];
+
+/** high_contrast / other on-off switches. 'toggle' flips the current value. */
+export const LAYOUT_SWITCHES = ['on', 'off', 'toggle'] as const;
+export type LayoutSwitch = (typeof LAYOUT_SWITCHES)[number];
+
+/** preset — a named bundle. The expansion lives in LAYOUT_PRESETS below so chat
+ *  commands and UI clicks produce byte-identical state. */
+export const LAYOUT_PRESETS_IDS = ['default', 'compact', 'focus', 'presentation', 'reading', 'analyst'] as const;
+export type LayoutPresetId = (typeof LAYOUT_PRESETS_IDS)[number];
+
+/** Surfaces whose density can be set independently of the global setting. */
+export const DENSITY_SCOPES = ['chat_panel', 'right_panel'] as const;
+export type DensityScope = (typeof DENSITY_SCOPES)[number];
+
 // Discriminated union — one directive = one atomic layout change.
 export type LayoutDirective =
   | { op: 'move'; target: LayoutTarget; position: LayoutPosition }
   | { op: 'toggle'; target: LayoutTarget; visibility: LayoutVisibility }
   | { op: 'resize'; target: LayoutTarget; size: LayoutSize }
-  | { op: 'density'; density: LayoutDensity }
+  // density with no target is global; with a target it scopes to that surface.
+  | { op: 'density'; density: LayoutDensity; target?: DensityScope }
   | { op: 'style'; target: LayoutTarget; property: LayoutStyleProp; color: LayoutColor }
+  | { op: 'split'; ratio: LayoutSplit }
+  | { op: 'focus'; target: LayoutFocusTarget }
+  | { op: 'text_scale'; scale: LayoutTextScale }
+  | { op: 'theme'; theme: LayoutTheme }
+  | { op: 'high_contrast'; value: LayoutSwitch }
+  | { op: 'preset'; preset: LayoutPresetId }
   | { op: 'reset' }; // restore every surface to its default layout
+
+/**
+ * Named presets, expressed AS DIRECTIVES rather than as raw preference blobs.
+ *
+ * That is the important part: a preset is just a scripted sequence of the same
+ * operations a user could issue by hand, so it cannot express anything the normal
+ * contract forbids, and it flows through the identical validate → apply path. Adding
+ * a preset can never widen the security surface.
+ *
+ * Every preset starts from `reset` so it is absolute, not relative to whatever the
+ * user had before — "compact preset" means the same thing twice in a row.
+ */
+export const LAYOUT_PRESETS: Record<LayoutPresetId, LayoutDirective[]> = {
+  default: [{ op: 'reset' }],
+  compact: [
+    { op: 'reset' },
+    { op: 'density', density: 'compact' },
+    { op: 'text_scale', scale: 'small' },
+    { op: 'resize', target: 'left_panel', size: 'narrow' },
+  ],
+  focus: [
+    { op: 'reset' },
+    { op: 'focus', target: 'chat_panel' },
+    { op: 'toggle', target: 'left_panel', visibility: 'hide' },
+    { op: 'toggle', target: 'nav_rail', visibility: 'hide' },
+  ],
+  presentation: [
+    { op: 'reset' },
+    { op: 'focus', target: 'right_panel' },
+    { op: 'toggle', target: 'left_panel', visibility: 'hide' },
+    { op: 'toggle', target: 'nav_rail', visibility: 'hide' },
+    { op: 'text_scale', scale: 'large' },
+    { op: 'density', density: 'spacious' },
+  ],
+  reading: [
+    { op: 'reset' },
+    { op: 'text_scale', scale: 'large' },
+    { op: 'density', density: 'spacious' },
+    { op: 'toggle', target: 'header_search', visibility: 'hide' },
+    { op: 'toggle', target: 'notifications', visibility: 'hide' },
+  ],
+  analyst: [
+    { op: 'reset' },
+    { op: 'split', ratio: '70' },
+    { op: 'resize', target: 'right_panel', size: 'wide' },
+    { op: 'density', density: 'compact', target: 'right_panel' },
+  ],
+};
 
 export interface LayoutDirectiveBatch {
   directives: LayoutDirective[];
@@ -123,8 +331,49 @@ const OP_SCHEMAS: Record<LayoutOp, object> = {
   },
   density: {
     type: 'object',
-    properties: { op: { const: 'density' }, density: { type: 'string', enum: [...LAYOUT_DENSITIES] } },
+    properties: {
+      op: { const: 'density' },
+      density: { type: 'string', enum: [...LAYOUT_DENSITIES] },
+      // Optional: absent = global, present = scoped to that one surface.
+      target: { type: 'string', enum: [...DENSITY_SCOPES] },
+    },
     required: ['op', 'density'],
+    additionalProperties: false,
+  },
+  split: {
+    type: 'object',
+    properties: { op: { const: 'split' }, ratio: { type: 'string', enum: [...LAYOUT_SPLITS] } },
+    required: ['op', 'ratio'],
+    additionalProperties: false,
+  },
+  focus: {
+    type: 'object',
+    properties: { op: { const: 'focus' }, target: { type: 'string', enum: [...LAYOUT_FOCUS_TARGETS] } },
+    required: ['op', 'target'],
+    additionalProperties: false,
+  },
+  text_scale: {
+    type: 'object',
+    properties: { op: { const: 'text_scale' }, scale: { type: 'string', enum: [...LAYOUT_TEXT_SCALES] } },
+    required: ['op', 'scale'],
+    additionalProperties: false,
+  },
+  theme: {
+    type: 'object',
+    properties: { op: { const: 'theme' }, theme: { type: 'string', enum: [...LAYOUT_THEMES] } },
+    required: ['op', 'theme'],
+    additionalProperties: false,
+  },
+  high_contrast: {
+    type: 'object',
+    properties: { op: { const: 'high_contrast' }, value: { type: 'string', enum: [...LAYOUT_SWITCHES] } },
+    required: ['op', 'value'],
+    additionalProperties: false,
+  },
+  preset: {
+    type: 'object',
+    properties: { op: { const: 'preset' }, preset: { type: 'string', enum: [...LAYOUT_PRESETS_IDS] } },
+    required: ['op', 'preset'],
     additionalProperties: false,
   },
   style: {
@@ -146,50 +395,111 @@ const OP_SCHEMAS: Record<LayoutOp, object> = {
   },
 };
 
-const OP_VALIDATORS: Record<LayoutOp, ValidateFunction> = {
-  move: ajv.compile(OP_SCHEMAS.move),
-  toggle: ajv.compile(OP_SCHEMAS.toggle),
-  resize: ajv.compile(OP_SCHEMAS.resize),
-  density: ajv.compile(OP_SCHEMAS.density),
-  style: ajv.compile(OP_SCHEMAS.style),
-  reset: ajv.compile(OP_SCHEMAS.reset),
-};
+// Compiled from the schema table itself, so adding an op to LAYOUT_OPS + OP_SCHEMAS
+// is all it takes — there is no third place to forget.
+const OP_VALIDATORS: Record<LayoutOp, ValidateFunction> =
+  Object.fromEntries(
+    LAYOUT_OPS.map(op => [op, ajv.compile(OP_SCHEMAS[op])]),
+  ) as Record<LayoutOp, ValidateFunction>;
 
 // ── Per-surface capabilities ───────────────────────────────────────────────────
 // Which ops each surface ACTUALLY renders. A directive that is schema-valid but names
 // an op a surface cannot perform is rejected here with a clear reason — so the chat
 // never says "Done" for something that would not visibly change (the phantom-success
 // bug: "move the nav rail to the right" claimed success but did nothing).
-const TARGET_OPS: Record<LayoutTarget, LayoutOp[]> = {
-  right_panel: ['move', 'toggle', 'resize', 'style'],
-  left_panel: ['toggle', 'resize', 'style'],
-  chat_panel: ['toggle', 'style'],
-  nav_rail: ['toggle'],
-  header: ['move', 'toggle'],       // move: top/bottom only (checked below)
-  header_logo: ['toggle'],
-  header_search: ['toggle'],
-  mode_toggle: ['toggle'],
+// Both maps now come straight off the registry, so a new surface cannot be half-registered.
+const TARGET_OPS: Record<LayoutTarget, readonly LayoutOp[]> =
+  Object.fromEntries(LAYOUT_TARGET_REGISTRY.map(t => [t.id, t.allowedOps])) as unknown as Record<LayoutTarget, readonly LayoutOp[]>;
+
+const TARGET_LABEL_FOR_REASON: Record<LayoutTarget, string> =
+  Object.fromEntries(LAYOUT_TARGET_REGISTRY.map(t => [t.id, t.label])) as unknown as Record<LayoutTarget, string>;
+
+const OP_VERB: Partial<Record<LayoutOp, string>> = {
+  toggle: 'shown/hidden', move: 'moved', resize: 'resized', style: 'restyled',
+  density: 'made denser/roomier', focus: 'focused', split: 'split with the chat',
 };
 
-const TARGET_LABEL_FOR_REASON: Record<LayoutTarget, string> = {
-  right_panel: 'report panel', left_panel: 'history panel', nav_rail: 'navigation rail',
-  chat_panel: 'chat panel', header: 'header', header_logo: 'logo',
-  header_search: 'search bar', mode_toggle: 'Static/LLM toggle',
-};
+/** Ops that carry no `target` field at all — global switches. */
+const GLOBAL_OPS: readonly LayoutOp[] = ['density', 'reset', 'split', 'text_scale', 'theme', 'high_contrast', 'preset'];
 
 // Returns a rejection reason if the surface cannot perform this op, else null.
 function capabilityReason(d: LayoutDirective): string | null {
-  if (d.op === 'density' || d.op === 'reset') return null; // global, no target
-  const allowed = TARGET_OPS[d.target];
-  const label = TARGET_LABEL_FOR_REASON[d.target];
-  if (!allowed.includes(d.op)) {
-    const verbs = allowed.map(o => o === 'toggle' ? 'shown/hidden' : o === 'move' ? 'moved' : o === 'resize' ? 'resized' : 'restyled');
-    return `the ${label} can only be ${joinList(Array.from(new Set(verbs)))} — not ${d.op}d`;
+  // 'focus' carries a target, but from its own enum (incl. 'none') rather than the
+  // registry, so it is checked separately below.
+  if (d.op === 'focus') {
+    if (d.target === 'none') return null;
+    const spec = TARGET_BY_ID[d.target as LayoutTarget];
+    if (!spec?.allowedOps.includes('focus')) return `the ${spec?.label ?? d.target} cannot be focused`;
+    return null;
   }
-  if (d.op === 'move' && d.target === 'header' && (d.position === 'left' || d.position === 'right')) {
+  if (d.op === 'density' && d.target) {
+    const spec = TARGET_BY_ID[d.target as LayoutTarget];
+    if (!spec?.allowedOps.includes('density')) {
+      return `the ${spec?.label ?? d.target} does not have its own spacing setting`;
+    }
+    return null;
+  }
+  if (GLOBAL_OPS.includes(d.op)) return null; // global, no target to check
+
+  const target = (d as { target: LayoutTarget }).target;
+  const spec = TARGET_BY_ID[target];
+  if (!spec) return `"${String(target)}" is not a customizable surface`;
+
+  // ANTI-LOCKOUT. An essential surface is the user's way back — hiding it strands
+  // them with no way to undo. Refused before the allowedOps check so the message is
+  // specific rather than a generic capability complaint.
+  if (spec.essential && d.op === 'toggle' && d.visibility !== 'show') {
+    return `the ${spec.label} can't be hidden — it's how you undo layout changes`;
+  }
+
+  if (!spec.allowedOps.includes(d.op)) {
+    if (spec.allowedOps.length === 0) return `the ${spec.label} can't be customized`;
+    const verbs = spec.allowedOps.map(o => OP_VERB[o] ?? o);
+    return `the ${spec.label} can only be ${joinList(Array.from(new Set(verbs)))} — not ${d.op}d`;
+  }
+  if (d.op === 'move' && target === 'header' && (d.position === 'left' || d.position === 'right')) {
     return `the header can only dock to the top or bottom, not the ${d.position}`;
   }
   return null;
+}
+
+// ── NL → registry resolution ──────────────────────────────────────────────────
+// Longest alias first, so "report panel" wins over the bare alias "report" and
+// "profile icon" is not shadowed by "profile".
+const ALIAS_INDEX: { alias: string; id: LayoutTarget }[] = LAYOUT_TARGET_REGISTRY
+  .flatMap(t => [t.label, ...t.aliases].map(a => ({ alias: a.toLowerCase(), id: t.id as LayoutTarget })))
+  .sort((a, b) => b.alias.length - a.alias.length);
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Resolve a natural-language phrase to a registered target id, or null.
+ * Matching is on word boundaries so "search" does not fire inside "research".
+ */
+export function resolveTargetFromText(text: string): LayoutTarget | null {
+  const q = text.toLowerCase();
+  for (const { alias, id } of ALIAS_INDEX) {
+    if (new RegExp(`\\b${escapeRe(alias)}\\b`).test(q)) return id;
+  }
+  return null;
+}
+
+/**
+ * What to say when the user asks for something we do not register. Listing the real
+ * options turns a dead end into a discoverable one — the difference between "no" and
+ * "not that, but here is what I can do".
+ */
+export function supportedTargetsMessage(): string {
+  const byCategory = (c: LayoutCategory) =>
+    LAYOUT_TARGET_REGISTRY.filter(t => t.category === c && t.allowedOps.length > 0).map(t => t.label);
+  return [
+    "I can't customize that yet. Here's what I can change:",
+    `• Panels: ${byCategory('panel').join(', ')}`,
+    `• Header items: ${byCategory('element').join(', ')}`,
+    `• Controls: ${byCategory('control').join(', ') || '—'}`,
+    `• Global: spacing (compact/comfortable/spacious), text size, light/dark theme, high contrast, chat/report split`,
+    `• Presets: ${LAYOUT_PRESETS_IDS.join(', ')}`,
+  ].join('\n');
 }
 
 /**
@@ -252,7 +562,7 @@ function summarizeAjvErrors(op: string, errors: NonNullable<ValidateFunction['er
 
 // Surface nouns that mean "a chrome/layout region", not report content.
 const SURFACE_RE =
-  /\b(panel|panels|sidebar|side\s?bar|side\s?panel|rail|nav(?:igation)?\s?(?:rail|bar)?|pane|layout|density|spacing|screen\s?layout|workspace|history\s?(?:panel|list|sidebar)|headers?|top\s?bar|tool\s?bar|mode\s?toggle|response\s?mode|static\s?\/?\s?llm|logo|brand(?:mark|ing)?|word\s?mark|search\s?(?:bar|box|field|input)|chat|conversation|background|backdrop)\b/i;
+  /\b(panel|panels|sidebar|side\s?bar|side\s?panel|rail|nav(?:igation)?\s?(?:rail|bar)?|pane|layout|density|spacing|screen\s?layout|workspace|history\s?(?:panel|list|sidebar)|headers?|top\s?bar|tool\s?bar|mode\s?toggle|response\s?mode|static\s?\/?\s?llm|logo|brand(?:mark|ing)?|word\s?mark|search\s?(?:bar|box|field|input)|chat|conversation|background|backdrop|profile|avatar|user\s?icon|account|notifications?|bell|alerts?|persona|theme|dark\s?mode|light\s?mode|contrast|text\s?size|font\s?size|split|focus|preset)\b/i;
 
 // Layout action verbs. Includes bare comparatives ("wider", "smaller") so
 // "make the panel wider" is recognized even with a noun between verb and adjective.
@@ -261,6 +571,25 @@ const ACTION_RE =
 
 // Density-only phrasing that needs no surface noun.
 const DENSITY_RE = /\b(compact|comfortable|spacious|densit(?:y|ies)|denser|roomier|more\s+(?:compact|spacious|dense))\b/i;
+
+// Global-preference phrasing that needs no surface noun and often no verb either:
+// theme, text size, contrast, focus, split and the named presets. Deliberately
+// specific — a bare "focus" or "split" would be too broad, so each requires the
+// vocabulary that actually accompanies it in a layout command.
+const GLOBAL_PREF_RE = new RegExp(
+  '\\b(?:' +
+  'dark\\s?mode|light\\s?mode|dark\\s?theme|light\\s?theme|system\\s?theme|' +
+  'high[-\\s]?contrast|' +
+  '(?:text|font)\\s*(?:size|scale)?\\s*(?:bigger|larger|smaller|small|large|huge)|' +
+  '(?:bigger|larger|smaller)\\s+(?:text|font)|' +
+  'text\\s?size|font\\s?size|' +
+  'focus\\s+(?:the\\s+)?(?:chat|report|panel)|(?:exit|leave|end)\\s+focus|focus\\s?mode|' +
+  '(?:chat|report)\\s*\\/?\\s*(?:report|chat)?\\s*split|split\\s+(?:the\\s+)?(?:screen|view|layout)|' +
+  '(?:' + LAYOUT_PRESETS_IDS.join('|') + ')\\s*(?:preset|mode|layout|view)|' +
+  'preset' +
+  ')\\b',
+  'i',
+);
 
 // Reset phrasing — restore every surface to its default. Recognized on its own
 // (no surface noun needed): "reset the layout", "restore defaults", "undo my changes".
@@ -313,6 +642,16 @@ export function detectLayoutIntent(query: string): LayoutIntentSignal {
     return { isLayout: true, confidence: hasSurface || hasAction ? 0.95 : 0.8, matched };
   }
 
+  // Bare GLOBAL-PREFERENCE command. Same shape as the density clause above and for
+  // the same reason: these phrasings name a setting, not a surface, and often carry
+  // no action verb at all ("dark mode", "high contrast", "presentation mode").
+  // Requiring surface+action sent every one of them to the data pipeline, which then
+  // ran a BigQuery query for "dark mode" — observed, not hypothetical.
+  if (GLOBAL_PREF_RE.test(q) && !mentionsReportContent) {
+    matched.push('global-pref');
+    return { isLayout: true, confidence: 0.85, matched };
+  }
+
   // Surface + action is the strong signal ("move the right panel to the bottom").
   if (hasSurface && hasAction) {
     return { isLayout: true, confidence: 0.95, matched };
@@ -336,16 +675,25 @@ export function detectLayoutIntent(query: string): LayoutIntentSignal {
 
 // Map free-text target phrases → canonical LayoutTarget.
 function resolveTarget(q: string): LayoutTarget | null {
+  // Phrasings the registry aliases can't express cleanly, checked FIRST because they
+  // carry negative context a plain alias match would get wrong.
+  //   - "search" must not fire on "search for revenue"
+  //   - header sub-elements must beat the bar itself ("the logo in the header")
+  if (/\bsearch\s?(?:bar|box|field|input)\b/i.test(q)) return 'header_search';
+  if (/\b(?:the\s+)?search\b(?!\s+for\b)/i.test(q)) return 'header_search';
+
+  // Registry aliases, longest first. This is what makes a newly registered surface
+  // addressable in natural language without touching the parser.
+  const fromRegistry = resolveTargetFromText(q);
+  if (fromRegistry) return fromRegistry;
+
+  // Legacy phrasings kept as a safety net, plus the bare-noun defaults.
   if (/\bmode\s?toggle\b|\bresponse\s?mode\b|\bstatic\s?\/?\s?llm\b|\bllm\s?\/?\s?static\b|\b(static|llm)\s+(?:mode\s+)?(?:toggle|switch|pill)\b/i.test(q)) return 'mode_toggle';
-  // Header SUB-elements must be checked before the whole header — "the logo in the
-  // header" names the logo, not the bar.
-  if (/\blogo\b|\bbrand(?:mark|ing)?\b|\bword\s?mark\b|\bproduct\s?mark\b|\breport\s?hub\s+(?:logo|mark|name)\b/i.test(q)) return 'header_logo';
-  if (/\bsearch\s?(?:bar|box|field|input)\b|\b(?:the\s+)?search\b(?!\s+for\b)/i.test(q)) return 'header_search';
-  if (/\bheaders?\b|\btop\s?bar\b|\btool\s?bar\b/i.test(q)) return 'header';
-  if (/\b(report|preview|right)\b.*\bpanel\b|\bright\s?panel\b|\breport\s?panel\b|\bpreview\s?panel\b/i.test(q)) return 'right_panel';
-  if (/\b(history|talk|left)\b.*\b(panel|sidebar|list)\b|\bleft\s?panel\b|\bleft\s?sidebar\b|\bhistory\s?(panel|sidebar|list)\b/i.test(q)) return 'left_panel';
+  if (/\bbrand(?:mark|ing)?\b|\bword\s?mark\b|\bproduct\s?mark\b|\breport\s?hub\s+(?:logo|mark|name)\b/i.test(q)) return 'header_logo';
+  if (/\b(report|preview|right)\b.*\bpanel\b/i.test(q)) return 'right_panel';
+  if (/\b(history|talk|left)\b.*\b(panel|sidebar|list)\b/i.test(q)) return 'left_panel';
   if (/\bnav(?:igation)?\s?(?:rail|bar)?\b|\brail\b|\bicon\s?(?:rail|bar)\b/i.test(q)) return 'nav_rail';
-  if (/\bchat\b|\bconversation\b|\bmain\s?(panel|area|column)\b/i.test(q)) return 'chat_panel';
+  if (/\bmain\s?(panel|area|column)\b/i.test(q)) return 'chat_panel';
   // Bare "panel"/"sidebar" defaults to the right panel — the one users reposition most.
   if (/\bside\s?bar\b|\bleft\b/i.test(q)) return 'left_panel';
   if (/\bpanel\b|\bpane\b/i.test(q)) return 'right_panel';
@@ -381,13 +729,69 @@ export function deterministicParse(query: string): LayoutDirective[] {
   // reset — restore defaults; standalone, overrides everything else in the query.
   if (RESET_RE.test(q)) return [{ op: 'reset' }];
 
-  // density — global, no target needed
-  if (DENSITY_RE.test(q)) {
-    const density = resolveDensity(q);
-    if (density) out.push({ op: 'density', density });
-  }
+  // preset — a named bundle; like reset it is absolute, so it wins outright.
+  //
+  // Three preset names collide with ordinary op vocabulary: "compact" is a density
+  // value, "focus" is an op, "default" is a size. For those the word "preset" is
+  // REQUIRED, otherwise "compact layout" (a density command since day one) would be
+  // silently reinterpreted as a preset — caught by the existing test.
+  const AMBIGUOUS: readonly string[] = ['compact', 'focus', 'default'];
+  const preset = LAYOUT_PRESETS_IDS.find(p =>
+    AMBIGUOUS.includes(p)
+      ? new RegExp(`\\b${p}\\b[\\s-]*preset\\b|\\bpreset\\b[\\s-]*${p}\\b`, 'i').test(q)
+      : new RegExp(`\\b${p}\\b\\s*(?:preset|layout|mode|view)\\b|\\b(?:apply|switch\\s+to|use)\\s+(?:the\\s+)?${p}\\b`, 'i').test(q));
+  if (preset) return [{ op: 'preset', preset }];
 
   const target = resolveTarget(q);
+
+  // density — global unless the query also names a surface that has its own spacing.
+  if (DENSITY_RE.test(q)) {
+    const density = resolveDensity(q);
+    if (density) {
+      const scoped = (DENSITY_SCOPES as readonly string[]).includes(target as string)
+        ? (target as DensityScope) : undefined;
+      out.push(scoped ? { op: 'density', density, target: scoped } : { op: 'density', density });
+    }
+  }
+
+  // theme — "dark mode", "light theme", "follow my system"
+  if (/\b(dark|light|system)\s*(mode|theme)\b|\bswitch\s+to\s+(dark|light)\b/i.test(q)) {
+    const theme: LayoutTheme | null =
+      /\bdark\b/i.test(q) ? 'dark' : /\blight\b/i.test(q) ? 'light' : /\bsystem\b/i.test(q) ? 'system' : null;
+    if (theme) out.push({ op: 'theme', theme });
+  }
+
+  // high contrast — checked before text_scale so "high contrast" isn't read as sizing.
+  if (/\bhigh[-\s]?contrast\b/i.test(q)) {
+    out.push({ op: 'high_contrast', value: /\b(off|disable|remove|stop|no)\b/i.test(q) ? 'off' : 'on' });
+  }
+
+  // text_scale — only when the query is explicitly about TEXT, so "make the panel
+  // bigger" stays a resize rather than silently changing the font size.
+  if (/\b(text|font|type|letters?)\b/i.test(q)) {
+    const scale: LayoutTextScale | null =
+      /\b(xl|extra\s?large|much\s+bigger|hugest?)\b/i.test(q) ? 'xl'
+      : /\b(bigger|larger|large|increase|bump|grow)\b/i.test(q) ? 'large'
+      : /\b(smaller|small|tiny|decrease|reduce|shrink)\b/i.test(q) ? 'small'
+      : /\b(default|normal|reset)\b/i.test(q) ? 'default' : null;
+    if (scale) out.push({ op: 'text_scale', scale });
+  }
+
+  // focus — "focus the report", "just show the chat", "exit focus"
+  if (/\bfocus\b|\bfocus\s+mode\b|\bjust\s+(?:the\s+)?(chat|report)\b|\bonly\s+(?:the\s+)?(chat|report)\b/i.test(q)) {
+    if (/\b(exit|leave|end|stop|off|un)\s*focus\b|\bfocus\s+off\b|\bshow\s+everything\b/i.test(q)) {
+      out.push({ op: 'focus', target: 'none' });
+    } else if (target === 'right_panel' || target === 'chat_panel') {
+      out.push({ op: 'focus', target });
+    }
+  }
+
+  // split — the ratio is the REPORT's share.
+  if (/\bsplit\b|\bratio\b|\bside[-\s]?by[-\s]?side\b/i.test(q)) {
+    const m = /\b(30|50|70)\b/.exec(q);
+    if (m) out.push({ op: 'split', ratio: m[1] as LayoutSplit });
+    else if (/\b(even|equal|half)\b/i.test(q)) out.push({ op: 'split', ratio: '50' });
+  }
 
   // move — "move X to the bottom", "put the panel on the left"
   if (target && /\b(move|reposition|relocate|dock|put|place|shift|send)\b/i.test(q)) {
@@ -471,12 +875,31 @@ Each directive is exactly ONE of these shapes. Do not invent fields or values.
 6. Reset the whole layout to defaults (no target — "reset the layout", "restore defaults",
    "undo my changes", "put everything back"):
    { "op": "reset" }
+7. Spacing for ONE surface only ("make the chat spacious", "compact report panel"):
+   { "op": "density", "density": "compact" | "comfortable" | "spacious",
+     "target": ${DENSITY_SCOPES.map(s => `"${s}"`).join(' | ')} }
+8. Chat/report split — the number is the REPORT's share ("give the report more room" → "70"):
+   { "op": "split", "ratio": ${LAYOUT_SPLITS.map(s => `"${s}"`).join(' | ')} }
+9. Focus one surface and collapse the rest ("focus the report", "just the chat");
+   "none" leaves focus mode ("exit focus", "show everything again"):
+   { "op": "focus", "target": ${LAYOUT_FOCUS_TARGETS.map(s => `"${s}"`).join(' | ')} }
+10. Text size ("make the text bigger", "smaller font"):
+   { "op": "text_scale", "scale": ${LAYOUT_TEXT_SCALES.map(s => `"${s}"`).join(' | ')} }
+11. Theme ("dark mode", "light theme", "follow my system"):
+   { "op": "theme", "theme": ${LAYOUT_THEMES.map(s => `"${s}"`).join(' | ')} }
+12. High contrast ("high contrast", "turn off high contrast"):
+   { "op": "high_contrast", "value": ${LAYOUT_SWITCHES.map(s => `"${s}"`).join(' | ')} }
+13. A named preset ("compact preset", "presentation mode", "reading layout"):
+   { "op": "preset", "preset": ${LAYOUT_PRESETS_IDS.map(s => `"${s}"`).join(' | ')} }
 
-<TARGET> is one of: "right_panel" (report/preview panel), "left_panel" (talk history),
-"nav_rail" (icon nav), "chat_panel" (main conversation), "header" (the WHOLE top bar),
-"header_logo" (just the logo inside the header), "header_search" (just the search bar inside
-the header), "mode_toggle" (the floating Static/LLM response-mode toggle — show/hide only).
-If the user names an element inside the header (logo, search), target that element, not "header".
+<TARGET> is one of:
+${LAYOUT_TARGET_REGISTRY.filter(t => t.allowedOps.length > 0)
+  .map(t => `  "${t.id}" — ${t.label} (also called: ${t.aliases.slice(0, 3).join(', ')}); supports: ${t.allowedOps.join(', ')}`)
+  .join('\n')}
+
+Name the most SPECIFIC surface the user meant: an element inside the header (logo, search,
+profile, notifications, persona selector) targets that element, not "header".
+Never emit a target that is not in the list above, and never emit an op a target does not support.
 
 If the command asks for something outside this set, return { "directives": [] }.`;
 
@@ -687,26 +1110,30 @@ export async function resolveLayout(query: string, provider: LLMProvider = 'gemm
 }
 
 // ── User-facing acknowledgment builder ────────────────────────────────────────
-const TARGET_LABEL: Record<LayoutTarget, string> = {
-  right_panel: 'report panel',
-  left_panel: 'history panel',
-  nav_rail: 'navigation rail',
-  chat_panel: 'chat panel',
-  header: 'header',
-  header_logo: 'logo',
-  header_search: 'search bar',
-  mode_toggle: 'Static/LLM toggle',
-};
+// Labels come from the registry — one place to rename a surface.
+const TARGET_LABEL: Record<LayoutTarget, string> = TARGET_LABEL_FOR_REASON;
 
 function describe(d: LayoutDirective): string {
   switch (d.op) {
     case 'move': return `moved the ${TARGET_LABEL[d.target]} to the ${d.position}`;
     case 'toggle': return `${d.visibility === 'hide' ? 'hid' : d.visibility === 'show' ? 'showed' : 'toggled'} the ${TARGET_LABEL[d.target]}`;
     case 'resize': return `set the ${TARGET_LABEL[d.target]} to ${d.size} width`;
-    case 'density': return `switched to a ${d.density} layout`;
+    case 'density': return d.target
+      ? `made the ${TARGET_LABEL[d.target as LayoutTarget]} ${d.density}`
+      : `switched to a ${d.density} layout`;
     case 'style': return d.color === 'default'
       ? `restored the ${TARGET_LABEL[d.target]} ${d.property === 'text' ? 'text color' : 'background'}`
       : `set the ${TARGET_LABEL[d.target]} ${d.property === 'text' ? 'text' : 'background'} to ${d.color}`;
+    case 'split': return `set the chat/report split to ${100 - Number(d.ratio)}/${d.ratio}`;
+    case 'focus': return d.target === 'none'
+      ? 'left focus mode'
+      : `focused the ${TARGET_LABEL[d.target as LayoutTarget]}`;
+    case 'text_scale': return d.scale === 'default'
+      ? 'restored the default text size'
+      : `set the text size to ${d.scale}`;
+    case 'theme': return `switched to the ${d.theme} theme`;
+    case 'high_contrast': return `${d.value === 'off' ? 'turned off' : d.value === 'on' ? 'turned on' : 'toggled'} high contrast`;
+    case 'preset': return `applied the ${d.preset} preset`;
     case 'reset': return `reset the layout to its defaults`;
   }
 }

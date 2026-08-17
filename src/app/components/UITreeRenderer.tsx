@@ -14,6 +14,8 @@ import { GenerativeTable } from './GenerativeTable';
 import { ReportSkeleton } from './ReportSkeleton';
 import { RenderType } from './renderTypes';
 import { sanitizeArtifact, buildArtifactSrcDoc } from './artifactSanitizer';
+import { ArtifactShell, ArtifactFallback } from './ArtifactShell';
+import { FB, FI, FM, SHADOW_DEFAULT, SHADOW_HOVER, CARD_BASE, CARD_HOVER } from './uiTokens';
 import {
   TrendingUp, TrendingDown, Minus,
   Lightbulb, AlertTriangle, CheckCircle2, Info,
@@ -29,15 +31,7 @@ export interface UITreeNode {
 }
 
 // ── Design tokens (aligned to MASTER.md) ─────────────────────────────────────
-const FB = { fontFamily: '"Bricolage Grotesque", sans-serif' };
-const FI = { fontFamily: 'Inter, sans-serif' };
-const FM = { fontFamily: '"JetBrains Mono", monospace' };
-
-const SHADOW_DEFAULT = '0 1px 2px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.03)';
-const SHADOW_HOVER   = '0 4px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04)';
-
-const CARD_BASE   = 'bg-white rounded-[12px] border border-[#E5E3DF] overflow-hidden';
-const CARD_HOVER  = 'transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] hover:border-[#C8C5BF] hover:-translate-y-px';
+// Definitions moved to ./uiTokens so ArtifactShell can share them without a cycle.
 
 // MASTER.md category palette
 const CHART_COLORS = ['#2563EB', '#7C3AED', '#0D9488', '#D97706', '#D4572A', '#D4183D', '#1D9E75'];
@@ -1070,37 +1064,12 @@ function ReportShell({ title, description, warnings, children }: any) {
 // ════════════════════════════════════════════════════════════════════════════
 // RICH ARTIFACTS (Phase 2, Track D)
 // ════════════════════════════════════════════════════════════════════════════
-// Rendered ONLY inside a sandboxed, isolated-origin iframe — never via
-// dangerouslySetInnerHTML, and never as raw injected markup.
+// The iframe, its sandbox attributes, and the downgrade card now live in
+// ./ArtifactShell — one copy, shared with the lazily-loaded MermaidArtifact.
+// Read the security notes there before changing anything on this path.
 //
-// Layered controls, outermost first:
-//   1. sandbox=""        — empty value = every sandbox restriction applied. No
-//                          allow-scripts and no allow-same-origin, so the frame
-//                          is an opaque origin that cannot execute script,
-//                          navigate the top frame, submit forms, or reach our
-//                          storage/cookies. This is the primary control.
-//   2. CSP (ARTIFACT_CSP) — script-src 'none' + default-src 'none' in the srcdoc
-//                          document. Scoped to this frame only, not app-global.
-//   3. sanitizeArtifact() — allowlist strip before the payload is ever embedded.
-//   4. referrerPolicy / no allow-popups — no outbound signal on render.
-//
-// If sanitizing leaves the content unusable (below the retention threshold, or
-// oversized), we downgrade to plain text rather than render a misleading
-// fragment. See ArtifactFallback below.
-function ArtifactFallback({ title, reason, text }: any) {
-  return (
-    <div className="rounded-[12px] border border-[#E5E3DF] px-5 py-4" style={{ background: '#F4F2EF' }}>
-      {title && <p className="text-[13px] font-semibold text-[#1C1917] mb-1" style={FB}>{title}</p>}
-      {text
-        ? <p className="text-[13px] text-[#6B6965] leading-relaxed whitespace-pre-wrap" style={FI}>{text}</p>
-        : <p className="text-[12px] text-[#8A8785] leading-relaxed" style={FI}>
-            This content could not be displayed safely.
-          </p>}
-      <p className="text-[11px] text-[#8A8785] mt-2" style={FI}>Rich content unavailable ({reason}).</p>
-    </div>
-  );
-}
-
+// This component covers the two kinds whose `content` is already markup. Mermaid
+// carries SOURCE instead, so it compiles first and is handled by MermaidArtifact.
 function ArtifactFrame({ content, title, caption, explanation, variant, kind }: any) {
   // Both memos must run unconditionally and in a stable order — an early return
   // between them would change the hook count when `usable` flips between renders.
@@ -1118,39 +1087,22 @@ function ArtifactFrame({ content, title, caption, explanation, variant, kind }: 
     return <ArtifactFallback title={title} reason={reason} text={plain} />;
   }
 
-  const bare = variant === 'bare';
-
-  const frame = (
-    <iframe
-      // sandbox="" is intentional and load-bearing: an empty token list applies
-      // ALL restrictions. Do not add allow-scripts or allow-same-origin — either
-      // one re-enables the script execution this whole path exists to prevent.
-      sandbox=""
-      srcDoc={srcDoc}
-      title={title || (kind === 'svg' ? 'SVG artifact' : 'HTML artifact')}
-      loading="lazy"
-      referrerPolicy="no-referrer"
-      className="w-full block border-0"
-      style={{ height: kind === 'svg' ? 320 : 420, background: 'transparent' }}
-    />
-  );
-
-  if (bare) return frame;
-
   return (
-    <div className={`${CARD_BASE} ${CARD_HOVER}`} style={{ boxShadow: SHADOW_DEFAULT }}>
-      <div className="p-5">
-        {title && <h4 className="text-[14px] font-semibold text-[#1C1917] mb-3 leading-snug" style={FB}>{title}</h4>}
-        {explanation && <p className="text-[11px] text-[#8A8785] mb-4 leading-relaxed" style={FI}>{explanation}</p>}
-        {frame}
-        {caption && <p className="text-[11px] text-[#8A8785] mt-3 leading-relaxed" style={FI}>{caption}</p>}
-      </div>
-    </div>
+    <ArtifactShell
+      srcDoc={srcDoc} kind={kind} title={title}
+      caption={caption} explanation={explanation} variant={variant}
+    />
   );
 }
 
 function HtmlArtifact(props: any) { return <ArtifactFrame {...props} kind="html" />; }
 function SvgArtifact(props: any)  { return <ArtifactFrame {...props} kind="svg" />; }
+
+// Mermaid is a heavy dependency (hundreds of KB). It must never enter the initial
+// bundle, so the component that dynamically imports it is itself lazy — Vite emits
+// a separate chunk that is fetched only when a report actually contains a diagram.
+// Same pattern as BigQueryDashboard above.
+const MermaidArtifact = lazy(() => import('./MermaidArtifact'));
 
 // ════════════════════════════════════════════════════════════════════════════
 // COMPONENT REGISTRY
@@ -1191,13 +1143,66 @@ const COMPONENT_MAP: Record<RenderType, React.ComponentType<any>> = {
   BigQueryDashboard,
   'html-artifact': HtmlArtifact,
   'svg-artifact': SvgArtifact,
+  'mermaid-artifact': MermaidArtifact,
 };
+
+// Components that are code-split and must therefore mount under a Suspense
+// boundary. Kept as a set so the dispatcher below has one branch, not two.
+const LAZY_TYPES: ReadonlySet<string> = new Set(['BigQueryDashboard', 'mermaid-artifact']);
 
 // ════════════════════════════════════════════════════════════════════════════
 // RECURSIVE RENDERER
 // ════════════════════════════════════════════════════════════════════════════
 
+/**
+ * Isolates ONE card's render failure to that card.
+ *
+ * WHY THIS IS NOT OPTIONAL. React unmounts the whole subtree when a render throws, and
+ * every card in a report is rendered from one array — so a single bad card deleted the
+ * ENTIRE answer, leaving only the assistant's text paragraph above it. That is
+ * indistinguishable, on screen, from "the backend returned no components", and it cost
+ * days: a report was streaming six cards to the browser while the user saw a bare
+ * paragraph and reasonably concluded the feature was broken.
+ *
+ * The failure is now scoped to the card that caused it, and it SAYS SO — a silent blank
+ * is the one outcome that must never happen again. The reason is logged with the
+ * renderType, so the next report of "I just see text" names its own culprit.
+ */
+class CardErrorBoundary extends React.Component<
+  { renderType: string; children: React.ReactNode },
+  { error: Error | null }
+> {
+  state: { error: Error | null } = { error: null };
+
+  static getDerivedStateFromError(error: Error) { return { error }; }
+
+  componentDidCatch(error: Error) {
+    console.error(`[UITreeRenderer] "${this.props.renderType}" failed to render — ` +
+      'the rest of the report is unaffected.', error);
+  }
+
+  render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <div
+        className="p-3 rounded-[10px] border border-dashed border-[#E5E3DF] text-[11px] text-[#8A8785]"
+        style={FI}
+      >
+        <code className="font-mono">{this.props.renderType}</code> could not be displayed.
+      </div>
+    );
+  }
+}
+
 export function UITreeRenderer({ node }: { node: UITreeNode }) {
+  return (
+    <CardErrorBoundary renderType={node.renderType}>
+      <UITreeNodeRenderer node={node} />
+    </CardErrorBoundary>
+  );
+}
+
+function UITreeNodeRenderer({ node }: { node: UITreeNode }) {
   const Component = COMPONENT_MAP[node.renderType];
 
   if (!Component) {
@@ -1222,7 +1227,7 @@ export function UITreeRenderer({ node }: { node: UITreeNode }) {
     </>
   );
 
-  if (node.renderType === 'BigQueryDashboard') {
+  if (LAZY_TYPES.has(node.renderType)) {
     return (
       <Suspense fallback={<ReportSkeleton />}>
         <Component {...node.props} />

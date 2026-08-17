@@ -1,7 +1,8 @@
 # Mermaid — Implementation Plan
 
-**Status:** proposed, not started
+**Status:** **Track M1 implemented** (phases 1 and 3–6). Tracks M2, M3, M4 not started.
 **Target branch:** `P2-SK-Adaptive_UI`
+**Read §12 first if you are reviewing the code** — five things in this plan turned out to be wrong or incomplete once real Mermaid output was measured, and the shipped implementation differs accordingly.
 **Scope:** new `mermaid-artifact` render type (Track M1) + KAG graph serializer (Track M2) + docs diagrams (Track M3); export parity deferred (Track M4)
 **Author's note:** this plan reuses the Phase 2 / Track D rich-artifact machinery end to end. It deliberately introduces **no new render path** — Mermaid becomes SVG on the client, and that SVG travels the existing sanitize → sandboxed-iframe pipeline.
 
@@ -382,4 +383,168 @@ Phases 3–5 land the plumbing with **no behaviour change** — nothing emits `m
 
 1. **`svg-artifact` deprecation?** Once Mermaid covers flowcharts and topologies, `svg-artifact`'s remaining niche is bespoke annotated drawings. Keep both for now, but if telemetry shows Mermaid dominating, narrowing the `svg-artifact` prompt entry would reduce the model's choice surface.
 2. **Per-diagram-type constraints?** `outputModes: ['narrative','full_dashboard']` treats all Mermaid diagrams alike. A `gantt` is arguably closer to a chart than a narrative. Revisit after seeing real usage.
-3. **Should the guard live behind an env flag** (`MERMAID_ENABLED`), following the `KAG_ENABLED` / governor-mode precedent? Given the phase-6 kill switch is already one line, probably unnecessary — but worth a decision before phase 6.
+3. **Should the guard live behind an env flag** (`MERMAID_ENABLED`), following the `KAG_ENABLED` / governor-mode precedent? Given the phase-6 kill switch is already one line, probably unnecessary — but worth a decision before phase 6. *(Resolved: no flag. The prompt-catalogue block remains the kill switch.)*
+
+---
+
+## 12. What actually shipped — corrections to this plan
+
+Track M1 is implemented. Five things in §1–§11 above were wrong or incomplete, and were only visible once real Mermaid 11.16.0 output was generated and measured. They are recorded here rather than silently edited into the plan, because each one is a trap a future reader could fall back into.
+
+### 12.1 The guard's angle-bracket rule (§3.2) would have refused every diagram
+
+The plan specifies *"no `<` or `>` characters | blocks HTML-in-label vectors"*. Mermaid builds its edge syntax **out of** angle brackets — `A --> B`, `A <--> B`, `A <|-- B`, `A ->> B` — so that rule refuses essentially all valid input.
+
+Shipped rule: refuse a **tag-open**, `<` followed by a name char, `/`, `!` or `?` (`TAG_OPEN = /<[a-zA-Z\/!?]/`). Every arrow form has `<` followed by `-`, `|` or `<`, so the two are cleanly separable. Accepted cost: classDiagram `<<interface>>` annotations are refused. `scripts/test_mermaid.ts` has an explicit regression test (`arrow syntax is not mistaken for markup`) so this cannot be "simplified" back.
+
+### 12.2 `htmlLabels: false` on the flowchart config alone is not enough
+
+The plan sets `flowchart: { htmlLabels: false }`. In Mermaid 11 that leaves node labels inside `<foreignObject>`, which the sanitizer strips as a whole subtree — every fixture still rendered, just with **no text in any node**. The failure is silent: retention stays healthy, `usable` stays true, and you get a diagram of empty boxes.
+
+Shipped: **top-level** `htmlLabels: false` as well as the per-diagram flags. Guarded by the `node labels survive — the diagram is not a set of empty boxes` test, which asserts on real label strings.
+
+### 12.3 `useMaxWidth: true` breaks sizing once `style` is stripped
+
+Not anticipated at all. With `useMaxWidth: true` Mermaid emits `width="100%"` **plus an inline `style="max-width:<natural>px"`**. The sanitizer strips `style` attributes, so only `width="100%"` survives and every diagram stretches to fill the frame — a 222px class diagram was observed upscaling ~3.7×, text ballooning with it.
+
+Shipped: `useMaxWidth: false` for every allowed diagram type, so Mermaid writes real `width`/`height` attributes (both already allowlisted) and the wrapper's `svg{max-width:100%;height:auto}` scales large diagrams down without ever scaling small ones up.
+
+### 12.4 `MERMAID_CSS` (§2.3a) was under-specified in three ways
+
+The plan's sketch covers fills and strokes only. What the stripped `<style>` block was actually carrying:
+
+- **Text anchoring.** Node `<text>` elements have no `text-anchor` attribute. Without a replacement rule they render from the node's centre rightwards and overflow the box. The rule must also be **scoped**: Mermaid emits `.node .label text{text-anchor:middle}` *only* for flowcharts, and applying it globally left-shifts classDiagram members, which UML anchors at start. The shipped rule is scoped `svg.flowchart …`, mirroring Mermaid exactly.
+- **Selector qualification.** Mermaid reuses the same class on a container and its label (`.actor`, `.slice`). Unqualified class selectors beat the element-level text rule and paint labels the same colour as their box. Every shipped shape rule is element-qualified (`rect.actor`, not `.actor`).
+- **Font sizing.** The plan's sketch sets a `font:` shorthand on `text`. Mermaid measures and positions labels at render time and relies on its stylesheet to reproduce those exact sizes; overriding them desynchronises text from the geometry computed for it. Shipped CSS sets font-size only where Mermaid does.
+
+Additionally, three inert text-layout attributes (`alignment-baseline`, `font-style`, `transform-origin`) were added to `SVG_ATTRS`, following the existing `markerwidth`/`refx` precedent.
+
+**`themeVariables` are also required, and they are not CSS.** Mermaid bakes some colours into `fill`/`stroke` **presentation attributes**, which survive sanitizing untouched. Styling only through `MERMAID_CSS` produced flowcharts in the app palette next to class/timeline/mindmap diagrams in Mermaid's stock colours — one report, two visual languages. The shipped `initialize()` call passes `themeVariables`. This is not a hole in the `%%{init}%%` ban: that ban is on the **model** supplying theme config through diagram source.
+
+### 12.5 `pie`, `gantt` and `journey` were removed from the allowlist
+
+§3.2 allowlists twelve diagram types. Three were dropped, on two independent grounds:
+
+1. They are **charts**, and the registry already has real chart components that carry data through the normal hydration path. The prompt's own rule — *"a diagram shows STRUCTURE, never measured values"* — argues against them.
+2. They **render wrong here regardless**. Mermaid colours their segments through generated per-index classes (`.pieCircle:nth-of-type`, `.section-type-N`) emitted into the stripped `<style>` block. Verified visually: every pie slice collapsed to one fill and the legend swatches went black. An unreadable chart is worse than no chart.
+
+Shipped allowlist is nine structural types. This also resolves open question §11.2.
+
+### 12.6 Fixtures are real, not hand-authored
+
+§8 calls for "golden pre-rendered SVG fixtures (checked in, so the test needs no browser)" without saying where they come from. `scripts/gen_mermaid_fixtures.mjs` bundles Mermaid with Vite and renders each sample in headless Chromium via the backend's existing `playwright` devDependency, writing `scripts/fixtures/mermaid/*.svg` plus a `VERSION` stamp. `npm run test:mermaid` asserts that stamp matches the installed Mermaid version, so an upgrade without regenerating fails the build rather than silently invalidating `MERMAID_CSS`.
+
+Regenerate with `npm run mermaid:fixtures`. **Every defect in §12.2–§12.5 was found by looking at rendered output, not by reading code** — keep that loop when changing this path.
+
+### 12.7 Measured retention (the §2.3b claim, confirmed)
+
+The plan asserts the `<style>` pre-strip is mandatory rather than cosmetic. It is. With the pre-strip all nine fixtures pass; without it six fall below `MIN_RETENTION_RATIO`, `timeline` most dramatically at ≈0.20 against a 0.6 floor. `test_mermaid.ts` asserts both directions and names `timeline.svg` explicitly so the test cannot be satisfied by a marginal fixture.
+
+### 12.8 Structural change not in the plan: `ArtifactShell`
+
+§3.6 asks for the frame JSX to be extracted so the `sandbox=""` attributes live in one place. Because `MermaidArtifact` is lazy-loaded, that shell could not live in `UITreeRenderer` without an import cycle. It is now [`src/app/components/ArtifactShell.tsx`](../src/app/components/ArtifactShell.tsx), with the shared design tokens moved to [`src/app/components/uiTokens.ts`](../src/app/components/uiTokens.ts). All three artifact kinds mount through it.
+
+### 12.9 A fixed frame height cut real diagrams in half
+
+Found by running the app, not by any test. `ArtifactFrame` gave every artifact a fixed height (320/420px). That is fine for hand-authored SVG, where the model sizes its own viewBox, but Mermaid lays itself out — the live escalation flowchart came back **1704px tall in a 380px frame, with 78% of it invisible**. Nothing errored; the card just looked finished and wasn't.
+
+An iframe cannot size itself to its content, and this one is deliberately cross-origin (`sandbox=""` with no `allow-same-origin`), so the parent can never measure inside it. The fix passes the size *outward*: `MermaidArtifact` reads the `width`/`height` off the sanitized `<svg>` open tag — available only because of §12.3's `useMaxWidth:false` — and hands it to `ArtifactShell` as `intrinsic`. `ArtifactShell` measures its own width with a `ResizeObserver` and derives the height from the same scale factor the wrapper stylesheet applies, clamped to [180, 1200].
+
+Verified at two viewports: at 880px the diagram renders at full size; at 520px the SVG scales down and the frame follows it to 1177px, still showing everything.
+
+### 12.10 Mermaid silently destroys `>` inside labels
+
+The worst defect found, and invisible to every test that existed. The live model output contained `B{"Return Rate > 4%?"}`. It rendered as **"Return Rate 4%?"** — a different condition, displayed confidently, with no error at any layer.
+
+The cause is Mermaid, not this pipeline: `>` is its node-shape syntax (`A>text]`), so a raw `>` in a label is swallowed by its parser. The sanitizer was verified innocent — it round-trips both `>` and `&gt;` correctly. Asymmetric, too: `<` renders fine, which is why "Take Rate < 60%" survived in the same diagram and made the loss easy to miss.
+
+Browser-verified encodings: raw `>` → dropped; `&gt;` → renders `>`; `#62;` → renders literally.
+
+Prompt guidance alone was judged insufficient for a silent-corruption bug, so the fix is deterministic: `escapeLabelAngles()` in `mermaidGuard.ts` (both copies) entity-escapes `>` inside double-quoted spans, where arrows never appear. It runs **after** the guard — the guard judges what the model wrote, then the source is repaired. It is explicitly *not* part of the refuse-don't-strip contract: it changes no meaning, it preserves the meaning Mermaid would otherwise destroy.
+
+One trap worth naming: `&gt;` itself contains a `>`, so a naive `/>/g` rewrite produces `&gt&gt;`. The alternation `/&gt;|>/g` matches the existing entity first and rewrites it to itself, which makes the operation idempotent. There is a test for exactly this.
+
+### 12.11 The clarification round-trip silently dropped the drawing request
+
+Only reachable by driving the real chat UI. Asking *"draw the escalation flow for network territory T-007"* triggers a clarifying question ("which report should I base this flow on?"). Answering it produced a **KPI/chart dashboard, never a diagram** — while the identical request through the API produced a `mermaid-artifact` every time.
+
+Isolated with four controlled runs against a live backend, varying only where the drawing words appear:
+
+| Payload | Result |
+|---|---|
+| query has "draw…", no history | `mermaid-artifact` |
+| query has "draw…" + clarification history | `mermaid-artifact` |
+| query = the answer, "draw…" present in history | `mermaid-artifact` |
+| query = the answer, "draw…" nowhere — **the real UI payload** | charts |
+
+Cause: on a clarification answer the frontend sends the ANSWER as `query` and the Q/A pair as `clarificationHistory`. The original request appears in neither, so generation sees a bare report name. The wording does survive in `conversationHistory`, which was already being sent but only read on the edit path.
+
+Fixed in `runStreamingPipeline` by recovering the most recent drawing request from `conversationHistory` when the enriched query has lost it. Scoped so it cannot fire on an ordinary flow. **This is a pre-existing gap that affected `svg-artifact` identically** — Mermaid only made it visible.
+
+**A second bug surfaced while verifying the first:** the report cache key was `{query, provider, history, prior}` and omitted `conversationHistory`. Two requests differing only in that field shared a cache entry, so the fix appeared not to work — the drawing request was being served the earlier non-drawing report. The recovered request is now part of the key.
+
+### 12.12 Dev-only: `504 (Outdated Optimize Dep)` on the first diagram
+
+Mermaid is reached solely through a dynamic import, so Vite's dev server discovered it the first time a report contained a diagram, re-optimized mid-session, and killed the in-flight request — the card sat on its loading placeholder until a manual reload. `optimizeDeps.include: ['mermaid']` in `vite.config.ts` pre-bundles it at server start. Production builds were never affected, and this does **not** put mermaid in the initial bundle (verified: it remains a separate 608 KB chunk).
+
+### 12.13 The retention floor was refusing valid diagrams — the wrong gate for machine-generated SVG
+
+Reported from real use: an 18-node escalation flowchart came back as **"Rich content unavailable (too much content was removed)"**, showing its own source as text. Reproduced exactly — retention **0.501** against a 0.6 floor.
+
+`MIN_RETENTION_RATIO` exists to catch **model-authored markup** that sanitizing gutted: if 40% of an `html-artifact` vanishes, what remains misrepresents the model's intent, so downgrading is right. **A `mermaid-artifact` is not that.** Its SVG comes from our own trusted renderer, driven by already-guarded source. What the sanitizer strips there is Mermaid's *bookkeeping* — `style` attributes (replaced wholesale by `MERMAID_CSS`), `data-id`/`data-edge`/`data-look`, `aria-*`, drop-shadow filters. Measured across the nine committed fixtures, legitimate retention runs **0.50 → 0.96**, straddling the floor.
+
+The consequence is backwards: a **denser** diagram is more likely to be refused than a sparse one, purely because bookkeeping scales with node count while the floor does not. The user's 18-node chart was refused; a 5-node one rendered.
+
+Fixed by making usability for `kind === 'mermaid'` depend on whether a diagram actually survived (`hasContent` — shapes or text present) rather than on a byte ratio. `retention` is still computed and reported for telemetry. **Security is untouched:** the allowlist strip already ran, and sandbox + CSP are unchanged. `html`/`svg` artifacts keep the retention gate, and a test asserts that contrast so nobody relaxes it for them by accident.
+
+**Two diagnostic notes worth keeping**, because both cost time:
+
+- My first repro showed 35 `<foreignObject>` elements and pointed at §12.2 recurring. It was a **stale Vite bundle in the repro harness** — re-running gave 0. I nearly "fixed" a bug that did not exist. Re-render before trusting a repro that contradicts a passing test.
+- I then assumed the user's browser was serving stale code. It was not: fetching `/src/app/components/MermaidArtifact.tsx` from the running dev server showed the current module with `htmlLabels: false`. Checking that took one command and killed a wrong theory early.
+
+As defence in depth, `MermaidArtifact` now checks the rendered SVG for `<foreignObject>` and fails with the accurate reason *"diagram labels could not be rendered safely"* rather than letting an unlabelled diagram through or blaming retention. That state should be unreachable given the config — which is exactly why it should be loud if it ever happens.
+
+### 12.14 Verified, and not verified
+
+**Verified:** all eight existing gates plus `npm run test:mermaid` (39 assertions); `tsc --noEmit` clean on the backend; code-splitting confirmed by a real Vite build (`MermaidArtifact` 4 KB and `mermaid.core` 594 KB as separate chunks, neither in the entry chunk); rendering fidelity checked against Mermaid's own styling side-by-side in Chromium for all nine diagram types.
+
+**Verified end to end against a live backend.** The §8 manual check was run: a real backend on real BigQuery, asked *"draw the escalation flow for territory T-007"*, emitted a `mermaid-artifact` card whose labels carry actual measured values (55.7% take rate, 4.66% return rate, 82.6% RIS). That exact card was then mounted through the real `UITreeRenderer` in Chromium and confirmed to:
+
+- load `MermaidArtifact` and `mermaid` as runtime chunks (lazy split works in practice, not just in a build listing);
+- render inside `<iframe sandbox="">` containing `0` scripts and only inert SVG elements;
+- downgrade to `ArtifactFallback` — never render — for a `click` statement, embedded markup, a `pie` header, and a Mermaid syntax error, each with a distinct, accurate reason string;
+- raise no console or page errors.
+
+This run is what surfaced §12.9 and §12.10. **Both were invisible to the whole test suite**, which is the lesson worth keeping: the fixture tests prove bytes survive sanitizing, not that a human can read the result.
+
+**Verified in the real chat application.** Once the unrelated merge conflicts in `LayoutPrefsContext.tsx` / `Conversational_new.tsx` were resolved, the full flow was driven in Chromium: log in → persona → Talk → *"draw the escalation flow for network territory T-007"* → answer the clarifying question → the diagram renders inline in the conversation, in an `<iframe sandbox="">` containing `0` scripts, at 853px sized to its own content, with `MermaidArtifact` / `mermaidGuard` / `mermaid` fetched as runtime chunks and no page errors. Node labels carry live BigQuery values (55.7%, 4.66%), and `"Return Rate > 4%?"` keeps its `>` — §12.10's fix holding end to end.
+
+`vite build` also succeeds: 3.29 MB app chunk with `mermaid.core` split out at 608 KB, containing no Mermaid internals.
+
+**Not verified:** export (Track M4, deliberately deferred — see §6), and the `sonnet` provider path. All runs used `provider=gemma`, which is what the UI sends by default; both providers share `REPORT_SYSTEM_PROMPT`, so the catalogue entry is identical, but Sonnet was not exercised.
+
+### 12.15 The same query drew a diagram in one browser and prose in another — and neither was a caching bug
+
+Reported as a browser problem: *"the lifecycle of a support ticket"* rendered a flowchart in an InPrivate window and returned a bare paragraph in the normal profile. The earlier §12 note about stale disk cache made that the obvious suspect. It was wrong, and three things in the screenshots ruled it out before any code was read:
+
+- the prose differed between the two runs, so the second was a fresh generation, not replayed bytes;
+- no *"Unknown component: mermaid-artifact"* box appeared, which is what a pre-Mermaid bundle renders for an unrecognised `renderType` ([UITreeRenderer.tsx:1208-1216](../src/app/components/UITreeRenderer.tsx#L1208-L1216));
+- replaying the identical query twice against the running backend returned a `clarification` both times. The server was fine.
+
+**The actual cause: `"the lifecycle of a support ticket"` is a `DRAW_INTENT_RE` miss**, so no deterministic route existed and the outcome fell to whatever the front door decided that run. The user was watching a coin flip. Three separate defects sat behind it, each found only by driving the real pipeline:
+
+**(a) The recovery was gated on the same regex that missed.** `runStreamingPipeline` recovers a dropped drawing request on the clarification-answer turn by re-running `detectDrawingIntent` over earlier turns — so a phrasing the regex cannot see is also one it cannot *recover*. §12.11's fix only ever worked for phrasings already enumerated. The answer turn reached generation as a bare report name, which is why the report narrated *"the flow below"* with nothing below it.
+
+**(b) `analyzeQuery`'s free safety net cannot fire on that turn.** The `parsed.diagram` field ([llmHandler.ts:1404-1423](../backend/src/services/llmHandler.ts#L1404-L1423)) is the zero-cost semantic net, and its comment correctly warns that a separate classifier "would fire on EVERY ordinary question". But on a clarification answer, `"Agent Performance Report"` matches a catalog report and takes the `directSource` fast path — returning **before any LLM call**, so that field never exists.
+
+**(c) `REPORT_SYSTEM_PROMPT` is a second, independent enumeration of English.** Even with (a) fixed — request recovered, `outputMode` overridden to `narrative`, `mermaid-artifact` in the allowed set, all confirmed in the log — the model returned a KPI grid, a bar chart and a table, because "lifecycle" is not on the catalogue entry's `USE WHEN` list either.
+
+Shipped: [`drawIntentClassifier.ts`](../backend/src/services/drawIntentClassifier.ts) — a semantic classifier used **only where the regex has already missed and no other signal exists**, which is `recoverDrawRequest`. It never throws and never blocks: timeout, transport error, unparseable output or an unrecognised label all resolve to `none`, which is precisely the pre-existing behaviour. The LLM call is injected rather than imported, so every branch is testable with no network (12 new assertions in `test_drawIntent.ts`, 33 → 47). For (c), `generateReport` now takes the established `drawKind` and states it as an instruction instead of leaving the generator to re-derive it from wording.
+
+**Measured, and worth keeping:**
+
+- A classification costs **min 5.8s / median 7.8s / max 18.1s** against `gemma-4-31b-it`. It is API overhead, not generation — a passing call spends ~210 thinking tokens and ~15 answer tokens. `thinkingConfig.thinkingBudget` is rejected outright (*"Thinking budget is not supported for this model"*), so there is no knob that makes it quick. **That cost is why the classifier is not wired into the front door or the structure path**, and why the recovery scan runs its candidates concurrently rather than in a loop.
+- The first version guessed a 6s timeout, which sat *under* the median. Every classification timed out and dutifully returned `none`, so a completely broken classifier looked exactly like a working one that kept deciding "not a diagram". Both failure paths now log. **A fail-closed fallback must be loud, or it is indistinguishable from a correct answer.**
+- Accuracy on 14 hand-checked queries: 13 as expected, and the disagreement was arguably the model being right (`"how are outlets related to territories"` → `structure`, which KAG answers exactly). Every dangerous negative held: `"cash flow by month"`, `"flow rate by device group"` and `"sequence number by outlet"` all returned `none`.
+
+Verified end to end: the exact failing flow — *"the lifecycle of a support ticket"* → domain → report — now returns a single `mermaid-artifact` over real HTTP, while `"take rate by territory"` still returns `KPIGrid, BarChart, RankedList, InsightCard` with no classifier involvement.

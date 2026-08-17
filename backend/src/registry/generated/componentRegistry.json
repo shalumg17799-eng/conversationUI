@@ -1,7 +1,7 @@
 {
   "$comment": "GENERATED FILE — do not edit by hand. Source of truth: backend/src/registry/componentRegistry.ts. Regenerate with `npm run registry:generate`; parity is enforced by `npm run check:registry`.",
   "generatedFrom": "backend/src/registry/componentRegistry.ts",
-  "componentCount": 33,
+  "componentCount": 34,
   "components": [
     {
       "type": "KPI",
@@ -689,6 +689,27 @@
         "full_dashboard"
       ],
       "whenToUse": "Bespoke vector diagram (flow, topology, annotated schematic) that the chart family cannot express. Prefer a real chart component whenever the data is tabular.",
+      "renderedByUITreeRenderer": true
+    },
+    {
+      "type": "mermaid-artifact",
+      "tier": "organism",
+      "family": "narrative",
+      "requiredProps": [
+        "content"
+      ],
+      "optionalProps": [
+        "title",
+        "variant",
+        "caption",
+        "explanation"
+      ],
+      "dataNeeds": "none",
+      "outputModes": [
+        "narrative",
+        "full_dashboard"
+      ],
+      "whenToUse": "Structural diagram from Mermaid source — flowchart, sequence, state, ER, or org/dependency graph. Prefer over svg-artifact whenever the diagram is a graph of nodes and edges rather than a bespoke annotated drawing.",
       "renderedByUITreeRenderer": true
     }
   ]

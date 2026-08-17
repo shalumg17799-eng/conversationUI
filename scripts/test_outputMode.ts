@@ -3,6 +3,8 @@ import { resolveOutputMode } from '../backend/src/services/outputMode';
 import {
   recordOutputMode, getOutputModeMetrics, getOutputModeSummary, resetOutputModeMetrics,
 } from '../backend/src/services/outputModeTelemetry';
+import { deriveConstraints } from '../backend/src/services/componentSelector';
+import { ShapeSignature } from '../backend/src/types';
 
 let passed = 0;
 const t = (name: string, fn: () => void) => {
@@ -68,6 +70,60 @@ t('empty query + unknown intent -> default, no throw', () => {
 t('null/undefined llmProposed -> fallback (not invalid)', () => {
   const d = resolveOutputMode({ query: 'x', intent: 'trend', llmProposed: null });
   assert.equal(d.source, 'fallback'); assert.notEqual(d.invalid, true);
+});
+
+console.log('drawing intent — artifact modes');
+t('an explicit draw request resolves to narrative, not the data-intent default', () => {
+  // REGRESSION. A drawing request routes to a table, so it inherits a DATA intent
+  // (metric_by_dimension → comparison_dashboard). That mode's families are
+  // metric/chart/table, so deriveConstraints stripped mermaid-artifact out of
+  // allowedComponents and the model answered "show me the data lineage for take rate"
+  // with a PARAGRAPH DESCRIBING a diagram. narrative is the mode that admits artifacts.
+  const d = resolveOutputMode({ query: 'show me the data lineage for take rate', intent: 'metric_by_dimension', drawIntent: 'svg' });
+  assert.equal(d.outputMode, 'narrative');
+  assert.equal(d.source, 'override');
+});
+
+t('draw intent outranks an incidental keyword override', () => {
+  // "list"/"table" elsewhere in the sentence must not demote an explicit draw request
+  // to table mode, which allows no artifact at all.
+  const d = resolveOutputMode({ query: 'draw the escalation flow and list the teams', intent: 'metric_by_dimension', drawIntent: 'svg' });
+  assert.equal(d.outputMode, 'narrative', 'keyword override beat the draw intent');
+});
+
+t('draw intent outranks even a valid LLM proposal', () => {
+  const d = resolveOutputMode({ query: 'draw the lineage', intent: 'trend', llmProposed: 'single_chart', drawIntent: 'svg' });
+  assert.equal(d.outputMode, 'narrative');
+});
+
+t('a document request also takes the artifact-capable mode', () => {
+  assert.equal(resolveOutputMode({ query: 'write me a one-pager', intent: 'trend', drawIntent: 'html' }).outputMode, 'narrative');
+});
+
+t('absent draw intent leaves the existing precedence untouched', () => {
+  // The guard that keeps this change additive: every pre-existing path must be
+  // byte-identical when drawIntent is null/undefined.
+  for (const draw of [null, undefined]) {
+    assert.equal(resolveOutputMode({ query: 'revenue by region', intent: 'metric_by_dimension', drawIntent: draw }).outputMode, 'comparison_dashboard');
+    assert.equal(resolveOutputMode({ query: 'summarize revenue', intent: 'trend', drawIntent: draw }).outputMode, 'narrative');
+    assert.equal(resolveOutputMode({ query: 'revenue trend', intent: 'trend', drawIntent: draw }).outputMode, 'single_chart');
+    assert.equal(resolveOutputMode({ query: 'show rows', intent: 'trend', drawIntent: draw }).outputMode, 'table');
+  }
+});
+
+t('narrative mode actually admits the artifact components', () => {
+  // The other half of the bug: resolving to narrative is only useful if the
+  // constraint layer then offers mermaid-artifact to the model.
+  const shape: ShapeSignature = {
+    rowCount: 100, columnCount: 5, isTimeSeries: true, timeColumn: 'date',
+    dimensionColumns: ['territory_id'], measureColumns: ['units_sold'],
+  } as ShapeSignature;
+  const c = deriveConstraints('narrative', shape);
+  assert.ok(c.allowedComponents.includes('mermaid-artifact'), c.allowedComponents.join(','));
+  // ...and the mode that a drawing request used to land in still does NOT, which is
+  // precisely why the override above is required rather than cosmetic.
+  const bad = deriveConstraints('comparison_dashboard', shape);
+  assert.ok(!bad.allowedComponents.includes('mermaid-artifact'), 'comparison_dashboard unexpectedly allows mermaid-artifact');
 });
 
 console.log('telemetry');

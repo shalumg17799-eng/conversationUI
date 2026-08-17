@@ -47,7 +47,7 @@ export function withOutputModeHint(system: string): string {
 
 /**
  * Resolve + freeze the output_mode for a request.
- * Precedence: keyword override > valid LLM proposal > deterministic intent fallback.
+ * Precedence: DRAW INTENT > keyword override > valid LLM proposal > intent fallback.
  * Pure + synchronous — safe to unit test in isolation. The returned object is frozen
  * so downstream code cannot mutate the governance token.
  */
@@ -55,8 +55,33 @@ export function resolveOutputMode(params: {
   query: string;
   intent: string;
   llmProposed?: unknown;
+  /**
+   * Set when the user explicitly asked to DRAW a diagram or WRITE a document
+   * (detectDrawingIntent in llmHandler). Passed in rather than detected here so this
+   * module stays dependency-free — llmHandler already imports outputMode, so importing
+   * back would be a cycle.
+   */
+  drawIntent?: 'svg' | 'html' | null;
 }): OutputModeDecision {
-  const { query, intent, llmProposed } = params;
+  const { query, intent, llmProposed, drawIntent } = params;
+
+  // HIGHEST PRECEDENCE, and it has to be: the artifact components live ONLY in the
+  // 'narrative' and 'full_dashboard' modes (see componentRegistry outputModes), while a
+  // drawing request routes to a table and therefore inherits a DATA intent —
+  // metric_by_dimension → comparison_dashboard. That mode's families are
+  // metric/chart/table, so deriveConstraints filtered mermaid-artifact and svg-artifact
+  // out of allowedComponents entirely and the model, told it could not use them, wrote a
+  // PARAGRAPH DESCRIBING the diagram instead of emitting one. "show me the data lineage
+  // for take rate" answered with prose, every time — the diagram was never refused, it
+  // was never on the menu.
+  //
+  // An explicit "draw me X" is the strongest statement a user can make about the SHAPE
+  // of the answer, so it outranks an incidental "table"/"list" keyword elsewhere in the
+  // sentence. 'narrative' (not full_dashboard) because the diagram IS the answer: its
+  // policy requires a narrative-family card as primary and caps the response at 3.
+  if (drawIntent) {
+    return Object.freeze({ outputMode: 'narrative' as OutputMode, source: 'override', intent });
+  }
 
   const override = KEYWORD_OVERRIDES.find(o => o.re.test(query));
   if (override) {

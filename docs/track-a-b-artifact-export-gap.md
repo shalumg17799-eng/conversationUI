@@ -8,12 +8,14 @@
 
 ## The gap, precisely stated
 
-`html-artifact` and `svg-artifact` nodes render correctly in the app (sandboxed iframe), but they are **silently dropped from every export** — PDF, PPTX, and Excel.
+`html-artifact`, `svg-artifact` and `mermaid-artifact` nodes render correctly in the app (sandboxed iframe), but they are **silently dropped from every export** — PDF, PPTX, and Excel.
+
+> **Update (Track M1, Mermaid):** `mermaid-artifact` shipped and inherits this gap unchanged — deliberately, so that behaviour stays uniform across all three artifact types rather than one of them erroring where the others omit. It is, however, the **easiest of the three to close**: by the time it renders, the frontend already holds a complete, standalone, sanitized SVG string in `MermaidArtifact.tsx`, so there is no markup-to-vector conversion problem to solve first. Whoever picks this up should start there. The constraint carried over verbatim: consume the **sanitized** SVG (`sanitizeArtifact` output), never raw model output and never raw Mermaid output.
 
 Mechanism, in [`src/lib/exportReport.ts`](../src/lib/exportReport.ts):
 
 - The exporter walks the report tree with a `switch (node.renderType)`.
-- There is **no `case 'html-artifact'` and no `case 'svg-artifact'`**, so both fall through to `default: handled = false`.
+- There is **no `case` for any of the three artifact types**, so all fall through to `default: handled = false`.
 - The `!handled` fallback then calls `nodeRows(node)`. Artifacts carry their payload in `props.content` (a markup string), not in rows — so `nodeRows` returns nothing and **nothing is pushed to the export**.
 - No error is raised. The export completes successfully, just without the artifact's content.
 

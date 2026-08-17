@@ -4,6 +4,12 @@ import { runPipeline } from './pipeline/runPipeline';
 import { runStreamingPipeline } from './pipeline/runStreamingPipeline';
 import { BigQueryService } from './services/bigqueryService';
 import { callLLM, probeTableAvailability, resolveProvider, polishNarrationLines, writeVideoNarration } from './services/llmHandler';
+import {
+  getPrefs as getLayoutPrefs,
+  savePrefs as saveLayoutPrefs,
+  resetPrefs as resetLayoutPrefs,
+  DEFAULT_PREFS as LAYOUT_DEFAULT_PREFS,
+} from './services/layoutPrefsStore';
 import { refreshCatalog } from './services/catalogRefresher';
 import { getOutputModeSummary, resetOutputModeMetrics } from './services/outputModeTelemetry';
 import { getValidationSummary, resetValidationMetrics } from './services/validationTelemetry';
@@ -17,6 +23,9 @@ import { getKagSummary, resetKagMetrics } from './kag/kagTelemetry';
 import { refreshKagGraph } from './kag/kagRefresh';
 import { retrieve, getBreakerState, warmRetrieval } from './kag/kagRetriever';
 import { buildGroundingPack } from './kag/groundingPack';
+import { assembleGraph } from './kag/kagBuilder';
+import { graphToMermaid } from './kag/graphToMermaid';
+import type { KagNodeType, KagRelType } from './kag/types';
 import { createJob, getJob, listJobs, cancelJob, deleteJob, videoPath, loadPersistedJobs, AUDIO_ROOT, VIDEO_ROOT, FOOTAGE_ROOT } from './services/videoJobs';
 import { warmupRenderer } from './services/videoRenderer';
 import { ttsEnabled } from './services/ttsService';
@@ -36,8 +45,10 @@ app.use(express.json({ limit: '15mb' }));
 
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+  // X-User-Id carries the layout-prefs identity; PUT is used by /api/layout-prefs.
+  // Both are required here or the browser blocks the preflight before the route runs.
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, X-User-Id');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
@@ -86,7 +97,64 @@ app.post('/api/auth/verify', (req: Request, res: Response) => {
   );
 
   if (!match) return res.json({ success: false });
-  return res.json({ success: true, role: match.role, provider: match.provider });
+  // userId is the stable per-user key for server-side preferences. Username when one
+  // is configured, else the role — the legacy password-only login has no username, and
+  // silently bucketing those users together under "default" would let one person's
+  // layout leak into another's.
+  const userId = match.username || match.role;
+  return res.json({ success: true, role: match.role, provider: match.provider, userId });
+});
+
+// ── Adaptive UI — per-user layout preferences ────────────────────────────────
+// The frontend keeps a localStorage cache for instant paint; THIS is the source of
+// truth, so a layout follows the user across sessions and devices.
+//
+// Identity comes from the X-User-Id header, set by the frontend from the userId the
+// login response returned. That is deliberately not a security boundary — this app's
+// auth is a shared-credential gate, and layout prefs are non-sensitive UI state. What
+// it does guarantee is ISOLATION: two different users never read or write each
+// other's layout. Requests without an id are refused rather than silently pooled.
+function layoutUserId(req: Request): string | null {
+  const raw = req.header('X-User-Id');
+  const id = typeof raw === 'string' ? raw.trim() : '';
+  return id ? id.slice(0, 64) : null;
+}
+
+app.get('/api/layout-prefs', async (req: Request, res: Response) => {
+  const userId = layoutUserId(req);
+  if (!userId) return res.status(401).json({ error: 'missing X-User-Id' });
+  try {
+    const prefs = await getLayoutPrefs(userId);
+    // null => this user has never saved; the client falls back to its own defaults.
+    res.json({ prefs, defaults: LAYOUT_DEFAULT_PREFS });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message ?? 'failed to read layout prefs' });
+  }
+});
+
+app.put('/api/layout-prefs', async (req: Request, res: Response) => {
+  const userId = layoutUserId(req);
+  if (!userId) return res.status(401).json({ error: 'missing X-User-Id' });
+  try {
+    // savePrefs coerces every field against the bounded enums, so a hand-crafted PUT
+    // cannot inject a value the contract does not allow. The coerced result is echoed
+    // back, letting the client reconcile if anything was dropped.
+    const prefs = await saveLayoutPrefs(userId, req.body?.prefs ?? req.body);
+    res.json({ prefs });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message ?? 'failed to save layout prefs' });
+  }
+});
+
+app.delete('/api/layout-prefs', async (req: Request, res: Response) => {
+  const userId = layoutUserId(req);
+  if (!userId) return res.status(401).json({ error: 'missing X-User-Id' });
+  try {
+    await resetLayoutPrefs(userId);
+    res.json({ prefs: null, defaults: LAYOUT_DEFAULT_PREFS });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message ?? 'failed to reset layout prefs' });
+  }
 });
 
 // SSE streaming endpoint — preferred for Generative UI
@@ -460,6 +528,29 @@ app.get('/api/kag/stats', async (_req: Request, res: Response) => {
     });
   } catch (err: any) {
     res.status(500).json({ configured: true, error: err.message });
+  }
+});
+
+// KAG — the routing graph itself, serialized to Mermaid for a human to read in a
+// Markdown preview or the Mermaid Live Editor. Deterministic and code-generated —
+// unlike mermaid-artifact, there is no model-authored content here, so there is
+// no guard to apply. Needs BigQuery/catalog access (same as `npm run kag:build`),
+// NOT Neo4j — assembleGraph() builds the graph in memory, it doesn't read the
+// store, so this intentionally does not gate on isKagConfigured().
+app.get('/api/kag/graph.mmd', async (req: Request, res: Response) => {
+  try {
+    const nodeTypes = typeof req.query.nodeTypes === 'string'
+      ? (req.query.nodeTypes.split(',') as KagNodeType[]) : undefined;
+    const relTypes = typeof req.query.relTypes === 'string'
+      ? (req.query.relTypes.split(',') as KagRelType[]) : undefined;
+    const rootId = typeof req.query.root === 'string' ? req.query.root : undefined;
+    const maxNodes = typeof req.query.maxNodes === 'string' ? Number(req.query.maxNodes) : undefined;
+
+    const g = await assembleGraph(false); // false: skip the BigQuery entity scan, this is a structure view
+    const mmd = graphToMermaid(g, { nodeTypes, relTypes, rootId, maxNodes });
+    res.type('text/plain').send(mmd);
+  } catch (err: any) {
+    res.status(500).type('text/plain').send(`%% kag graph.mmd failed: ${err.message}`);
   }
 });
 

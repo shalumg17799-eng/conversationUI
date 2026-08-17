@@ -21,7 +21,8 @@ import {
 } from 'lucide-react';
 import { cn } from "../../../lib/utils";
 import { usePersona, personas, PersonaType } from '../../context/PersonaContext';
-import { useLayoutPrefs, chromeOffsets } from '../../context/LayoutPrefsContext';
+import { useLayoutPrefs, chromeOffsets, RAIL_W } from '../../context/LayoutPrefsContext';
+import { LayoutControls } from '../LayoutControls';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -95,7 +96,9 @@ export function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
   const { persona, personaType, setPersonaType, isMarketingDirector } = usePersona();
   // Adaptive UI: the nav rail and header are personalizable surfaces.
-  const { prefs: layoutPrefs, resetPrefs, isCustomized } = useLayoutPrefs();
+  // Reset / customization state now belongs to LayoutControls — this shell only
+  // reads prefs to render its own surfaces.
+  const { prefs: layoutPrefs } = useLayoutPrefs();
   const navRailVisible = layoutPrefs.panels.nav_rail.visible;
   const headerVisible = layoutPrefs.panels.header.visible;
   const chrome = chromeOffsets(layoutPrefs);
@@ -200,8 +203,8 @@ export function Layout({ children }: LayoutProps) {
 
         {/* Right: Persona Switcher + Notification + User */}
         <div className="flex items-center gap-2.5 text-[#6B6965]">
-          {/* Persona Switcher — pill shape with avatar */}
-          <div className="relative" ref={dropdownRef}>
+          {/* Persona Switcher (persona_selector surface — hideable via Adaptive UI) */}
+          <div className="relative" ref={dropdownRef} hidden={!layoutPrefs.panels.persona_selector.visible}>
             {persona ? (
               <button
                 onClick={() => setPersonaDropdownOpen(!personaDropdownOpen)}
@@ -266,15 +269,28 @@ export function Layout({ children }: LayoutProps) {
           </div>
           {/* Video reports tray */}
           <VideoJobsMenu />
-          {/* Bell — circle */}
-          <button className="w-9 h-9 flex items-center justify-center bg-[#F5F2EE] rounded-full hover:bg-[#EDEAE5] transition-colors relative">
-            <Bell className="w-[18px] h-[18px] text-[#6B6965]" />
-            <span className="absolute top-1 right-1 w-[7px] h-[7px] bg-[#D4572A] rounded-full" style={{ border: '1.5px solid #F7F6F3' }}></span>
-          </button>
-          {/* Avatar — circle */}
-          <button className="w-9 h-9 flex items-center justify-center bg-[#EDEAE5] rounded-full hover:bg-[#E5E2DC] transition-colors">
-            <User className="w-4 h-4 text-[#6B6965]" />
-          </button>
+          {/* Bell (notifications surface — hideable via Adaptive UI).
+              Unlike the logo/search, header-right items UNMOUNT rather than going
+              `visibility: hidden` — they sit in a flex row, so leaving an invisible
+              9x9 box behind would keep a gap where the icon used to be. */}
+          {layoutPrefs.panels.notifications.visible && (
+            <button
+              aria-label="Notifications"
+              className="w-9 h-9 flex items-center justify-center bg-[#F5F2EE] rounded-full hover:bg-[#EDEAE5] transition-colors relative"
+            >
+              <Bell className="w-[18px] h-[18px] text-[#6B6965]" />
+              <span className="absolute top-1 right-1 w-[7px] h-[7px] bg-[#D4572A] rounded-full" style={{ border: '1.5px solid #F7F6F3' }}></span>
+            </button>
+          )}
+          {/* Avatar (profile surface — hideable via Adaptive UI) */}
+          {layoutPrefs.panels.profile.visible && (
+            <button
+              aria-label="Profile"
+              className="w-9 h-9 flex items-center justify-center bg-[#EDEAE5] rounded-full hover:bg-[#E5E2DC] transition-colors"
+            >
+              <User className="w-4 h-4 text-[#6B6965]" />
+            </button>
+          )}
         </div>
       </header>
       )}
@@ -282,8 +298,8 @@ export function Layout({ children }: LayoutProps) {
       {/* Left Navigation — icon-only rail (nav_rail) */}
       {navRailVisible && (
       <aside
-        className="fixed left-0 w-[64px] bg-white border-r border-[#ECEAE6] z-40 flex flex-col"
-        style={{ top: chrome.top, bottom: chrome.bottom }}
+        className="fixed left-0 bg-white border-r border-[#ECEAE6] z-40 flex flex-col"
+        style={{ width: RAIL_W, top: chrome.top, bottom: chrome.bottom }}
       >
         {/* Primary Navigation */}
         <nav className="flex-1 py-3 px-1.5 space-y-0.5 overflow-y-auto">
@@ -364,19 +380,12 @@ export function Layout({ children }: LayoutProps) {
       {/* Floating Mode Toggle (mode_toggle surface — hideable via Adaptive UI) */}
       {layoutPrefs.panels.mode_toggle.visible && <ModeToggle />}
 
-      {/* Adaptive UI: Reset control. Always reachable (fixed, top z-index) so a user
-          can never lock themselves out after hiding panels/header/chrome. Only shown
-          once something has actually been customized. */}
-      {isCustomized && (
-        <button
-          onClick={resetPrefs}
-          title="Restore the default layout"
-          className="fixed bottom-4 left-4 z-[100] flex items-center gap-1.5 px-3 py-2 rounded-full bg-[#1A1917] text-white text-[12px] font-medium shadow-lg hover:bg-[#333029] transition-colors"
-        >
-          <RotateCcw className="w-3.5 h-3.5" />
-          Reset layout
-        </button>
-      )}
+      {/* Adaptive UI: the `layout_controls` surface — Customize menu, Edit-layout
+          mode, Undo toast and the Exit-focus pill. Extracted to LayoutControls so this
+          shell does not accumulate a second, parallel way to change the layout.
+          ANTI-LOCKOUT: fixed position + top z-index, and the target is `essential`, so
+          it stays reachable with every panel and the header hidden. */}
+      <LayoutControls />
     </div>
   );
 }
