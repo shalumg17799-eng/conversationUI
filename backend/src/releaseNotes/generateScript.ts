@@ -26,6 +26,7 @@ export async function generateFeatureNote(input: FeatureInput): Promise<FeatureN
     script: (input.summary && input.summary.trim()) || `${input.title.trim()} is now available.`,
     bullets: (input.bullets ?? []).filter((b) => b && b.trim()).slice(0, 4),
     ...(input.affectedArea ? { affectedArea: input.affectedArea } : {}),
+    ...(input.scene ? { scene: input.scene } : {}),
   };
 
   const user = JSON.stringify({

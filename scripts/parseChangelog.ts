@@ -34,11 +34,18 @@ export function parseUnreleasedFeatures(md: string): FeatureInput[] {
     if (!item) continue; // non-feature entries (fix:, chore:, …) and prose are ignored
     const segments = item[1].split('|').map((s) => s.trim()).filter(Boolean);
     if (!segments.length) continue;
-    const [title, summary, ...bullets] = segments;
+    // An optional `scene:<id>` segment (anywhere) picks the recreated-UI scene;
+    // the remaining segments are title | summary | bullets.
+    const sceneSeg = segments.find((s) => /^scene\s*:/i.test(s));
+    const scene = sceneSeg ? sceneSeg.replace(/^scene\s*:/i, '').trim() : undefined;
+    const rest = sceneSeg ? segments.filter((s) => s !== sceneSeg) : segments;
+    const [title, summary, ...bullets] = rest;
+    if (!title) continue;
     out.push({
       title,
       ...(summary ? { summary } : {}),
       ...(bullets.length ? { bullets } : {}),
+      ...(scene ? { scene } : {}),
     });
   }
   return out;

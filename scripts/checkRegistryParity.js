@@ -24,10 +24,28 @@ const rendererTypes = new Set([...arr[1].matchAll(/'([^']+)'/g)].map(m => m[1]))
 const missingInRegistry = [...rendererTypes].filter(t => !registryTypes.has(t));
 const missingInRenderer = [...registryTypes].filter(t => !rendererTypes.has(t));
 
-if (missingInRegistry.length || missingInRenderer.length) {
+// Third registry: the generated JSON projection (build-time / language-neutral).
+// componentRegistry.legacy.json documented only 12 of 33 rendered types before this
+// check existed; enforcing the JSON here is what keeps that gap from reopening.
+// Lives in generated/ deliberately: a sibling componentRegistry.json would shadow
+// componentRegistry.ts in ts-node's module resolution and break every consumer.
+const jsonPath = path.join(__dirname, '../backend/src/registry/generated/componentRegistry.json');
+let jsonTypes = null;
+if (fs.existsSync(jsonPath)) {
+  const parsed = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+  jsonTypes = new Set((parsed.components || []).map(c => c.type));
+}
+
+const missingInJson = jsonTypes ? [...registryTypes].filter(t => !jsonTypes.has(t)) : [];
+const extraInJson = jsonTypes ? [...jsonTypes].filter(t => !registryTypes.has(t)) : [];
+
+if (missingInRegistry.length || missingInRenderer.length || missingInJson.length || extraInJson.length || !jsonTypes) {
   console.error('❌ Registry parity FAILED');
   if (missingInRegistry.length) console.error('   In renderer, missing from registry:', missingInRegistry);
   if (missingInRenderer.length) console.error('   In registry, missing from renderer:', missingInRenderer);
+  if (!jsonTypes) console.error('   componentRegistry.json missing — run: npm run registry:generate');
+  if (missingInJson.length) console.error('   In registry, missing from JSON (run npm run registry:generate):', missingInJson);
+  if (extraInJson.length) console.error('   In JSON, missing from registry (stale — regenerate):', extraInJson);
   process.exit(1);
 }
-console.log(`✅ Registry parity OK — ${registryTypes.size} components in sync.`);
+console.log(`✅ Registry parity OK — ${registryTypes.size} components in sync (registry ↔ renderer ↔ JSON).`);

@@ -85,3 +85,55 @@ export async function synthesizeToFile(text: string, outPath: string): Promise<S
   if (audio.ok) await fs.writeFile(outPath, audio.buffer);
   return { durationMs: audio.durationMs, ok: audio.ok };
 }
+
+// ── Word-timestamped synthesis ───────────────────────────────────────────────
+// Uses ElevenLabs' /with-timestamps endpoint: one call returns the audio AND
+// character-level alignment, which we fold into per-word start/end times. This is
+// what lets the release-tour pipeline sync on-screen captions + footage shots to
+// exactly what's being spoken in any window.
+export interface WordTiming { word: string; startMs: number; endMs: number; }
+export interface SynthTimed extends SynthResult { buffer: Buffer; words: WordTiming[]; }
+
+export async function synthesizeWithTimestamps(text: string, outPath?: string): Promise<SynthTimed> {
+  const key = process.env.ELEVENLABS_API_KEY;
+  const empty: SynthTimed = { buffer: Buffer.alloc(0), durationMs: 0, ok: false, words: [] };
+  if (!key) return empty;
+
+  const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}/with-timestamps`, {
+    method: 'POST',
+    headers: { 'xi-api-key': key, 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({
+      text: normalizeForTTS(text),
+      model_id: MODEL_ID,
+      voice_settings: { stability: 0.4, similarity_boost: 0.75, style: 0.15, use_speaker_boost: true },
+    }),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`ElevenLabs with-timestamps ${res.status}: ${detail.slice(0, 200)}`);
+  }
+
+  const j: any = await res.json();
+  const buffer = Buffer.from(j.audio_base64 ?? '', 'base64');
+  const a = j.alignment ?? {};
+  const chars: string[] = a.characters ?? [];
+  const starts: number[] = a.character_start_times_seconds ?? [];
+  const ends: number[] = a.character_end_times_seconds ?? [];
+
+  // Fold characters into words (split on whitespace); times in ms.
+  const words: WordTiming[] = [];
+  let cur: WordTiming | null = null;
+  for (let i = 0; i < chars.length; i++) {
+    const c = chars[i];
+    if (c === ' ' || c === '\n' || c === '\t') { if (cur) { words.push(cur); cur = null; } continue; }
+    if (!cur) cur = { word: '', startMs: Math.round((starts[i] ?? 0) * 1000), endMs: 0 };
+    cur.word += c;
+    cur.endMs = Math.round((ends[i] ?? starts[i] ?? 0) * 1000);
+  }
+  if (cur) words.push(cur);
+
+  const measured = await measureMp3Ms(buffer);
+  const durationMs = measured > 0 ? measured : (words.length ? words[words.length - 1].endMs : 0);
+  if (outPath && buffer.length) await fs.writeFile(outPath, buffer);
+  return { buffer, durationMs, ok: buffer.length > 0, words };
+}

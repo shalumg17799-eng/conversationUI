@@ -12,6 +12,7 @@ import { ttsEnabled, synthesizeToFile } from './ttsService';
 import { pixabayEnabled, searchFootage, downloadFootage } from './pixabayService';
 import { renderScriptToFile } from './videoRenderer';
 import { sceneDurationFrames } from './sceneTiming';
+import { auditChartProse, factLines, type FactChart } from './chartFacts';
 
 const DATA_DIR = path.resolve(process.cwd(), 'data');
 const VIDEO_DIR = path.join(DATA_DIR, 'videos');
@@ -92,10 +93,24 @@ async function pump() {
     set(id, { status: 'polishing', label: 'Writing narration', progress: 0.02 });
     try {
       const ctx: NarrationScene[] = script.scenes.map((s) => {
-        const v = (s.visual ?? {}) as { kind?: string };
+        const v = (s.visual ?? {}) as { kind?: string; chart?: FactChart };
         const t = (s.onScreenText ?? {}) as { heading?: string; sub?: string; bullets?: string[] };
+        // Re-verify the report prose against the chart the renderer will actually
+        // draw. buildVideoScript already drops contradicted copy, but the script
+        // arrives from the client, so a stale client must not be able to smuggle a
+        // claim the data disproves onto a slide. Deleting it here strips it from
+        // BOTH the scriptwriter's context and the rendered scene (t aliases
+        // s.onScreenText) — that pairing is what produced narration naming a
+        // different leader than the slide showed.
+        const audit = auditChartProse(t.sub, v.chart);
+        if (!audit.ok) {
+          console.warn(`[video ${id}] "${t.heading}": ignoring the report explanation — ${audit.conflicts.join('; ')}`);
+          delete t.sub;
+        }
         const onScreen = [t.heading, t.sub, ...(t.bullets ?? [])].filter(Boolean) as string[];
-        return { kind: v.kind ?? 'scene', heading: t.heading, onScreen, dataHint: s.narration };
+        // Measured from the rendered chart: the writer is told to trust these over
+        // any prose, so a superlative it speaks always matches the bar on screen.
+        return { kind: v.kind ?? 'scene', heading: t.heading, onScreen, facts: factLines(v.chart), dataHint: s.narration };
       });
       const coverSub = (script.scenes[0]?.onScreenText as { sub?: string } | undefined)?.sub;
       const lines = await writeVideoNarration(ctx, { title: script.title, description: coverSub });

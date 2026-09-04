@@ -10,10 +10,12 @@ export interface FeatureInput {
   summary?: string;      // free-text description of what changed
   bullets?: string[];    // optional explicit highlights
   affectedArea?: string; // e.g. "Reports", "LLM"
+  scene?: string;        // recreated-UI scene id ('chat-kpi'|'export-docs'|'export-video'); inferred if absent
 }
 
 export interface ReleaseInput {
   version?: string;         // defaults to today's date (YYYY.MM.DD)
+  name?: string;            // human label, e.g. "Report Hub 1.2"
   features: FeatureInput[]; // one or more features shipped in this release
 }
 
@@ -24,6 +26,7 @@ export interface FeatureNote {
   script: string;    // 2–4 sentence plain-language narration
   bullets: string[];
   affectedArea?: string;
+  scene?: string;    // recreated-UI scene id, carried through from the input
 }
 
 // ── Stored / served ──────────────────────────────────────────────────────────
@@ -32,9 +35,15 @@ export interface FeatureRecord extends FeatureNote {
 }
 
 export interface ReleaseRecord {
-  version: string;
+  version: string;          // semantic product version, e.g. "v1.1.0"
+  name?: string;            // optional human label, e.g. "Report Hub 1.1"
   publishedAt: string;      // ISO timestamp
   features: FeatureRecord[];
+  // One combined walkthrough for the whole release (all features in a single
+  // narrated video). Absent until the on-publish pipeline has rendered it.
+  overviewVideoUrl?: string; // e.g. /media/releases/v1.1.0/overview.mp4
+  posterUrl?: string;        // still frame shown before playback
+  durationSec?: number;      // combined video length
 }
 
 // Lightweight shape for the list endpoint (no scripts/video payload).

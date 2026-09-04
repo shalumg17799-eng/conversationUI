@@ -1,0 +1,35 @@
+{
+  "builtAt": "2026-08-13T09:33:21.586Z",
+  "pasteReady": {
+    "_howToUse": "Review each entry. Where the candidate is right, copy \"column\" into the matching metric in backend/src/kag/glossary.data.json and rebuild. Where it is wrong or absent, the metric has no backing data — fix upstream or remove the KPI from dataSourceMap.ts.",
+    "metrics": {
+      "Outage Count": {
+        "column": null,
+        "_candidate": "no candidate found",
+        "_otherOptions": []
+      },
+      "Latency": {
+        "column": null,
+        "_candidate": "no candidate found",
+        "_otherOptions": []
+      }
+    }
+  },
+  "note": "Metrics with no confirmed column mapping. Confirm a candidate by setting \"column\" for that metric in backend/src/kag/glossary.data.json, then rebuild. Candidates are name-similarity proposals only and are NOT in the graph.",
+  "tablesWithoutSchema": [],
+  "unmappedCount": 2,
+  "unmapped": [
+    {
+      "metric": "Outage Count",
+      "metricId": "Metric:outage-count",
+      "tables": [],
+      "candidates": []
+    },
+    {
+      "metric": "Latency",
+      "metricId": "Metric:latency",
+      "tables": [],
+      "candidates": []
+    }
+  ]
+}

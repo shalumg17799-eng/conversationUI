@@ -7,7 +7,7 @@ import os from 'os';
 import path from 'path';
 import { existsSync } from 'fs';
 import { bundle } from '@remotion/bundler';
-import { selectComposition, renderMedia, type RenderMediaOnProgress } from '@remotion/renderer';
+import { selectComposition, renderMedia, renderStill, type RenderMediaOnProgress } from '@remotion/renderer';
 
 // The Remotion entry lives in the frontend workspace (src/remotion/index.ts) so
 // the composition code is shared with the in-app preview. Resolve it robustly
@@ -89,6 +89,30 @@ export async function renderCompositionToFile(
     chromiumOptions: { gl: 'angle' },
   });
 
+  return { outPath };
+}
+
+// Render a single still frame of a composition to a JPEG (used for the "what's
+// new" overview poster — the thumbnail shown before the user hits play).
+export async function renderStillToFile(
+  compositionId: string,
+  inputProps: Record<string, unknown>,
+  outPath: string,
+  frame = 24,
+): Promise<RenderResult> {
+  const serveUrl = await getServeUrl();
+  const composition = await selectComposition({ serveUrl, id: compositionId, inputProps });
+  await renderStill({
+    composition,
+    serveUrl,
+    output: outPath,
+    inputProps,
+    // Clamp so a short composition can't be asked for a frame past its end.
+    frame: Math.min(frame, Math.max(0, composition.durationInFrames - 1)),
+    imageFormat: 'jpeg',
+    jpegQuality: 90,
+    chromiumOptions: { gl: 'angle' },
+  });
   return { outPath };
 }
 

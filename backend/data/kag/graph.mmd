@@ -1,0 +1,207 @@
+%% truncated: 60 of 546 nodes, 149 of 932 edges shown
+flowchart TD
+  subgraph Domain_sales["Sales"]
+    Report_sales__monthly_revenue_take_rate["Monthly Revenue & Take Rate"]
+    Report_sales__sales_by_device_group["Sales by Device Group"]
+  end
+  subgraph Domain_network["Network"]
+    Report_network__churn_retention_metrics["Churn & Retention Metrics"]
+    Report_network__dynamic_score_rankings["Dynamic Score Rankings"]
+  end
+  subgraph Domain_contact_center["Contact Center"]
+    Report_contact_center__agent_performance_report["Agent Performance Report"]
+  end
+  subgraph Domain_customer_experience["Customer Experience"]
+  end
+  Table_fact_sug_monthly_rollup[("fact_sug_monthly_rollup")]
+  Table_v_monthly_territory_performance[("v_monthly_territory_performance")]
+  Table_v_daily_sales_detail[("v_daily_sales_detail")]
+  Table_fact_network_kpi_points[("fact_network_kpi_points")]
+  Table_fact_dynamic_scores[("fact_dynamic_scores")]
+  Table_fact_intraday_sales[("fact_intraday_sales")]
+  Table_fact_contact_center_metrics[("fact_contact_center_metrics")]
+  Table_catalog_datasets[("catalog_datasets")]
+  Table_fact_sug_sales_daily[("fact_sug_sales_daily")]
+  Table_dim_territories[("dim_territories")]
+  Table_catalog_reports[("catalog_reports")]
+  Table_dim_outlets[("dim_outlets")]
+  Table_churn_monthly[("churn_monthly")]
+  Table_dim_devices[("dim_devices")]
+  Metric_sug_revenue{{"SUG Revenue"}}
+  Metric_return_rate_pct{{"Return Rate %"}}
+  Metric_aard_pct{{"AARD %"}}
+  Metric_ris_pct{{"RIS %"}}
+  Metric_performance_score{{"Performance Score"}}
+  Metric_territory_rank{{"Territory Rank"}}
+  Metric_revenue{{"Revenue"}}
+  Metric_month{{"Month"}}
+  Metric_units_sold{{"Units Sold"}}
+  Metric_outlet{{"Outlet"}}
+  Metric_date{{"Date"}}
+  Metric_retention_index{{"Retention Index"}}
+  Metric_signal_strength{{"Signal Strength"}}
+  Metric_box_close_pct{{"Box Close %"}}
+  Metric_aht_sec{{"AHT (sec)"}}
+  Metric_transfer_pct{{"Transfer %"}}
+  Metric_sales_time_pct{{"Sales Time %"}}
+  Dimension_month_id[/"month_id"\]
+  Dimension_month_name[/"month_name"\]
+  Column_fact_sug_monthly_rollup__territory_id[/"territory_id"/]
+  Dimension_territory_id[/"territory_id"\]
+  Column_v_monthly_territory_performance__territory_id[/"territory_id"/]
+  Column_v_monthly_territory_performance__territory_name[/"territory_name"/]
+  Dimension_territory_name[/"territory_name"\]
+  Dimension_date_id[/"date_id"\]
+  Dimension_outlet_id[/"outlet_id"\]
+  Column_v_daily_sales_detail__outlet_name[/"outlet_name"/]
+  Column_fact_network_kpi_points__site_id[/"site_id"/]
+  Dimension_status[/"status"\]
+  Column_fact_dynamic_scores__employee_id[/"employee_id"/]
+  Dimension_employee_id[/"employee_id"\]
+  Column_fact_dynamic_scores__employee_name[/"employee_name"/]
+  Dimension_employee_name[/"employee_name"\]
+  Column_fact_intraday_sales__hour_label[/"hour_label"/]
+  Column_fact_contact_center_metrics__employee_id[/"employee_id"/]
+  Column_fact_contact_center_metrics__employee_name[/"employee_name"/]
+  Column_fact_contact_center_metrics__territory_id[/"territory_id"/]
+  Report_sales__monthly_revenue_take_rate -->|SOURCED_FROM| Table_fact_sug_monthly_rollup
+  Report_network__churn_retention_metrics -->|SOURCED_FROM| Table_fact_sug_monthly_rollup
+  Report_network__dynamic_score_rankings -->|SOURCED_FROM| Table_fact_dynamic_scores
+  Report_sales__sales_by_device_group -->|SOURCED_FROM| Table_fact_intraday_sales
+  Report_contact_center__agent_performance_report -->|SOURCED_FROM| Table_fact_contact_center_metrics
+  Report_sales__sales_by_device_group -->|SOURCED_FROM| Table_fact_intraday_sales
+  Report_network__churn_retention_metrics -->|SOURCED_FROM| Table_fact_sug_monthly_rollup
+  Report_network__dynamic_score_rankings -->|SOURCED_FROM| Table_fact_dynamic_scores
+  Report_sales__monthly_revenue_take_rate -->|REPORTS_ON| Metric_sug_revenue
+  Report_sales__monthly_revenue_take_rate -->|REPORTS_ON| Metric_return_rate_pct
+  Report_sales__monthly_revenue_take_rate -->|REPORTS_ON| Metric_aard_pct
+  Report_sales__monthly_revenue_take_rate -->|REPORTS_ON| Metric_ris_pct
+  Report_network__churn_retention_metrics -->|REPORTS_ON| Metric_return_rate_pct
+  Report_network__churn_retention_metrics -->|REPORTS_ON| Metric_ris_pct
+  Report_network__churn_retention_metrics -->|REPORTS_ON| Metric_aard_pct
+  Report_network__churn_retention_metrics -->|REPORTS_ON| Metric_retention_index
+  Report_sales__sales_by_device_group -->|REPORTS_ON| Metric_units_sold
+  Report_sales__sales_by_device_group -->|REPORTS_ON| Metric_revenue
+  Report_sales__sales_by_device_group -->|REPORTS_ON| Metric_outlet
+  Report_contact_center__agent_performance_report -->|REPORTS_ON| Metric_box_close_pct
+  Report_contact_center__agent_performance_report -->|REPORTS_ON| Metric_aht_sec
+  Report_contact_center__agent_performance_report -->|REPORTS_ON| Metric_transfer_pct
+  Report_contact_center__agent_performance_report -->|REPORTS_ON| Metric_sales_time_pct
+  Table_fact_sug_monthly_rollup -->|HAS_COLUMN| Column_fact_sug_monthly_rollup__territory_id
+  Dimension_territory_id -->|HAS_COLUMN| Column_fact_sug_monthly_rollup__territory_id
+  Table_v_monthly_territory_performance -->|HAS_COLUMN| Column_v_monthly_territory_performance__territory_id
+  Dimension_territory_id -->|HAS_COLUMN| Column_v_monthly_territory_performance__territory_id
+  Table_v_monthly_territory_performance -->|HAS_COLUMN| Column_v_monthly_territory_performance__territory_name
+  Dimension_territory_name -->|HAS_COLUMN| Column_v_monthly_territory_performance__territory_name
+  Table_v_daily_sales_detail -->|HAS_COLUMN| Column_v_daily_sales_detail__outlet_name
+  Table_fact_network_kpi_points -->|HAS_COLUMN| Column_fact_network_kpi_points__site_id
+  Table_fact_dynamic_scores -->|HAS_COLUMN| Column_fact_dynamic_scores__employee_id
+  Dimension_employee_id -->|HAS_COLUMN| Column_fact_dynamic_scores__employee_id
+  Table_fact_dynamic_scores -->|HAS_COLUMN| Column_fact_dynamic_scores__employee_name
+  Dimension_employee_name -->|HAS_COLUMN| Column_fact_dynamic_scores__employee_name
+  Table_fact_intraday_sales -->|HAS_COLUMN| Column_fact_intraday_sales__hour_label
+  Table_fact_contact_center_metrics -->|HAS_COLUMN| Column_fact_contact_center_metrics__employee_id
+  Dimension_employee_id -->|HAS_COLUMN| Column_fact_contact_center_metrics__employee_id
+  Table_fact_contact_center_metrics -->|HAS_COLUMN| Column_fact_contact_center_metrics__employee_name
+  Dimension_employee_name -->|HAS_COLUMN| Column_fact_contact_center_metrics__employee_name
+  Table_fact_contact_center_metrics -->|HAS_COLUMN| Column_fact_contact_center_metrics__territory_id
+  Dimension_territory_id -->|HAS_COLUMN| Column_fact_contact_center_metrics__territory_id
+  Metric_outlet -->|MEASURED_BY| Column_v_daily_sales_detail__outlet_name
+  Metric_sug_revenue -->|SLICED_BY| Dimension_month_id
+  Metric_sug_revenue -->|SLICED_BY| Dimension_month_name
+  Metric_sug_revenue -->|SLICED_BY| Dimension_territory_id
+  Metric_return_rate_pct -->|SLICED_BY| Dimension_month_id
+  Metric_return_rate_pct -->|SLICED_BY| Dimension_month_name
+  Metric_return_rate_pct -->|SLICED_BY| Dimension_territory_id
+  Metric_aard_pct -->|SLICED_BY| Dimension_month_id
+  Metric_aard_pct -->|SLICED_BY| Dimension_month_name
+  Metric_aard_pct -->|SLICED_BY| Dimension_territory_id
+  Metric_ris_pct -->|SLICED_BY| Dimension_month_id
+  Metric_ris_pct -->|SLICED_BY| Dimension_month_name
+  Metric_ris_pct -->|SLICED_BY| Dimension_territory_id
+  Metric_performance_score -->|SLICED_BY| Dimension_month_id
+  Metric_performance_score -->|SLICED_BY| Dimension_month_name
+  Metric_performance_score -->|SLICED_BY| Dimension_territory_id
+  Metric_performance_score -->|SLICED_BY| Dimension_territory_name
+  Metric_territory_rank -->|SLICED_BY| Dimension_month_id
+  Metric_territory_rank -->|SLICED_BY| Dimension_month_name
+  Metric_territory_rank -->|SLICED_BY| Dimension_territory_id
+  Metric_territory_rank -->|SLICED_BY| Dimension_territory_name
+  Metric_revenue -->|SLICED_BY| Dimension_month_id
+  Metric_revenue -->|SLICED_BY| Dimension_month_name
+  Metric_revenue -->|SLICED_BY| Dimension_territory_id
+  Metric_revenue -->|SLICED_BY| Dimension_territory_name
+  Metric_revenue -->|SLICED_BY| Dimension_date_id
+  Metric_revenue -->|SLICED_BY| Dimension_outlet_id
+  Metric_month -->|SLICED_BY| Dimension_month_id
+  Metric_month -->|SLICED_BY| Dimension_month_name
+  Metric_month -->|SLICED_BY| Dimension_territory_id
+  Metric_month -->|SLICED_BY| Dimension_territory_name
+  Metric_units_sold -->|SLICED_BY| Dimension_date_id
+  Metric_units_sold -->|SLICED_BY| Dimension_outlet_id
+  Metric_units_sold -->|SLICED_BY| Dimension_territory_id
+  Metric_units_sold -->|SLICED_BY| Dimension_territory_name
+  Metric_outlet -->|SLICED_BY| Dimension_date_id
+  Metric_outlet -->|SLICED_BY| Dimension_outlet_id
+  Metric_outlet -->|SLICED_BY| Dimension_territory_id
+  Metric_outlet -->|SLICED_BY| Dimension_territory_name
+  Metric_date -->|SLICED_BY| Dimension_date_id
+  Metric_date -->|SLICED_BY| Dimension_outlet_id
+  Metric_date -->|SLICED_BY| Dimension_territory_id
+  Metric_date -->|SLICED_BY| Dimension_territory_name
+  Metric_retention_index -->|SLICED_BY| Dimension_month_id
+  Metric_retention_index -->|SLICED_BY| Dimension_month_name
+  Metric_retention_index -->|SLICED_BY| Dimension_territory_id
+  Metric_signal_strength -->|SLICED_BY| Dimension_date_id
+  Metric_signal_strength -->|SLICED_BY| Dimension_status
+  Metric_box_close_pct -->|SLICED_BY| Dimension_employee_id
+  Metric_box_close_pct -->|SLICED_BY| Dimension_employee_name
+  Metric_box_close_pct -->|SLICED_BY| Dimension_territory_id
+  Metric_box_close_pct -->|SLICED_BY| Dimension_status
+  Metric_aht_sec -->|SLICED_BY| Dimension_employee_id
+  Metric_aht_sec -->|SLICED_BY| Dimension_employee_name
+  Metric_aht_sec -->|SLICED_BY| Dimension_territory_id
+  Metric_aht_sec -->|SLICED_BY| Dimension_status
+  Metric_transfer_pct -->|SLICED_BY| Dimension_employee_id
+  Metric_transfer_pct -->|SLICED_BY| Dimension_employee_name
+  Metric_transfer_pct -->|SLICED_BY| Dimension_territory_id
+  Metric_transfer_pct -->|SLICED_BY| Dimension_status
+  Metric_sales_time_pct -->|SLICED_BY| Dimension_employee_id
+  Metric_sales_time_pct -->|SLICED_BY| Dimension_employee_name
+  Metric_sales_time_pct -->|SLICED_BY| Dimension_territory_id
+  Metric_sales_time_pct -->|SLICED_BY| Dimension_status
+  Table_fact_sug_monthly_rollup -->|JOINS_ON| Table_v_monthly_territory_performance
+  Table_fact_sug_monthly_rollup -->|JOINS_ON| Table_v_daily_sales_detail
+  Table_fact_sug_monthly_rollup -->|JOINS_ON| Table_fact_intraday_sales
+  Table_fact_sug_monthly_rollup -->|JOINS_ON| Table_fact_contact_center_metrics
+  Table_fact_sug_monthly_rollup -->|JOINS_ON| Table_fact_sug_sales_daily
+  Table_fact_sug_monthly_rollup -->|JOINS_ON| Table_dim_territories
+  Table_fact_sug_monthly_rollup -->|JOINS_ON| Table_dim_outlets
+  Table_fact_sug_monthly_rollup -->|JOINS_ON| Table_churn_monthly
+  Table_v_monthly_territory_performance -->|JOINS_ON| Table_v_daily_sales_detail
+  Table_v_monthly_territory_performance -->|JOINS_ON| Table_fact_intraday_sales
+  Table_v_monthly_territory_performance -->|JOINS_ON| Table_fact_contact_center_metrics
+  Table_v_monthly_territory_performance -->|JOINS_ON| Table_fact_sug_sales_daily
+  Table_v_monthly_territory_performance -->|JOINS_ON| Table_dim_territories
+  Table_v_monthly_territory_performance -->|JOINS_ON| Table_dim_outlets
+  Table_v_monthly_territory_performance -->|JOINS_ON| Table_churn_monthly
+  Table_v_daily_sales_detail -->|JOINS_ON| Table_fact_network_kpi_points
+  Table_v_daily_sales_detail -->|JOINS_ON| Table_fact_intraday_sales
+  Table_v_daily_sales_detail -->|JOINS_ON| Table_fact_contact_center_metrics
+  Table_v_daily_sales_detail -->|JOINS_ON| Table_fact_sug_sales_daily
+  Table_v_daily_sales_detail -->|JOINS_ON| Table_dim_territories
+  Table_v_daily_sales_detail -->|JOINS_ON| Table_dim_outlets
+  Table_fact_network_kpi_points -->|JOINS_ON| Table_fact_intraday_sales
+  Table_fact_network_kpi_points -->|JOINS_ON| Table_fact_sug_sales_daily
+  Table_fact_dynamic_scores -->|JOINS_ON| Table_fact_contact_center_metrics
+  Table_fact_intraday_sales -->|JOINS_ON| Table_fact_contact_center_metrics
+  Table_fact_intraday_sales -->|JOINS_ON| Table_fact_sug_sales_daily
+  Table_fact_intraday_sales -->|JOINS_ON| Table_dim_territories
+  Table_fact_intraday_sales -->|JOINS_ON| Table_dim_outlets
+  Table_fact_contact_center_metrics -->|JOINS_ON| Table_fact_sug_sales_daily
+  Table_fact_contact_center_metrics -->|JOINS_ON| Table_dim_territories
+  Table_fact_contact_center_metrics -->|JOINS_ON| Table_dim_outlets
+  Table_fact_sug_sales_daily -->|JOINS_ON| Table_dim_territories
+  Table_fact_sug_sales_daily -->|JOINS_ON| Table_dim_outlets
+  Table_fact_sug_sales_daily -->|JOINS_ON| Table_dim_devices
+  Table_dim_territories -->|JOINS_ON| Table_dim_outlets

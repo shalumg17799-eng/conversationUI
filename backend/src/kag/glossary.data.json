@@ -1,0 +1,496 @@
+{
+  "version": 1,
+  "_readme": [
+    "Hand-authored semantic layer for the KAG graph. This is the ONE manual input, and",
+    "its quality caps the whole system's accuracy (plan §13 Q1).",
+    "",
+    "`column` is the physical BigQuery column a metric is measured by. It is null until",
+    "a human confirms it against the real schema. The builder proposes candidates by name",
+    "similarity and writes them to backend/data/kag/unmapped.json for review — proposals",
+    "are NEVER auto-merged as MEASURED_BY edges. Filling these in is the highest-value",
+    "follow-up work: every confirmed mapping removes a chance for the LLM to guess a",
+    "column name wrong.",
+    "",
+    "`aliases` are safe to author without the schema — they are semantics, not physical",
+    "facts — and they are what makes 'churn' route to Return Rate % today.",
+    "",
+    "Two of the four originally-unbacked metrics turned out to be naming variants and",
+    "are now mapped to the column that already holds the value:",
+    "  Retention Index   -> ris_pct        (RIS *is* the Retention Index Score)",
+    "  Performance Index -> overall_score  (the composite in fact_dynamic_scores)",
+    "",
+    "TWO remain null because the data genuinely does not exist in report_hub_demo:",
+    "  Outage Count — fact_network_kpi_points has cqi/rsrp/sinr/score, no outage counter",
+    "  Latency      — same table; sinr is signal-to-noise and cqi is channel quality,",
+    "                 neither is latency. Mapping either would be a fabrication.",
+    "Both were REMOVED from dataSourceMap.ts rather than left advertised: a KPI the model",
+    "is told it can use, with no column behind it, is an invitation to invent one. Restore",
+    "them there and here together if the columns are ever added upstream."
+  ],
+  "domains": {
+    "Sales": {
+      "aliases": [
+        "revenue",
+        "bookings",
+        "commercial",
+        "top line",
+        "sales performance"
+      ]
+    },
+    "Network": {
+      "aliases": [
+        "infrastructure",
+        "connectivity",
+        "infra",
+        "network health",
+        "technical"
+      ]
+    },
+    "Contact Center": {
+      "aliases": [
+        "call center",
+        "support",
+        "agents",
+        "customer service",
+        "helpdesk",
+        "cc"
+      ]
+    },
+    "Customer Experience": {
+      "aliases": [
+        "cx",
+        "customer satisfaction",
+        "retention",
+        "loyalty",
+        "customer health"
+      ]
+    }
+  },
+  "metrics": {
+    "SUG Revenue": {
+      "column": "sug_revenue",
+      "unit": "currency",
+      "kind": "measure",
+      "aliases": [
+        "revenue",
+        "sales",
+        "turnover",
+        "top line",
+        "sug",
+        "gross revenue",
+        "income"
+      ]
+    },
+    "Territory Revenue": {
+      "column": "sug_revenue",
+      "unit": "currency",
+      "kind": "measure",
+      "aliases": [
+        "revenue by territory",
+        "regional revenue",
+        "territory sales"
+      ]
+    },
+    "Revenue": {
+      "column": "revenue",
+      "unit": "currency",
+      "kind": "measure",
+      "aliases": [
+        "sales",
+        "turnover",
+        "income"
+      ]
+    },
+    "Run Rate": {
+      "column": "run_rate",
+      "unit": "currency",
+      "kind": "measure",
+      "aliases": [
+        "runrate",
+        "annualized revenue",
+        "annual run rate",
+        "arr"
+      ]
+    },
+    "Take Rate %": {
+      "column": "take_rate_pct",
+      "unit": "pct",
+      "kind": "ratio",
+      "aliases": [
+        "take rate",
+        "attach rate",
+        "conversion rate",
+        "capture rate"
+      ]
+    },
+    "Return Rate %": {
+      "column": "return_rate_pct",
+      "unit": "pct",
+      "kind": "ratio",
+      "aliases": [
+        "return rate",
+        "returns",
+        "churn",
+        "churn rate",
+        "attrition",
+        "drop off",
+        "dropoff",
+        "cancellations",
+        "cancel rate"
+      ]
+    },
+    "AARD %": {
+      "column": "aard_pct",
+      "unit": "pct",
+      "kind": "ratio",
+      "aliases": [
+        "aard",
+        "average active return rate",
+        "aard percent"
+      ]
+    },
+    "RIS %": {
+      "column": "ris_pct",
+      "unit": "pct",
+      "kind": "ratio",
+      "aliases": [
+        "ris",
+        "ris score",
+        "retention index score",
+        "revenue impact score"
+      ]
+    },
+    "Retention Index": {
+      "column": "ris_pct",
+      "unit": "score",
+      "kind": "score",
+      "aliases": [
+        "retention",
+        "retention score",
+        "stickiness",
+        "loyalty index"
+      ]
+    },
+    "Performance Score": {
+      "column": "performance_score",
+      "unit": "score",
+      "kind": "score",
+      "aliases": [
+        "perf score",
+        "performance",
+        "scorecard",
+        "performance rating"
+      ]
+    },
+    "Performance Index": {
+      "column": "overall_score",
+      "unit": "score",
+      "kind": "score",
+      "aliases": [
+        "perf index",
+        "performance indicator"
+      ]
+    },
+    "Territory Rank": {
+      "column": "territory_rank",
+      "unit": "rank",
+      "kind": "rank",
+      "aliases": [
+        "rank",
+        "ranking",
+        "territory ranking",
+        "position",
+        "standings"
+      ]
+    },
+    "Rank": {
+      "column": "rank",
+      "unit": "rank",
+      "kind": "rank",
+      "aliases": [
+        "ranking",
+        "position",
+        "placement",
+        "standings"
+      ]
+    },
+    "Score": {
+      "column": "overall_score",
+      "unit": "score",
+      "kind": "score",
+      "aliases": [
+        "rating",
+        "dynamic score",
+        "points"
+      ]
+    },
+    "Units Sold": {
+      "column": "units_sold",
+      "unit": "count",
+      "kind": "measure",
+      "aliases": [
+        "units",
+        "volume",
+        "quantity",
+        "sales volume",
+        "items sold"
+      ]
+    },
+    "Network KPI Score": {
+      "column": "score",
+      "unit": "score",
+      "kind": "score",
+      "aliases": [
+        "network score",
+        "network kpi",
+        "network health",
+        "network performance"
+      ]
+    },
+    "Signal Strength": {
+      "column": "rsrp",
+      "unit": "score",
+      "kind": "measure",
+      "aliases": [
+        "signal",
+        "rssi",
+        "reception",
+        "coverage"
+      ]
+    },
+    "Outage Count": {
+      "column": null,
+      "unit": "count",
+      "kind": "measure",
+      "aliases": [
+        "outages",
+        "downtime",
+        "incidents",
+        "service interruptions",
+        "failures"
+      ]
+    },
+    "Latency": {
+      "column": null,
+      "unit": "ms",
+      "kind": "measure",
+      "aliases": [
+        "ping",
+        "response time",
+        "lag",
+        "delay",
+        "round trip time"
+      ]
+    },
+    "Box Close %": {
+      "column": "box_close_pct",
+      "unit": "pct",
+      "kind": "ratio",
+      "aliases": [
+        "box close",
+        "close rate",
+        "closure rate",
+        "conversion",
+        "closing percentage"
+      ]
+    },
+    "AHT (sec)": {
+      "column": "inb_aht_sec",
+      "unit": "seconds",
+      "kind": "measure",
+      "aliases": [
+        "aht",
+        "average handle time",
+        "handle time",
+        "talk time",
+        "call duration"
+      ]
+    },
+    "Transfer %": {
+      "column": "transfer_pct",
+      "unit": "pct",
+      "kind": "ratio",
+      "aliases": [
+        "transfer rate",
+        "transfers",
+        "escalation rate",
+        "escalations"
+      ]
+    },
+    "Sales Time %": {
+      "column": "sales_time_pct",
+      "unit": "pct",
+      "kind": "ratio",
+      "aliases": [
+        "sales time",
+        "selling time",
+        "productive time"
+      ]
+    },
+    "Status": {
+      "column": "status",
+      "unit": "text",
+      "kind": "attribute",
+      "aliases": [
+        "state",
+        "agent status",
+        "availability"
+      ]
+    },
+    "Device Group": {
+      "column": "device_group",
+      "unit": "text",
+      "kind": "attribute",
+      "aliases": [
+        "platform",
+        "device type",
+        "device",
+        "form factor",
+        "hardware",
+        "product type",
+        "device category"
+      ]
+    },
+    "Outlet": {
+      "column": "outlet_name",
+      "unit": "text",
+      "kind": "attribute",
+      "aliases": [
+        "store",
+        "location",
+        "branch",
+        "shop",
+        "site"
+      ]
+    },
+    "Month": {
+      "column": "month_name",
+      "unit": "date",
+      "kind": "attribute",
+      "aliases": [
+        "monthly",
+        "month id",
+        "period"
+      ]
+    },
+    "Date": {
+      "column": "date",
+      "unit": "date",
+      "kind": "attribute",
+      "aliases": [
+        "day",
+        "daily",
+        "calendar date"
+      ]
+    }
+  },
+  "terms": {
+    "churn": {
+      "targets": [
+        "Return Rate %",
+        "RIS %",
+        "Retention Index"
+      ],
+      "weight": 0.9,
+      "note": "Ambiguous by design — churn signals live across three metrics in this catalog."
+    },
+    "attrition": {
+      "targets": [
+        "Return Rate %",
+        "Retention Index"
+      ],
+      "weight": 0.85
+    },
+    "customer health": {
+      "targets": [
+        "RIS %",
+        "Retention Index",
+        "Return Rate %"
+      ],
+      "weight": 0.8
+    },
+    "efficiency": {
+      "targets": [
+        "AHT (sec)",
+        "Sales Time %",
+        "Transfer %"
+      ],
+      "weight": 0.75
+    },
+    "agent productivity": {
+      "targets": [
+        "Box Close %",
+        "AHT (sec)",
+        "Sales Time %"
+      ],
+      "weight": 0.85
+    },
+    "growth": {
+      "targets": [
+        "SUG Revenue",
+        "Run Rate",
+        "Units Sold"
+      ],
+      "weight": 0.75
+    },
+    "profitability": {
+      "targets": [
+        "Take Rate %",
+        "SUG Revenue"
+      ],
+      "weight": 0.7
+    },
+    "service quality": {
+      "targets": [
+        "Outage Count",
+        "Latency",
+        "Signal Strength"
+      ],
+      "weight": 0.8
+    },
+    "top performers": {
+      "targets": [
+        "Territory Rank",
+        "Performance Score",
+        "Rank"
+      ],
+      "weight": 0.8
+    },
+    "underperformers": {
+      "targets": [
+        "Territory Rank",
+        "Performance Score",
+        "Rank"
+      ],
+      "weight": 0.8
+    }
+  },
+  "dimensionHints": {
+    "_readme": "Column-name patterns that identify a dimension (a valid breakdown axis) rather than a measure. Applied to real BigQuery column names at build time.",
+    "namePatterns": [
+      "_name$",
+      "_id$",
+      "^territory",
+      "^outlet",
+      "^agent",
+      "^region",
+      "^channel",
+      "^status$",
+      "^month",
+      "^date$",
+      "^day",
+      "^quarter",
+      "^year",
+      "_type$",
+      "_category$",
+      "_segment$"
+    ],
+    "dataTypes": [
+      "STRING",
+      "DATE",
+      "DATETIME",
+      "TIMESTAMP",
+      "BOOL"
+    ]
+  }
+}

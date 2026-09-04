@@ -61,6 +61,12 @@ import {
 } from 'lucide-react';
 import MedallionIcon from '@/imports/Group5';
 import { usePersona } from '@/app/context/PersonaContext';
+import {
+  useLayoutPrefs,
+  colorToCss,
+  computeTalkLayout,
+  computeInlineReportStyle,
+} from '@/app/context/LayoutPrefsContext';
 
 // Backend base URL — set VITE_API_URL at build time for production. Falls back to localhost in dev.
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -118,6 +124,13 @@ interface Conversation {
   migrationState?: MigrationState; // Store migration flow state
   status?: 'active' | 'planned' | 'draft'; // Session status
 }
+
+// Adaptive UI: named size steps → pixel widths, per surface.
+// Adaptive UI geometry (nav rail / history / workspace / report + dataset panels)
+// is owned entirely by computeTalkLayout in LayoutPrefsContext. This page used to
+// carry a second, subtly different copy of that arithmetic; the two disagreed on
+// history width and header offsets, so a single directive moved some surfaces and
+// not others. Read `talkLayout` below — do not reintroduce local box math here.
 
 export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowMode?: boolean } = {}) { // marker 1
   const navigate = useNavigate();
@@ -274,6 +287,14 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
   ]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  // Adaptive UI: id of the inline Q&A report that has been promoted into the
+  // movable report panel (via a "move/resize the report panel" command). Null =
+  // nothing docked; the report stays inline in the chat. Kept as an id (not a
+  // snapshot) so the docked panel tracks live updates to that message.
+  const [dockedReportMsgId, setDockedReportMsgId] = useState<string | null>(null);
+  // Latest messages, readable from inside the streaming closure without stale state.
+  const messagesRef = useRef<Message[]>([]);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
   const [savedReports, setSavedReports] = useState<any[]>(() => {
     const saved = localStorage.getItem('generative_reports');
     return saved ? JSON.parse(saved) : [];
@@ -349,6 +370,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
   const migrationRouteInitialized = useRef<string | null>(null);
 
   const { persona } = usePersona();
+  const { prefs: layoutPrefs, applyDirectives: applyLayoutDirectives } = useLayoutPrefs();
   const allReports = getAllReports();
   const allDatasets = getAllDatasets();
   const reportsCount = catalogReports.length;
@@ -610,6 +632,7 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
     setIsDatasetPanelOpen(false);
     setActiveReportContext(null);
     setActiveDatasetContext(null);
+    setDockedReportMsgId(null);
     setMessages([]);
     setInputValue('');
     setCreateReportState({ step: null });
@@ -2597,18 +2620,43 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
         setMessages(msgs => msgs.map(m => m.id === streamMsgId ? updater(m) : m));
       };
 
+      // MUST live outside the read loop. An SSE frame is two lines —
+      //   event: component
+      //   data:  {...}
+      // — and a network chunk can end between them. Declared inside the loop, the event
+      // name was reset to '' on the next read(), so the `data:` line that followed
+      // matched no branch and was DROPPED WITHOUT A TRACE. `meta` survived because it is
+      // small and lands whole in the first chunk; `component` payloads are kilobytes (a
+      // diagram is ~5KB) and straddle chunk boundaries almost every time.
+      //
+      // The result was a report that streamed six cards to the browser and rendered
+      // none, leaving only the assistant's text — and it reproduced or not depending on
+      // how the network happened to chunk the response, which is why it looked like a
+      // browser-profile problem and survived every backend fix.
+      let event = '';
+      // DIAGNOSTIC, deliberately always-on. This stream has now failed twice in ways
+      // that were invisible from the server: frames arrive, get dropped client-side, and
+      // the UI shows a plausible-looking text answer with no cards. A count of what the
+      // browser actually RECEIVED, logged once per request, turns "it doesn't work on my
+      // machine" into a fact in one line — cheap, and it costs one console line per query.
+      const framesSeen: Record<string, number> = {};
+      let chunkCount = 0;
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+        chunkCount++;
         buffer += decoder.decode(value, { stream: true });
 
         const lines = buffer.split('\n');
         buffer = lines.pop() ?? '';
 
-        let event = '';
         for (const line of lines) {
           if (line.startsWith('event: ')) { event = line.slice(7).trim(); continue; }
           if (!line.startsWith('data: ')) continue;
+          // Counted BEFORE dispatch, and keyed on '(no-event)' when the header never
+          // arrived — that bucket being non-zero is the signature of a framing problem,
+          // and it is the difference between "the backend sent nothing" and "we threw it away".
+          framesSeen[event || '(no-event)'] = (framesSeen[event || '(no-event)'] ?? 0) + 1;
           try {
             const payload = JSON.parse(line.slice(6));
             if (event === 'meta') {
@@ -2626,6 +2674,81 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
               console.log('Rows    :', payload.rowCount);
               console.log('Duration:', `${payload.durationMs}ms`);
               console.log('Intent  :', payload.intent, '| metric:', payload.metric, '| dimension:', payload.dimension);
+              console.groupEnd();
+            } else if (event === 'kag_debug') {
+              // Demo surface for the knowledge graph. Mirrors the [BigQuery] group
+              // above so the two read as one story: KAG chose the table and the
+              // grounding, BigQuery then served it.
+              console.group('%c[KAG] Knowledge graph grounding', 'color:#7C3AED;font-weight:bold');
+              if (payload.retrieval) {
+                const r = payload.retrieval;
+                console.log(`Retrieval : ${r.source} in ${r.latencyMs}ms — ${r.nodes} nodes${r.truncated ? ' (truncated)' : ''}`);
+                if (r.seeds?.length) {
+                  console.log('Seeds     :', r.seeds.map((s: any) => `${s.id} (${s.score})`).join('  '));
+                }
+                if (r.candidates?.length) {
+                  console.log('Candidates:', r.candidates.map((c: any) => `${c.table} @ ${c.score}`).join('  |  '));
+                }
+              }
+              if (payload.grounding) {
+                const g = payload.grounding;
+                if (g.source === 'kag-pack') {
+                  const saved = g.catalogTokens - g.packTokens;
+                  const pct = g.catalogTokens ? Math.round((saved / g.catalogTokens) * 100) : 0;
+                  console.log(`%cPrompt    : ${g.packTokens} tokens vs ${g.catalogTokens} full catalog — saved ${saved} (${pct}%)`,
+                    'color:#1D9E75');
+                  console.log('Tables    :', g.tables?.join(', '));
+                } else {
+                  // Fallbacks are shown, not hidden — a demo that only ever shows the
+                  // happy path teaches nobody how to read the system.
+                  console.log(`%cPrompt    : fell back to full catalog (${g.fallbackReason})`, 'color:#D97706');
+                }
+              }
+              if (payload.shadowPack) {
+                const sp = payload.shadowPack;
+                const saved = sp.catalogTokens - sp.packTokens;
+                const pct = sp.catalogTokens ? Math.round((saved / sp.catalogTokens) * 100) : 0;
+                console.log(`%cShadow    : pack WOULD be ${sp.packTokens} tokens vs ${sp.catalogTokens} — would save ${saved} (${pct}%). Not applied: KAG is in shadow mode.`,
+                  'color:#6B6965');
+              }
+              if (payload.routing) {
+                const rt = payload.routing;
+                // Five outcomes, five distinct sentences. The old code had two branches
+                // and printed "agreed with model" for everything that was not an
+                // override — including every request where KAG was switched off and had
+                // formed no opinion at all, and every case where it named a DIFFERENT
+                // table but scored under the bar. Both read as the graph endorsing a
+                // choice it never made.
+                //
+                // Older payloads carry no verdict; derive the only two it can be.
+                const verdict = rt.verdict ?? (rt.overridden ? 'overrode' : rt.kagTable ? 'agreed' : 'not-consulted');
+                if (verdict === 'overrode') {
+                  console.log(`%cRouting   : OVERRODE model — ${rt.modelTable} → ${rt.kagTable} @ ${rt.score}`, 'color:#D4572A;font-weight:bold');
+                } else if (verdict === 'agreed') {
+                  console.log(`%cRouting   : agreed with model — both chose ${rt.kagTable} @ ${rt.score}`, 'color:#1D9E75');
+                } else if (verdict === 'deferred') {
+                  // A disagreement, not an agreement: KAG wanted another table and the
+                  // confidence bar stopped it. Amber, because it is the case worth triaging.
+                  console.log(`%cRouting   : deferred to model — KAG preferred ${rt.kagTable} @ ${rt.score}, ${rt.reason}`, 'color:#D97706');
+                } else if (verdict === 'no-opinion') {
+                  console.log(`Routing   : no opinion — retrieval found no candidate table`);
+                } else {
+                  console.log(`%cRouting   : not consulted (${rt.reason}) — KAG formed no opinion on this query`, 'color:#6B6965');
+                }
+              }
+              if (payload.entityFilters?.length) {
+                console.log('Entities  :', payload.entityFilters
+                  .map((f: any) => `${f.column} IN [${f.values.join(', ')}]`).join(' AND '));
+              }
+              if (payload.validation) {
+                const v = payload.validation;
+                console.log(`Grounding : checked ${v.checked}, repaired ${v.repaired}, violations ${v.violations}`);
+                (v.examples ?? []).forEach((e: string) => console.log('            ', e));
+              }
+              // Two numbers, never one: the KAG cost is the claim being made, and the
+              // request time is dominated by the LLM call that follows it.
+              console.log(`%cKAG cost  : ${payload.kagMs}ms  (of ${payload.requestMs}ms total request — the rest is the LLM)`,
+                'color:#6B6965');
               console.groupEnd();
             } else if (event === 'acknowledgment') {
               // Insert a text bubble above the updated report for the confirmation message
@@ -2647,14 +2770,49 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
               if (payload.followUp?.length) {
                 patchMsg(m => ({ ...m, data: { ...m.data, followUp: payload.followUp } }));
               }
+            } else if (event === 'layout_directive') {
+              // Adaptive UI: apply + persist the validated layout directives, and
+              // replace the streaming placeholder with the acknowledgment text.
+              const directives: any[] = Array.isArray(payload.directives) ? payload.directives : [];
+              if (directives.length > 0) {
+                applyLayoutDirectives(directives);
+              }
+              // Bind "the report panel" to what the user is actually looking at: a
+              // command that targets right_panel promotes the most recent inline
+              // report into the movable/dockable panel so move/resize/style/hide
+              // visibly act on it. reset or "hide the report" sends it back inline.
+              const undock = directives.some(
+                (d) => d.op === 'reset' ||
+                  (d.op === 'toggle' && d.target === 'right_panel' && d.visibility === 'hide'),
+              );
+              const dock = !undock && directives.some((d) => d.target === 'right_panel');
+              if (undock) {
+                setDockedReportMsgId(null);
+              } else if (dock) {
+                const latest = [...messagesRef.current].reverse().find(
+                  (m) => m.renderType === 'generative_ui' && m.data?.components?.length,
+                );
+                if (latest) setDockedReportMsgId(latest.id);
+              }
+              patchMsg(m => ({ ...m, isStreaming: false, renderType: 'text', content: payload.acknowledgment ?? 'Layout updated.' }));
             } else if (event === 'clarification') {
               patchMsg(m => ({ ...m, isStreaming: false, renderType: 'clarification', originalQuery: query, data: { opener: payload.opener, currentQuestion: payload.currentQuestion, isRecovery: payload.isRecovery ?? false } }));
             } else if (event === 'error') {
               patchMsg(m => ({ ...m, isStreaming: false, renderType: 'text', content: payload.message || 'Error' }));
             }
           } catch { /* malformed chunk — skip */ }
+          // One `event:` applies to the ONE `data:` that follows it. Clearing here stops
+          // a data line whose event header was lost from inheriting the previous frame's
+          // type and being processed as the wrong thing.
+          event = '';
         }
       }
+
+      console.log(
+        `%c[SSE] ${chunkCount} chunk(s) → frames: ` +
+        (Object.entries(framesSeen).map(([k, v]) => `${k}=${v}`).join(' ') || 'NONE'),
+        'color:#2563EB;font-weight:bold',
+      );
 
       patchMsg(m => ({ ...m, isStreaming: false }));
     } catch (error) {
@@ -5462,8 +5620,51 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
             {message.renderType === 'generative_ui' && message.isStreaming && !message.data?.meta && (!message.data?.components || message.data.components.length === 0) && (
               <ReportSkeleton />
             )}
-            {message.renderType === 'generative_ui' && (
-              <div className="mt-4 space-y-4">
+            {/* Adaptive UI: this report has been docked into the movable panel — show a pointer, not a duplicate. */}
+            {message.renderType === 'generative_ui' && dockedMsg?.id === message.id && (
+              <button
+                onClick={() => setDockedReportMsgId(null)}
+                className="mt-4 flex items-center gap-2 text-[12px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] border border-dashed border-[var(--border)] rounded-lg px-3 py-2 transition-colors"
+              >
+                <Layers className="w-3.5 h-3.5" />
+                Showing in the report panel — click to bring it back inline
+              </button>
+            )}
+            {/* Adaptive UI: the report surface is hidden, so this report has nowhere to
+                paint. NEVER swallow it silently.
+
+                This is the bug behind "the diagram works in incognito but not in my normal
+                browser". `inlineReport.visible` is `right_panel.visible`, and layout prefs
+                live in localStorage (authoritative when nobody is signed in, since server
+                hydration is skipped without an auth_user_id). A browser profile that once
+                hid the report panel therefore drops EVERY report — cards, title and all —
+                leaving only the narration, which happily says "This diagram traces..."
+                with nothing beneath it. A fresh incognito profile has no cache, gets
+                DEFAULT_PREFS, and renders fine, which makes it read as a browser or
+                caching fault when it is neither.
+
+                The anti-lockout invariant in LayoutPrefsContext forces the CHAT back on
+                screen but says nothing about the report, so this state persists silently
+                across sessions. One click out of it, in the same style as the docked
+                pointer above. */}
+            {message.renderType === 'generative_ui' && dockedMsg?.id !== message.id && !inlineReport.visible
+              && (message.data?.components?.length || message.data?.meta) && (
+              <button
+                onClick={() => applyLayoutDirectives(
+                  [{ op: 'toggle', target: 'right_panel', visibility: 'show' }],
+                  'showed the report',
+                )}
+                className="mt-4 flex items-center gap-2 text-[12px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] border border-dashed border-[var(--border)] rounded-lg px-3 py-2 transition-colors"
+              >
+                <Layers className="w-3.5 h-3.5" />
+                {message.data?.components?.length ?? 0} report card{(message.data?.components?.length ?? 0) === 1 ? '' : 's'} hidden by your layout — click to show
+              </button>
+            )}
+            {message.renderType === 'generative_ui' && dockedMsg?.id !== message.id && inlineReport.visible && (
+              <div
+                className={inlineReport.styled ? 'mt-4 space-y-4 rounded-[12px] p-4 border border-[var(--border)]' : 'mt-4 space-y-4'}
+                style={inlineReport.style}
+              >
                 {message.data?.meta && (
                   <div className="mb-1">
                     <div className="flex items-center justify-between gap-2">
@@ -6293,10 +6494,31 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
     return null;
   };
 
+  // Adaptive UI: the inline report the user docked into the movable panel (if any).
+  // Resolved live from messages so the panel tracks streaming/edits. The config
+  // report panel (create/explore flow) takes precedence when it is open.
+  const configPanelActive = isReportPanelOpen && !!selectedReport;
+  const dockedMsg = !configPanelActive && dockedReportMsgId
+    ? messages.find(m => m.id === dockedReportMsgId && m.renderType === 'generative_ui' && m.data?.components?.length)
+    : undefined;
+
+  // Adaptive UI: resolve prefs → concrete geometry for every Talk surface so the
+  // workspace, report panel, and history rail always agree (never gap/overlap).
+  const talkLayout = computeTalkLayout(layoutPrefs, {
+    reportPanelActive: configPanelActive || !!dockedMsg,
+    datasetPanelActive: isDatasetPanelOpen && !!selectedDataset,
+  });
+  // Recolor/visibility for the report while it is still inline in the chat.
+  const inlineReport = computeInlineReportStyle(layoutPrefs);
+
   return (
     <Layout>
-      {/* SECONDARY NAV — TALK HISTORY */}
-      <aside className="fixed top-[52px] left-[64px] bottom-0 w-[240px] bg-white border-r border-[#ECEAE6] z-30 flex flex-col">
+      {/* SECONDARY NAV — TALK HISTORY (left_panel) */}
+      {talkLayout.historyVisible && (
+      <aside
+        className="fixed bg-white border-r border-[#ECEAE6] z-30 flex flex-col transition-all duration-300"
+        style={talkLayout.historyStyle}
+      >
         <div className="p-4 border-b border-[#ECEAE6]">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-[16px] font-semibold text-[#2C2B29]" style={{ fontFamily: "'Bricolage Grotesque', sans-serif" }}>
@@ -6426,14 +6648,23 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
           ))}
         </div>
       </aside>
+      )}
 
-      {/* MAIN TALK WORKSPACE */}
+      {/* MAIN TALK WORKSPACE (chat_panel) */}
+      {/* Insets come from computeTalkLayout, so the workspace yields room on */}
+      {/* whichever edge the report docks — not just the right one. */}
+      {talkLayout.chatPanelVisible && (
       <div
-        className={`fixed top-[52px] left-[304px] bottom-0 overflow-hidden transition-all duration-300 ${
-          isReportPanelOpen || isDatasetPanelOpen ? 'right-[480px]' : 'right-0'
-        }`}
+        className="overflow-hidden transition-all duration-300"
+        style={talkLayout.workspaceStyle}
       >
-        <div className="h-full flex flex-col bg-[#F7F6F3]">
+        <div
+          className="h-full flex flex-col bg-[#F7F6F3]"
+          style={{
+            background: colorToCss(layoutPrefs.panels.chat_panel.background, 'background'),
+            color: colorToCss(layoutPrefs.panels.chat_panel.text, 'text'),
+          }}
+        >
           {/* STATE 1: NEW CONVERSATION */}
           {flowState === 'new' && messages.length === 0 && (() => {
             const freqReports = getRecentReports(5);
@@ -7544,7 +7775,12 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
               </button>
 
               <div className="flex-1 overflow-y-auto px-8" style={{ paddingTop: 64 }}>
-                <div className="max-w-[900px] mx-auto space-y-6 pb-6">
+                {/* Adaptive UI: the message stream's rhythm IS the density knob on */}
+                {/* this surface — --density-gap is what "use a compact layout" moves. */}
+                <div
+                  className="max-w-[900px] mx-auto pb-6 flex flex-col"
+                  style={{ gap: 'var(--density-gap)' }}
+                >
                   {messages.map((message) => (
                     <div key={message.id}>
                       {renderMessage(message)}
@@ -7589,12 +7825,51 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
           )}
         </div>
       </div>
+      )}
 
-      {/* REPORT PREVIEW PANEL (RIGHT) */}
+      {/* Adaptive UI: DOCKED Q&A REPORT PANEL */}
+      {/* An inline chat answer the user moved into the movable panel via a layout */}
+      {/* command ("move/resize the report panel"). Uses the same dock geometry as */}
+      {/* the config panel, so move/resize/recolor visibly act on the real report. */}
+      {dockedMsg && talkLayout.reportVisible && (
+        <aside
+          className={talkLayout.reportPanel.className}
+          style={{ ...talkLayout.reportPanel.style, ...inlineReport.style }}
+        >
+          <div className="flex items-center justify-between gap-2 p-4 border-b border-[var(--border)]">
+            <div className="flex items-center gap-2 min-w-0">
+              <Sparkles className="w-4 h-4 text-brand flex-shrink-0" />
+              <h3 className="text-[14px] font-semibold truncate" style={{ color: inlineReport.style.color }}>
+                {dockedMsg.data?.meta?.title || 'Report'}
+              </h3>
+            </div>
+            <button
+              onClick={() => setDockedReportMsgId(null)}
+              title="Return to chat"
+              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+            >
+              <X className="w-4 h-4 text-[var(--muted-foreground)]" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {dockedMsg.data?.meta?.description && (
+              <p className="text-[12px] text-[var(--muted-foreground)]">{dockedMsg.data.meta.description}</p>
+            )}
+            {(dockedMsg.data?.components || []).map((node: UITreeNode, i: number) => (
+              <UITreeRenderer key={i} node={node} />
+            ))}
+          </div>
+        </aside>
+      )}
+
+      {/* REPORT PREVIEW PANEL */}
       {/* SHARED PANEL: Used for both My Reports → Explore Report AND Talk → Create Report (draft) */}
       {/* Draft mode indicated by selectedReport.isDraft flag */}
-      {isReportPanelOpen && selectedReport && (
-        <aside className="fixed top-[60px] right-0 bottom-0 w-[480px] bg-white border-l border-[var(--border)] z-30 flex flex-col shadow-xl">
+      {/* Same dock geometry as the docked Q&A panel above — one engine, so both */}
+      {/* react identically to move/resize directives. */}
+      {isReportPanelOpen && selectedReport && talkLayout.reportVisible && (() => {
+        return (
+        <aside className={talkLayout.reportPanel.className} style={talkLayout.reportPanel.style}>
           {/* Panel Header */}
           <div className="p-5 border-b border-[var(--border)]">
             <div className="flex items-start justify-between mb-3">
@@ -7895,11 +8170,12 @@ export function ConversationalPage({ isReportFlowMode = false }: { isReportFlowM
             )}
           </div>
         </aside>
-      )}
+        );
+      })()}
 
       {/* DATASET DETAILS PANEL (RIGHT) */}
       {isDatasetPanelOpen && selectedDataset && (
-        <aside className="fixed top-[60px] right-0 bottom-0 w-[480px] bg-white border-l border-[var(--border)] z-30 flex flex-col shadow-xl">
+        <aside className="bg-white border-l border-[var(--border)] z-30 flex flex-col shadow-xl" style={talkLayout.datasetPanelStyle}>
           {/* Panel Header */}
           <div className="p-5 border-b border-[var(--border)]">
             <div className="flex items-start justify-between mb-3">

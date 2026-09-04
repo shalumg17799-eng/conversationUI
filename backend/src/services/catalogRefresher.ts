@@ -9,7 +9,9 @@ const STALE_THRESHOLD_MS = 25 * 60 * 60 * 1000;
 
 // ── Schema fetching ───────────────────────────────────────────────────────────
 
-async function fetchTableSchema(table: string): Promise<Array<{ column_name: string; data_type: string }>> {
+// Exported so the KAG builder reuses this exact query rather than duplicating it —
+// the graph and the markdown catalog must never disagree about physical schema.
+export async function fetchTableSchema(table: string): Promise<Array<{ column_name: string; data_type: string }>> {
   const sql = `
     SELECT column_name, data_type
     FROM \`${PROJECT_ID}.${DATASET}\`.INFORMATION_SCHEMA.COLUMNS

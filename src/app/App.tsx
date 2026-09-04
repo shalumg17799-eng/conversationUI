@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router';
 import { Toaster } from 'sonner';
 import { PersonaProvider } from './context/PersonaContext';
 import { VideoJobsProvider } from './context/VideoJobsContext';
+import { LayoutPrefsProvider } from './context/LayoutPrefsContext';
 import { LoginPage } from './pages/Login';
 import { PersonaPickerPage } from './pages/PersonaPicker';
 import { DashboardPage } from './pages/Dashboard';
@@ -25,6 +26,7 @@ export default function App() {
     <BrowserRouter>
       <PersonaProvider>
       <VideoJobsProvider>
+      <LayoutPrefsProvider>
       <Toaster position="top-right" richColors closeButton />
       <Routes>
         <Route path="/" element={<LoginPage />} />
@@ -49,6 +51,7 @@ export default function App() {
         <Route path="/404" element={<NotFoundPage />} />
         <Route path="*" element={<Navigate to="/404" replace />} />
       </Routes>
+      </LayoutPrefsProvider>
       </VideoJobsProvider>
       </PersonaProvider>
     </BrowserRouter>

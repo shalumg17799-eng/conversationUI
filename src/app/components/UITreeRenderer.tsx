@@ -13,6 +13,9 @@ import {
 import { GenerativeTable } from './GenerativeTable';
 import { ReportSkeleton } from './ReportSkeleton';
 import { RenderType } from './renderTypes';
+import { sanitizeArtifact, buildArtifactSrcDoc } from './artifactSanitizer';
+import { ArtifactShell, ArtifactFallback } from './ArtifactShell';
+import { FB, FI, FM, SHADOW_DEFAULT, SHADOW_HOVER, CARD_BASE, CARD_HOVER } from './uiTokens';
 import {
   TrendingUp, TrendingDown, Minus,
   Lightbulb, AlertTriangle, CheckCircle2, Info,
@@ -28,15 +31,7 @@ export interface UITreeNode {
 }
 
 // ── Design tokens (aligned to MASTER.md) ─────────────────────────────────────
-const FB = { fontFamily: '"Bricolage Grotesque", sans-serif' };
-const FI = { fontFamily: 'Inter, sans-serif' };
-const FM = { fontFamily: '"JetBrains Mono", monospace' };
-
-const SHADOW_DEFAULT = '0 1px 2px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.03)';
-const SHADOW_HOVER   = '0 4px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04)';
-
-const CARD_BASE   = 'bg-white rounded-[12px] border border-[#E5E3DF] overflow-hidden';
-const CARD_HOVER  = 'transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] hover:border-[#C8C5BF] hover:-translate-y-px';
+// Definitions moved to ./uiTokens so ArtifactShell can share them without a cycle.
 
 // MASTER.md category palette
 const CHART_COLORS = ['#2563EB', '#7C3AED', '#0D9488', '#D97706', '#D4572A', '#D4183D', '#1D9E75'];
@@ -1067,6 +1062,49 @@ function ReportShell({ title, description, warnings, children }: any) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+// RICH ARTIFACTS (Phase 2, Track D)
+// ════════════════════════════════════════════════════════════════════════════
+// The iframe, its sandbox attributes, and the downgrade card now live in
+// ./ArtifactShell — one copy, shared with the lazily-loaded MermaidArtifact.
+// Read the security notes there before changing anything on this path.
+//
+// This component covers the two kinds whose `content` is already markup. Mermaid
+// carries SOURCE instead, so it compiles first and is handled by MermaidArtifact.
+function ArtifactFrame({ content, title, caption, explanation, variant, kind }: any) {
+  // Both memos must run unconditionally and in a stable order — an early return
+  // between them would change the hook count when `usable` flips between renders.
+  const result = React.useMemo(() => sanitizeArtifact(content, kind), [content, kind]);
+  const srcDoc = React.useMemo(() => buildArtifactSrcDoc(result.safe, kind), [result.safe, kind]);
+
+  if (!result.usable) {
+    // Downgrade path: strip every tag and show whatever readable text survives.
+    const plain = typeof content === 'string'
+      ? content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 600)
+      : '';
+    const reason = result.oversized
+      ? 'payload exceeded size limit'
+      : result.safeLength === 0 ? 'no safe content remained' : 'too much content was removed';
+    return <ArtifactFallback title={title} reason={reason} text={plain} />;
+  }
+
+  return (
+    <ArtifactShell
+      srcDoc={srcDoc} kind={kind} title={title}
+      caption={caption} explanation={explanation} variant={variant}
+    />
+  );
+}
+
+function HtmlArtifact(props: any) { return <ArtifactFrame {...props} kind="html" />; }
+function SvgArtifact(props: any)  { return <ArtifactFrame {...props} kind="svg" />; }
+
+// Mermaid is a heavy dependency (hundreds of KB). It must never enter the initial
+// bundle, so the component that dynamically imports it is itself lazy — Vite emits
+// a separate chunk that is fetched only when a report actually contains a diagram.
+// Same pattern as BigQueryDashboard above.
+const MermaidArtifact = lazy(() => import('./MermaidArtifact'));
+
+// ════════════════════════════════════════════════════════════════════════════
 // COMPONENT REGISTRY
 // ════════════════════════════════════════════════════════════════════════════
 
@@ -1103,13 +1141,68 @@ const COMPONENT_MAP: Record<RenderType, React.ComponentType<any>> = {
   Report: ReportShell,
   ReportSkeleton,
   BigQueryDashboard,
+  'html-artifact': HtmlArtifact,
+  'svg-artifact': SvgArtifact,
+  'mermaid-artifact': MermaidArtifact,
 };
+
+// Components that are code-split and must therefore mount under a Suspense
+// boundary. Kept as a set so the dispatcher below has one branch, not two.
+const LAZY_TYPES: ReadonlySet<string> = new Set(['BigQueryDashboard', 'mermaid-artifact']);
 
 // ════════════════════════════════════════════════════════════════════════════
 // RECURSIVE RENDERER
 // ════════════════════════════════════════════════════════════════════════════
 
+/**
+ * Isolates ONE card's render failure to that card.
+ *
+ * WHY THIS IS NOT OPTIONAL. React unmounts the whole subtree when a render throws, and
+ * every card in a report is rendered from one array — so a single bad card deleted the
+ * ENTIRE answer, leaving only the assistant's text paragraph above it. That is
+ * indistinguishable, on screen, from "the backend returned no components", and it cost
+ * days: a report was streaming six cards to the browser while the user saw a bare
+ * paragraph and reasonably concluded the feature was broken.
+ *
+ * The failure is now scoped to the card that caused it, and it SAYS SO — a silent blank
+ * is the one outcome that must never happen again. The reason is logged with the
+ * renderType, so the next report of "I just see text" names its own culprit.
+ */
+class CardErrorBoundary extends React.Component<
+  { renderType: string; children: React.ReactNode },
+  { error: Error | null }
+> {
+  state: { error: Error | null } = { error: null };
+
+  static getDerivedStateFromError(error: Error) { return { error }; }
+
+  componentDidCatch(error: Error) {
+    console.error(`[UITreeRenderer] "${this.props.renderType}" failed to render — ` +
+      'the rest of the report is unaffected.', error);
+  }
+
+  render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <div
+        className="p-3 rounded-[10px] border border-dashed border-[#E5E3DF] text-[11px] text-[#8A8785]"
+        style={FI}
+      >
+        <code className="font-mono">{this.props.renderType}</code> could not be displayed.
+      </div>
+    );
+  }
+}
+
 export function UITreeRenderer({ node }: { node: UITreeNode }) {
+  return (
+    <CardErrorBoundary renderType={node.renderType}>
+      <UITreeNodeRenderer node={node} />
+    </CardErrorBoundary>
+  );
+}
+
+function UITreeNodeRenderer({ node }: { node: UITreeNode }) {
   const Component = COMPONENT_MAP[node.renderType];
 
   if (!Component) {
@@ -1134,7 +1227,7 @@ export function UITreeRenderer({ node }: { node: UITreeNode }) {
     </>
   );
 
-  if (node.renderType === 'BigQueryDashboard') {
+  if (LAZY_TYPES.has(node.renderType)) {
     return (
       <Suspense fallback={<ReportSkeleton />}>
         <Component {...node.props} />

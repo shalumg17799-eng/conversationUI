@@ -9,6 +9,12 @@ import { shadowValidateCards } from '../services/validationTelemetry';
 import { deriveConstraints } from '../services/componentSelector';
 import { recordConstraints } from '../services/constraintTelemetry';
 import { OutputMode } from '../registry/componentRegistry';
+// KAG. The non-streaming pipeline had NO KAG at all, which mattered more than it
+// looks: runEvaluation.ts drives this path, so the eval harness was reporting on a
+// pipeline that never touched the graph. Same wiring as runStreamingPipeline.
+import { runShadow } from '../kag/kagShadow';
+import { resolveEntityFilters } from '../kag/kagGrounding';
+import { validateCardGrounding } from '../kag/kagValidator';
 
 export interface PipelineResult {
   uiTree: UITypeTree;
@@ -34,7 +40,13 @@ export async function runPipeline(query: string, provider: LLMProvider = 'gemma'
   recordOutputMode(outputModeDecision, { query, provider });
   const outputMode = outputModeDecision.outputMode;
   const intent = { metric: tableOverride ?? 'unknown', dimension: 'unknown', intent: 'metric_by_dimension' as const };
-  const allRows = await executeQuery(intent, undefined, tableOverride);
+
+  // Shadow comparison. runPipeline has no conversation state, so every request here is
+  // a fresh routing decision — no follow-up filtering needed, unlike the streaming path.
+  void runShadow(query, tableOverride ?? null);
+
+  const entityFilters = await resolveEntityFilters(query, tableOverride ?? '');
+  const allRows = await executeQuery(intent, undefined, tableOverride, entityFilters);
   const dataShape = await analyzeDataShape(allRows);
 
   // Phase 4: derive advisory constraints — passive, never fed into generation.
@@ -46,6 +58,10 @@ export async function runPipeline(query: string, provider: LLMProvider = 'gemma'
 
   // Phase 3: shadow validation — passive, never blocks render.
   shadowValidateCards(report.cards, provider);
+
+  // KAG grounding validation against the graph schema.
+  const grounded = await validateCardGrounding(report.cards, tableOverride ?? '');
+  report.cards = grounded.cards;
 
   const children: UITypeTree[] = report.cards.map(card => {
     const { renderType, props } = card;

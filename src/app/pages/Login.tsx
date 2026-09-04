@@ -7,6 +7,8 @@ interface VerifyResult {
   success: boolean;
   role?: 'internal' | 'client';
   provider?: 'gemma' | 'sonnet';
+  /** Stable per-user key for server-side preferences (Adaptive UI layout prefs). */
+  userId?: string;
 }
 
 // Verify username + password against the backend. Credentials are never compared
@@ -31,6 +33,19 @@ async function verifyCredentials(username: string, password: string): Promise<Ve
 function storeSession(result: VerifyResult) {
   if (result.role) localStorage.setItem('auth_role', result.role);
   localStorage.setItem('llm_provider', result.provider ?? 'gemma');
+
+  // Adaptive UI: the layout-prefs identity. Falls back to the role so the legacy
+  // password-only login still gets a stable bucket rather than sharing one.
+  const userId = result.userId || result.role || 'default';
+  const previous = localStorage.getItem('auth_user_id');
+  localStorage.setItem('auth_user_id', userId);
+
+  // A DIFFERENT user just signed in on this browser. Drop the cached layout so the
+  // previous user's customizations never flash — or worse, persist — for them. The
+  // server copy is the source of truth and is fetched on mount.
+  if (previous && previous !== userId) {
+    try { localStorage.removeItem('layout_prefs_v1'); } catch { /* ignore */ }
+  }
 }
 
 export function LoginPage() {

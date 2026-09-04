@@ -10,6 +10,7 @@ import type {
 import { VIDEO_FPS, VIDEO_W, VIDEO_H } from '@/remotion/types';
 import { THEME } from '@/remotion/theme';
 import { sceneDurationFrames } from '@/remotion/timing';
+import { auditChartProse } from '@/lib/chartFacts';
 import { synthesizeSpeech } from '@/lib/tts';
 
 interface UINode { renderType: string; props?: Record<string, any>; children?: UINode[]; }
@@ -145,10 +146,19 @@ export function buildVideoScript(meta: ReportMeta, components: UINode[]): VideoS
     const pushChart = (c: ChartVisual | null) => {
       if (!c || !c.series[0]?.values.some(Number.isFinite)) return;
       const { text, bullets } = chartNarration(title, c);
+      // The report's prose and the chart array are two descriptions of the same
+      // numbers, and they can disagree (stale text, a different slice). The video
+      // renders the ARRAY — bars, peak spotlight, bullets and narration all come
+      // from it — so prose the data contradicts is dropped rather than shown. Left
+      // in, the slide would assert one leader while the voiceover named another.
+      const audit = auditChartProse(p.explanation, c);
+      if (!audit.ok) {
+        console.warn(`[videoScript] "${title}": dropped the report explanation — ${audit.conflicts.join('; ')}`);
+      }
       chartScenes.push({
         id: `chart-${chartScenes.length}`,
         visual: { kind: 'chart', chart: c, accent: THEME.series[chartScenes.length % THEME.series.length].slice(1) },
-        onScreenText: { kicker: 'Visualization', heading: title, sub: p.explanation, bullets },
+        onScreenText: { kicker: 'Visualization', heading: title, sub: audit.ok ? p.explanation : undefined, bullets },
         narration: text,
         durationInFrames: framesForNarration(text),
       });

@@ -5,8 +5,11 @@ import {
   generateReport, analyzeQuery, sonnetRespond,
   classifyAndEditReport, buildHydrationMap, rehydrateEditedCards,
   ReportCard, ConversationTurn, LLMProvider,
-  getAvailableDataSources,
+  getAvailableDataSources, detectDrawingIntent, detectStructureIntent,
+  recoverDrawRequest,
 } from '../services/llmHandler';
+// Track M2 → live: structure questions are answered from the graph, not the model.
+import { structureDiagramFor, isGraphWarm } from '../kag/structureDiagram';
 import { runQueryWithMeta, qualifiedTable } from '../lib/bigqueryClient';
 import { DATA_SOURCES, ALL_DOMAINS, getSourcesByDomain } from '../services/dataSourceMap';
 import { UITypeTree, ShapeSignature, CachedReport } from '../types';
@@ -14,11 +17,22 @@ import { cacheService, generateKey } from '../services/cacheService';
 import { resolveOutputMode } from '../services/outputMode';
 import { recordOutputMode } from '../services/outputModeTelemetry';
 import { shadowValidateCards } from '../services/validationTelemetry';
+// KAG Phase 4: grounding validation against the graph schema.
+import { validateCardGrounding } from '../kag/kagValidator';
+// KAG Phase 5: entity → parameterized filter resolution.
+import { resolveEntityFilters, resolveRoutingOverride } from '../kag/kagGrounding';
+// KAG Phase 6: component affinity (advisory only).
+import { affinityFor, bumpAffinity } from '../kag/kagAffinity';
+// KAG Phase 2 shadow: records what retrieval would have chosen. Never affects output.
+import { runShadow } from '../kag/kagShadow';
+import { runWithTrace, currentTrace, logTraceBanner } from '../kag/kagTrace';
 import { deriveConstraints } from '../services/componentSelector';
 import { recordConstraints } from '../services/constraintTelemetry';
 import { governReport, governorMode, generateGovernedFallback } from '../services/governor';
 import { recordGovernor } from '../services/governorTelemetry';
 import { OutputMode } from '../registry/componentRegistry';
+import { resolveLayout, buildAcknowledgment } from '../services/layoutDirective';
+import { recordLayoutDirective } from '../services/layoutDirectiveTelemetry';
 
 // Fixes column name casing in LLM-generated cards.
 // BQ returns columns in their original case (e.g. TEAM, CSAT_SCORE) but the LLM
@@ -368,8 +382,56 @@ export async function runStreamingPipeline(
   conversationHistory: ConversationTurn[] = [],
   provider: LLMProvider = 'gemma',
 ): Promise<void> {
+  // Bind a KAG trace to this request's async context. Every kag/* module writes into
+  // it without needing the object passed down; see kagTrace.ts for why that is
+  // AsyncLocalStorage rather than a module-level variable.
+  return runWithTrace(query, () => runStreamingPipelineInner(
+    query, send, skipClarification, clarificationHistory, priorContext,
+    activeTable, currentCards, conversationHistory, provider,
+  ));
+}
+
+async function runStreamingPipelineInner(
+  query: string,
+  send: SendFn,
+  skipClarification: boolean,
+  clarificationHistory: ClarificationTurn[],
+  priorContext: string | undefined,
+  activeTable: string | undefined,
+  currentCards: ReportCard[] | undefined,
+  conversationHistory: ConversationTurn[],
+  provider: LLMProvider,
+): Promise<void> {
+  // Recover a DRAWING request that the clarification round-trip dropped.
+  //
+  // When the user answers a clarifying question the frontend sends the ANSWER as
+  // `query` and the Q/A pair as clarificationHistory — the original request appears
+  // in neither. So "draw the escalation flow for T-007" → "which report?" →
+  // "Churn & Retention Metrics" reaches generation as a bare report name and the
+  // model builds a dashboard. Confirmed against a live backend: the same request
+  // yields a mermaid-artifact with the drawing words present and a KPI/chart report
+  // without them.
+  //
+  // The original wording survives in conversationHistory, which is already sent but
+  // was only read on the edit path. Scoped as tightly as possible: this fires ONLY
+  // when a drawing request exists earlier in the conversation, so no ordinary flow
+  // can take the branch. Applies to svg-artifact too — a pre-existing gap for every
+  // artifact type, not one Mermaid introduced.
+  //
+  // recoverDrawRequest, not detectDrawingIntent, because the regex-only version could
+  // recover only the phrasings the regex already enumerated — so an unenumerated request
+  // ("the lifecycle of a support ticket") was dropped here for a SECOND time, and the
+  // answer turn reached generation as a bare report name. That is what produced a report
+  // whose narration said "the flow below" with no diagram anywhere below it.
+  const priorUserTurns = conversationHistory.filter(t => t.role === 'user').map(t => t.content);
+  const recovered = await recoverDrawRequest(priorUserTurns, provider);
+  const recoveredDrawRequest = recovered.request;
+
   // Phase 1: provider is part of the key — gemma and sonnet must not share cache entries.
-  const cacheKey = generateKey({ query, stream: true, v: 3, provider, history: clarificationHistory, prior: priorContext });
+  // `draw` is part of the key because the recovery above changes the generated report
+  // while query/history/prior stay identical; without it, the first non-drawing answer
+  // to a question would be replayed for the drawing one (observed in testing).
+  const cacheKey = generateKey({ query, stream: true, v: 3, provider, history: clarificationHistory, prior: priorContext, draw: recoveredDrawRequest ?? '' });
   const cached = cacheService.get<CachedReport>(cacheKey);
 
   console.log(`[Pipeline] query="${query}" skipClarification=${skipClarification} history=${clarificationHistory.length} activeTable=${activeTable ?? 'none'} cacheHit=${!!cached}`);
@@ -379,6 +441,85 @@ export async function runStreamingPipeline(
     for (const component of cached.components) send('component', component);
     if (cached.followUp && cached.followUp.length > 0) send('followUp', cached.followUp);
     return;
+  }
+
+  // ── Adaptive UI: UI-personalization intent (Requirement 5) ─────────────────
+  // Runs BEFORE report/edit classification so a layout command ("move the right
+  // panel to the bottom", "hide the sidebar", "use a compact layout") is recognized
+  // as a distinct UI intent and never becomes a new report or a structural edit.
+  //
+  // resolveLayout is fast-path-first: an obvious keyword command is parsed instantly
+  // with no LLM call; anything the fast-path cannot resolve is handed to Sonnet, which
+  // decides intent AND parses. Sonnet self-gates (isLayout=false ⇒ we fall through
+  // to the normal pipeline), so novel phrasing works without a regex edit while data
+  // queries and report-content edits are left untouched.
+  const layout = await resolveLayout(query, provider);
+  if (layout.isLayout) {
+    send('status', { message: 'Adjusting your layout...' });
+    recordLayoutDirective(layout.result, { query, provider });
+
+    // Only emit schema-valid directives; unsupported ops are reported clearly.
+    send('layout_directive', {
+      directives: layout.result.directives,
+      rejected: layout.result.rejected,
+      acknowledgment: buildAcknowledgment(layout.result),
+      source: layout.result.source,
+    });
+    return;
+  }
+
+  // ── Structure-of-data questions: answered from KAG, no model in the loop ───
+  //
+  // "what feeds into take rate", "show me the schema", "the tables behind this report".
+  // The answer is a graph we already hold exactly, so serializing it beats asking a model
+  // to describe it from a 100-row sample: zero hallucination risk, and no BigQuery read
+  // or report round-trip. graphToMermaid's output is guard-clean by construction (there
+  // is a test asserting exactly that), which is why it is emitted directly.
+  //
+  // Placed BEFORE drawing intent because the two overlap — "show me the data lineage for
+  // take rate" satisfies both, and the deterministic answer is the better one. Process
+  // diagrams (escalation flows, journeys) still take the BigQuery+LLM path below, because
+  // their structure exists nowhere in our data and they want measured values in labels.
+  //
+  // Regex only, deliberately. Routing a structure question needs an answer BEFORE any
+  // other work starts, so a classifier here would put its full cost (~8s measured) in
+  // front of every ordinary query too, to say "no" almost every time. The enumerated
+  // phrasings carry this path; the semantic net is spent where a miss actually broke
+  // something — recovering a dropped drawing request.
+  const structureTexts = [query, ...clarificationHistory.map((t) => t.answer)];
+  if (detectStructureIntent(structureTexts)) {
+    console.log(`[Pipeline] structure intent → KAG diagram (graph warm=${isGraphWarm()}) for "${query.slice(0, 80)}"`);
+    // Honest status: a cold graph is a ~28s BigQuery schema scan, and silently
+    // pretending otherwise is how a working feature gets reported as hung.
+    send('status', { message: isGraphWarm() ? 'Reading the knowledge graph...' : 'Mapping the warehouse schema...' });
+    try {
+      const started = Date.now();
+      const diagram = await structureDiagramFor(structureTexts);
+      const card = {
+        renderType: 'mermaid-artifact',
+        props: { content: diagram.content, title: diagram.title, caption: diagram.caption },
+      };
+      send('meta', {
+        title: diagram.title,
+        description: diagram.caption,
+        rowCount: null,
+        template: 'summary',
+        outputMode: 'narrative',
+        source: 'kag-graph',
+      });
+      send('component', card);
+      send('followUp', [
+        { label: 'Show the full data model', intent: 'show me the data model' },
+        { label: 'Explain this lineage', intent: `explain how ${diagram.title.replace(/^Data lineage — /, '')} is calculated` },
+      ]);
+      console.log(`[Pipeline] KAG diagram served in ${Date.now() - started}ms (root=${diagram.rootId ?? 'none'})`);
+      return;
+    } catch (err: any) {
+      // Fall through to the ordinary path rather than failing the turn: KAG needs
+      // BigQuery credentials, and a deployment without them should degrade to the
+      // model-authored diagram, not to an error.
+      console.warn(`[Pipeline] structure path failed, falling through: ${err?.message ?? err}`);
+    }
   }
 
   // ── LLM intent classification ─────────────────────────────────────────────
@@ -540,9 +681,19 @@ export async function runStreamingPipeline(
   const start = Date.now();
 
   // Build enriched query from clarification history if present
-  const enrichedQuery = clarificationHistory.length > 0
+  const baseEnrichedQuery = clarificationHistory.length > 0
     ? `${query}. Context: ${clarificationHistory.map(t => `${t.question} → ${t.answer}`).join('; ')}`
     : query;
+
+  // Apply the drawing request recovered above (see the comment at the cache key).
+  // Only when the enriched query has genuinely lost it — if the user restated the
+  // request in this turn, leave their wording alone.
+  //
+  let enrichedQuery = baseEnrichedQuery;
+  if (recoveredDrawRequest && !detectDrawingIntent([baseEnrichedQuery])) {
+    enrichedQuery = `${recoveredDrawRequest}. Use this data context: ${baseEnrichedQuery}`;
+    console.log('[Pipeline] recovered drawing request from conversation history');
+  }
 
   // Step 0+1 — decide clarify vs route (normal new-report flow)
   // Always use the LLM-driven analyzeQuery — never keyword classification.
@@ -553,6 +704,9 @@ export async function runStreamingPipeline(
   const intent = { metric: 'unknown', dimension: 'unknown', intent: 'metric_by_dimension' as const };
   let resolvedIntent = 'metric_by_dimension';
   let llmProposedMode: OutputMode | undefined;
+  // Drawing intent as reported by analyzeQuery — either its regex fast path or its LLM
+  // safety net. Undefined on the sonnet branch and whenever no route was produced.
+  let analyzedDrawKind: 'svg' | 'html' | undefined;
 
   send('status', { message: provider === 'sonnet' ? 'Thinking…' : 'Understanding your query...' });
 
@@ -597,6 +751,10 @@ export async function runStreamingPipeline(
       tableOverride = analysis.table;
       resolvedIntent = analysis.intent;
       llmProposedMode = analysis.outputMode;
+      // The analyze step can see drawing intent the regex missed (it reads the whole
+      // sentence rather than matching enumerated phrasings). Carry that forward so the
+      // output mode admits the artifact components.
+      analyzedDrawKind = analysis.drawKind;
     } else {
       // forceGenerate or LLM couldn't route — derive table from history/query text
       const allTexts = [query, ...clarificationHistory.map(t => t.answer)];
@@ -610,14 +768,73 @@ export async function runStreamingPipeline(
     }
   }
 
+  // ── KAG shadow: record what retrieval WOULD have chosen, vs what routing did ──
+  // Placed here, after every routing branch has converged on tableOverride, rather
+  // than inside analyzeQuery — which only covered two of its branches and so observed
+  // nothing on the Sonnet front-door, the clarify+forceGenerate path, or the
+  // deterministic fallback.
+  //
+  // Two corrections to WHAT gets compared, because agreementRate is the Phase 2 gate
+  // and a polluted numerator makes it unreachable no matter how good retrieval is:
+  //
+  //   1. Follow-ups are not routing decisions. "Compare to Q4" names no metric, domain
+  //      or entity — the live path reuses the table from conversation context, while
+  //      retrieval correctly finds zero seeds. Scoring that as a disagreement measured
+  //      the wrong population; the observed rate was 0.0 entirely from this case.
+  //   2. In a clarification flow the live path routes on the query PLUS the answers
+  //      given so far, so retrieval must see the same text or the comparison is unfair.
+  const isFollowUp = hasExistingReport && !inClarificationFlow;
+  if (!isFollowUp) {
+    const shadowText = inClarificationFlow
+      ? [query, ...clarificationHistory.map(t => t.answer)].join(' ')
+      : query;
+    // Fire-and-forget: overlaps the BigQuery call rather than sitting in front of it.
+    void runShadow(shadowText, tableOverride ?? null);
+  }
+
+  // Gaps 1 & 9 - retrieval becomes authoritative above a confidence bar. Inert while
+  // KAG is disabled or in shadow, so the pre-KAG path is byte-identical.
+  // Awaited, unlike the shadow call: it decides which table the next query hits.
+  {
+    const routing = await resolveRoutingOverride(query, tableOverride ?? activeTable ?? null, {
+      isFollowUp,
+      availableTables: getAvailableDataSources().map(s => s.table),
+    });
+    if (routing.overridden && routing.table) {
+      tableOverride = routing.table;
+      send('status', { message: 'Found a better-matching dataset...' });
+    }
+  }
+
   // ── Phase 2: classify + FREEZE output_mode (observed only — no enforcement) ──
-  const outputModeDecision = resolveOutputMode({ query, intent: resolvedIntent, llmProposed: llmProposedMode });
+  // Read the draw signal off `enrichedQuery`, not `query`: enrichedQuery is what the
+  // clarification round-trip and the history-recovery above have already folded the
+  // request into. A user who typed "show me the data lineage for take rate" and then
+  // answered "Sales" sends query="Sales" on the turn that actually builds the report,
+  // so testing `query` alone would miss every diagram that needed a clarification —
+  // which is exactly the flow in the bug report.
+  // Regex first (free), then whatever the analyze step concluded. The regex reads the
+  // enriched query, which is where a clarification round-trip leaves the request (§12.11).
+  //
+  // `recovered.draw` is the last resort and costs nothing extra — it is the verdict the
+  // recovery above already reached. It is load-bearing on the clarification-answer turn:
+  // the recovered wording is by definition wording the regex cannot read, so the regex
+  // test on enrichedQuery still returns null even after the request has been folded back
+  // in, and analyzeQuery's `diagram` field never arrives because a named report short
+  // circuits it before any LLM call. Without this the report generates as an ordinary
+  // dashboard while its narration talks about the flow it was never told to draw.
+  const drawIntent = detectDrawingIntent([enrichedQuery, query]) ?? analyzedDrawKind ?? recovered.draw ?? null;
+  const outputModeDecision = resolveOutputMode({ query, intent: resolvedIntent, llmProposed: llmProposedMode, drawIntent });
   recordOutputMode(outputModeDecision, { query, provider });
   const outputMode = outputModeDecision.outputMode;
 
   // Step 2 — fetch real BigQuery data
   send('status', { message: 'Querying BigQuery...' });
-  const allRows = await executeQuery(intent, (meta) => send('bq_debug', meta), tableOverride);
+  // KAG Phase 5: named entities in the query become parameterized WHERE predicates
+  // ("how did Dallas do" → territory_name = @f0). Empty unless KAG is active and out
+  // of shadow, so this is a no-op on the pre-KAG path.
+  const entityFilters = await resolveEntityFilters(query, tableOverride ?? activeTable ?? '');
+  const allRows = await executeQuery(intent, (meta) => send('bq_debug', meta), tableOverride, entityFilters);
 
   // Track which table ultimately produced data (for follow-up routing)
   const resolvedTable = tableOverride ?? activeTable;
@@ -674,7 +891,7 @@ export async function runStreamingPipeline(
   // Step 4 — single LLM call: decides everything (enriched query gives the model full context)
   const providerLabel = provider === 'sonnet' ? 'Sonnet' : 'Gemma';
   send('status', { message: `Analysing ${allRows.length} rows with ${providerLabel}...` });
-  const report = await generateReport(enrichedQuery, dataShape, sampleRows, priorContext, provider, outputMode);
+  const report = await generateReport(enrichedQuery, dataShape, sampleRows, priorContext, provider, outputMode, drawIntent);
 
   // Fix column casing: LLM often lowercases BQ column names which breaks charts
   const actualColumns = Object.keys(dataShape.columnTypes);
@@ -692,6 +909,69 @@ export async function runStreamingPipeline(
   // Phase 3: shadow validation — passive, never blocks render.
   shadowValidateCards(report.cards, provider);
 
+  // KAG Phase 4: grounding validation against the graph schema. Runs AFTER
+  // fixColumnCasing so it only sees what casing repair could not fix — chiefly
+  // metric display names used where a physical column belongs. Reports only while
+  // KAG_SHADOW is on; returns the cards untouched when KAG is inactive.
+  {
+    const grounded = await validateCardGrounding(report.cards, resolvedTable ?? '');
+    report.cards = grounded.cards;
+  }
+
+  // KAG Phase 6: component affinity — ADVISORY. Log what the graph would have
+  // suggested next to what the LLM actually chose, and feed the actual choice back as
+  // a weight nudge. Nothing here changes the output; the signal is recorded so it can
+  // be judged on real usage before anyone wires it into a decision.
+  if (resolvedTable) {
+    void (async () => {
+      try {
+        const hints = await affinityFor(resolvedTable);
+        // Gap 12 — the hints now feed deriveConstraints (ordering only), so the signal
+        // reaches the governor and the constraint telemetry instead of only a log line.
+        if (hints.length) {
+          recordConstraints(
+            deriveConstraints(outputMode, dataShape, undefined, hints.map(h => h.component)),
+            provider,
+          );
+        }
+        if (hints.length) {
+          const chosen = [...new Set(report.cards.map(c => c.renderType))];
+          console.log(`[KAG Affinity] table=${resolvedTable} ` +
+            `suggested=[${hints.map(h => `${h.component}@${h.weight.toFixed(2)}`).join(',')}] ` +
+            `chosen=[${chosen.join(',')}]`);
+          // Affinity resolves after the report is sent, so it cannot join the
+          // kag_debug payload — the console banner is where it shows up.
+          for (const rt of chosen) await bumpAffinity(resolvedTable, rt);
+        }
+      } catch { /* advisory only */ }
+    })();
+  }
+
+  // Demo surface: one consolidated event describing everything KAG did for this
+  // request. Emitted BEFORE the components so it is already in the console when the
+  // report paints — during a demo you want the explanation visible as the answer
+  // appears, not scrolled off after it.
+  {
+    const t = currentTrace();
+    if (t) {
+      logTraceBanner(t);
+      // kagMs vs requestMs kept separate on purpose. A single "total" inside a KAG
+      // panel reads as "KAG took 134s" when that number is almost entirely the LLM
+      // call — the most misleading thing a demo could show about its own cost.
+      send('kag_debug', {
+        query: t.query,
+        kagMs: t.retrieval?.latencyMs ?? 0,
+        requestMs: Date.now() - t.startedAt,
+        retrieval: t.retrieval ?? null,
+        grounding: t.grounding ?? null,
+        shadowPack: t.shadowPack ?? null,
+        routing: t.routing ?? null,
+        entityFilters: t.entities ?? [],
+        validation: t.validation ?? null,
+      });
+    }
+  }
+
   // Phase 5: governor. off → no-op; shadow → log only; enforce → modify output.
   const gMode = governorMode();
   if (gMode !== 'off') {
@@ -703,7 +983,7 @@ export async function runStreamingPipeline(
       mode: gMode,
       regenerate: async (errs) => {
         const retryQuery = `${enrichedQuery}\n\nThe previous attempt was invalid — fix these issues and try again: ${errs.join('; ')}`;
-        const r = await generateReport(retryQuery, dataShape, sampleRows, priorContext, provider, outputMode);
+        const r = await generateReport(retryQuery, dataShape, sampleRows, priorContext, provider, outputMode, drawIntent);
         return fixColumnCasing(r.cards, actualColumns);
       },
       fallback: () => generateGovernedFallback(dataShape, constraints),

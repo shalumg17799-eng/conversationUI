@@ -26,12 +26,24 @@ export function qualifiedTable(tableName: string): string {
   return `\`${projectId}.${dataset}.${tableName}\``;
 }
 
-export async function runQueryWithMeta(sql: string): Promise<{ rows: any[]; durationMs: number; table: string; project: string; dataset: string }> {
+/**
+ * @param params Named query parameters (@name in SQL). REQUIRED for any value that
+ *   originates outside this codebase — KAG entity filters go through here rather than
+ *   being concatenated into the query string.
+ */
+export async function runQueryWithMeta(
+  sql: string,
+  params?: Record<string, any>,
+): Promise<{ rows: any[]; durationMs: number; table: string; project: string; dataset: string }> {
   const tableMatch = sql.match(/`[^`]+\.([^`]+)`/i);
   const table = tableMatch?.[1] ?? 'unknown';
   const t0 = Date.now();
   console.log(`[BigQuery ENTRY] project=${PROJECT_ID} dataset=${DATASET} table=${table}`);
-  const [job] = await bigqueryClient.createQueryJob({ query: sql, location: 'US' });
+  const [job] = await bigqueryClient.createQueryJob({
+    query: sql,
+    location: 'US',
+    ...(params && Object.keys(params).length ? { params } : {}),
+  });
   const [rows] = await job.getQueryResults();
   const durationMs = Date.now() - t0;
   console.log(`[BigQuery EXIT]  table=${table} rows=${rows.length} duration=${durationMs}ms`);

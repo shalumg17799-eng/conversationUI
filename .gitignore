@@ -4,6 +4,15 @@ dist
 .DS_Store
 .env
 backend/data/catalog_context.md
+# KAG: unmapped.json IS tracked on purpose — it is the human review queue for
+# metric→column mappings and should show up in PRs.
 # Release-note videos are rendered per release and shipped as CI artifacts (not
 # committed); releases.json (the index) IS tracked so the app knows what exists.
 backend/data/releases/**/*.mp4
+# Adaptive UI: per-persona layout prefs are RUNTIME state written by the server
+# (layoutPrefsStore), not configuration. Committing it would ship one developer's
+# panel widths as everyone's defaults; DEFAULT_PREFS in code is the real default.
+backend/data/layoutPrefs.json
+# Screenshots captured while verifying a render by hand. Useful in the moment,
+# stale the next day — keep them local.
+*-proof.png

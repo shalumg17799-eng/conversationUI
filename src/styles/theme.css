@@ -261,3 +261,96 @@
     line-height: 1.5;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Adaptive UI — layout density (Requirement 5)
+   Set via data-density on <html> by LayoutPrefsContext. Scales the
+   root font-size (rem-based sizing follows) and a shared spacing token.
+   ───────────────────────────────────────────────────────────── */
+/* --density-gap is the vertical rhythm of the Talk message stream. 'comfortable'
+   is deliberately 1.5rem — identical to the space-y-6 the stream used before this
+   token was wired up — so the default surface is unchanged and only an explicit
+   "use a compact/spacious layout" directive moves it. */
+:root {
+  --density-gap: 1.5rem;
+  /* Split into a density BASE and a user text multiplier so the two compose instead
+     of overwriting each other. Before this, density owned --font-size outright, so
+     "compact layout" and "make the text bigger" would each silently undo the other.
+     comfortable x 1 = 16px — the historical default is unchanged. */
+  --density-font: 16px;
+  --text-scale: 1;
+  --font-size: calc(var(--density-font) * var(--text-scale));
+}
+:root[data-density='compact'] {
+  --density-font: 15px;
+  --density-gap: 1rem;
+}
+:root[data-density='comfortable'] {
+  --density-font: 16px;
+  --density-gap: 1.5rem;
+}
+:root[data-density='spacious'] {
+  --density-font: 17px;
+  --density-gap: 2.25rem;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Adaptive UI — text scale (accessibility)
+   Set via data-text-scale on <html>. A MULTIPLIER, not an absolute size, so it
+   stacks on whatever density is active. Bounded steps only — the directive
+   contract has no free-form px value, and neither does this.
+   ───────────────────────────────────────────────────────────── */
+:root[data-text-scale='small']   { --text-scale: 0.875; }
+:root[data-text-scale='default'] { --text-scale: 1; }
+:root[data-text-scale='large']   { --text-scale: 1.15; }
+:root[data-text-scale='xl']      { --text-scale: 1.3; }
+
+/* ─────────────────────────────────────────────────────────────
+   Adaptive UI — high contrast
+   Set via data-contrast="high" on <html>. Deliberately narrow: it darkens text,
+   strengthens borders and removes the translucency/blur that reduces legibility.
+   It does NOT recolor surfaces, so it composes with light OR dark rather than
+   becoming a third theme to maintain.
+   ───────────────────────────────────────────────────────────── */
+:root[data-contrast='high'] {
+  --foreground: #000000;
+  --card-foreground: #000000;
+  --popover-foreground: #000000;
+  --muted-foreground: #2b2a28;
+  --border: #6b6965;
+}
+:root[data-contrast='high'].dark {
+  --foreground: #ffffff;
+  --card-foreground: #ffffff;
+  --popover-foreground: #ffffff;
+  --muted-foreground: #e8e6e1;
+  --border: #b5b2ac;
+}
+/* Blur + translucency are the first thing to hurt legibility at high contrast. */
+:root[data-contrast='high'] * {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+:root[data-contrast='high'] :focus-visible {
+  outline: 3px solid var(--foreground) !important;
+  outline-offset: 2px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Adaptive UI — reduced motion
+   Layout directives move whole panels across the screen. That is exactly the
+   large-area movement that triggers vestibular symptoms, so when the user has
+   asked for reduced motion the panels must ARRIVE rather than travel.
+   Focus outlines are deliberately left alone — they are not motion, and removing
+   them would break keyboard navigation for the users most likely to need it.
+   ───────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

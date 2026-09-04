@@ -52,7 +52,10 @@ export const DATA_SOURCES: DataSource[] = [
     domain: 'Network',
     reportName: 'Network KPI Trends',
     description: 'Time-series network performance KPI data points',
-    kpis: ['Network KPI Score', 'Signal Strength', 'Outage Count', 'Latency'],
+    // 'Outage Count' and 'Latency' removed: no such column exists in
+    // fact_network_kpi_points (cqi / rsrp / sinr / score / status / region). Advertising
+    // a KPI with nothing behind it invites the model to invent a column name.
+    kpis: ['Network KPI Score', 'Signal Strength'],
     orderBy: 'timestamp DESC',
     limit: 100,
   },
@@ -63,6 +66,18 @@ export const DATA_SOURCES: DataSource[] = [
     description: 'Ranked performance scores across territories or outlets',
     kpis: ['Score', 'Rank', 'Performance Index'],
     orderBy: 'rank',
+  },
+  {
+    // Added to close the "break down by platform" gap: device_group (Phone / Tablet /
+    // Wearable) existed in BigQuery but no routable source exposed it, so the pipeline
+    // truthfully reported "no platform column" while the data sat one table away.
+    table: 'fact_intraday_sales',
+    domain: 'Sales',
+    reportName: 'Sales by Device Group',
+    description: 'Hourly sales units and revenue by device group (platform), outlet and territory',
+    kpis: ['Units Sold', 'Revenue', 'Device Group', 'Outlet'],
+    orderBy: 'date_id DESC, hour',
+    limit: 100,
   },
   {
     table: 'fact_contact_center_metrics',
@@ -100,6 +115,8 @@ export const REPORT_ANGLES: ReportAngle[] = [
   { domain: 'Sales', label: 'Take Rate by Territory', table: 'fact_sug_monthly_rollup' },
   { domain: 'Sales', label: 'Return Rate Analysis', table: 'fact_sug_monthly_rollup' },
   { domain: 'Sales', label: 'Top & Bottom Territories by Revenue', table: 'fact_sug_monthly_rollup' },
+  { domain: 'Sales', label: 'Sales by Device Group', table: 'fact_intraday_sales' },
+  { domain: 'Sales', label: 'Revenue by Platform', table: 'fact_intraday_sales' },
 
   // Network — spans its three tables
   { domain: 'Network', label: 'Churn & Retention Metrics', table: 'fact_sug_monthly_rollup' },
@@ -144,8 +161,56 @@ export function getSourceByTable(table: string): DataSource | undefined {
   return DATA_SOURCES.find(ds => ds.table === table);
 }
 
-export function buildQuerySQL(source: DataSource, qualifyFn: (t: string) => string): string {
-  let sql = `SELECT * FROM ${qualifyFn(source.table)} ORDER BY ${source.orderBy}`;
+/**
+ * A resolved entity filter, applied as a parameterized predicate.
+ *
+ * `values` is a list because a single-value model was actively wrong: "Dallas and
+ * Austin" resolved two entities on the same column, and ANDing them
+ * (`city='Dallas' AND city='Austin'`) matches nothing, so the previous code silently
+ * dropped one. Multiple values on one column are an OR, expressed as IN UNNEST.
+ */
+export interface QueryFilter {
+  column: string;
+  values: Array<string | number>;
+}
+
+/** BigQuery cannot parameterize an identifier, so a column name is interpolated —
+ *  this is the guard that makes that safe. Names come from the KAG graph (themselves
+ *  read from INFORMATION_SCHEMA), but validating here means a future caller passing
+ *  user text still cannot inject. */
+const SAFE_IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+export function buildQuerySQL(
+  source: DataSource,
+  qualifyFn: (t: string) => string,
+  filters: QueryFilter[] = [],
+): { sql: string; params: Record<string, any> } {
+  const params: Record<string, any> = {};
+  const predicates: string[] = [];
+
+  filters.forEach((f, i) => {
+    if (!SAFE_IDENTIFIER.test(f.column)) {
+      console.warn(`[buildQuerySQL] rejected unsafe column identifier: ${JSON.stringify(f.column)}`);
+      return;
+    }
+    if (!f.values?.length) return;
+
+    const name = `f${i}`;
+    if (f.values.length === 1) {
+      predicates.push(`\`${f.column}\` = @${name}`);
+      params[name] = f.values[0];
+    } else {
+      // IN UNNEST keeps the whole list a single bound ARRAY parameter — no per-value
+      // placeholder building, so the value count can never influence the SQL text.
+      predicates.push(`\`${f.column}\` IN UNNEST(@${name})`);
+      params[name] = f.values;
+    }
+  });
+
+  let sql = `SELECT * FROM ${qualifyFn(source.table)}`;
+  if (predicates.length) sql += ` WHERE ${predicates.join(' AND ')}`;
+  sql += ` ORDER BY ${source.orderBy}`;
   if (source.limit) sql += ` LIMIT ${source.limit}`;
-  return sql;
+
+  return { sql, params };
 }

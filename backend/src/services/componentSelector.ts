@@ -77,6 +77,16 @@ export function deriveConstraints(
   outputMode: OutputMode,
   shape: ShapeSignature,
   registry: ComponentSpec[] = COMPONENT_REGISTRY,
+  /**
+   * KAG affinity hints, strongest first (see kagAffinity.affinityFor).
+   *
+   * These REORDER allowedComponents, they never change its membership. Ordering is a
+   * safe thing for a learned signal to influence: the governor and the prompt both
+   * read the list top-down, so a good hint surfaces sooner, while a bad hint can only
+   * cost ordering — it can never admit a component the mode/shape rules rejected, nor
+   * remove one they allowed. Membership stays fully deterministic.
+   */
+  preferredComponents: string[] = [],
 ): ConstraintSet {
   const policy = MODE_POLICY[outputMode] ?? MODE_POLICY.full_dashboard;
   const shapeKind = classifyShape(shape);
@@ -89,6 +99,12 @@ export function deriveConstraints(
     .filter(spec => passesShapeConstraints(spec, shape))      // hard shape constraints
     .filter(spec => spec.family !== 'chart' || allowAllCharts || chartRule.includes(spec.type)) // chart shape-fit
     .map(spec => spec.type);
+
+  if (preferredComponents.length) {
+    const rank = new Map(preferredComponents.map((c, i) => [c, i]));
+    allowedComponents.sort((a, b) =>
+      (rank.get(a) ?? Number.MAX_SAFE_INTEGER) - (rank.get(b) ?? Number.MAX_SAFE_INTEGER));
+  }
 
   return {
     outputMode,

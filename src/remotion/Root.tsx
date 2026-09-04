@@ -6,7 +6,8 @@ import React from 'react';
 import { Composition } from 'remotion';
 import { ReportVideo } from './ReportVideo';
 import { ReleaseNoteVideo, releaseDurationInFrames } from './ReleaseNoteVideo';
-import type { VideoScript, ReleaseNote } from './types';
+import { ReleaseTourVideo, tourDurationInFrames } from './ReleaseTourVideo';
+import type { VideoScript, ReleaseNote, ReleaseTour } from './types';
 import { VIDEO_FPS, VIDEO_W, VIDEO_H } from './types';
 
 const durationOf = (s?: VideoScript) =>
@@ -14,6 +15,12 @@ const durationOf = (s?: VideoScript) =>
 
 const EMPTY: VideoScript = { title: '', fps: VIDEO_FPS, width: VIDEO_W, height: VIDEO_H, scenes: [] };
 const EMPTY_RELEASE: ReleaseNote = { version: '0.0.0', title: 'Release', script: '', bullets: [] };
+const EMPTY_TOUR: ReleaseTour = {
+  title: 'Release', version: '0.0.0', fps: VIDEO_FPS, width: VIDEO_W, height: VIDEO_H,
+  cover: { heading: 'What\'s New', durationInFrames: 1 },
+  features: [],
+  outro: { heading: 'That\'s new', durationInFrames: 1 },
+};
 
 export const RemotionRoot: React.FC = () => (
   <>
@@ -47,6 +54,25 @@ export const RemotionRoot: React.FC = () => (
       calculateMetadata={({ props }) => {
         const r = (props as { release?: ReleaseNote }).release ?? EMPTY_RELEASE;
         return { durationInFrames: releaseDurationInFrames(r, VIDEO_FPS) };
+      }}
+    />
+    {/* Timeline-synced release tour — beats + real footage + word-timed captions. */}
+    <Composition
+      id="ReleaseTourVideo"
+      component={ReleaseTourVideo as any}
+      durationInFrames={1}
+      fps={VIDEO_FPS}
+      width={VIDEO_W}
+      height={VIDEO_H}
+      defaultProps={{ tour: EMPTY_TOUR }}
+      calculateMetadata={({ props }) => {
+        const t = (props as { tour?: ReleaseTour }).tour ?? EMPTY_TOUR;
+        return {
+          durationInFrames: tourDurationInFrames(t),
+          fps: t.fps || VIDEO_FPS,
+          width: t.width || VIDEO_W,
+          height: t.height || VIDEO_H,
+        };
       }}
     />
   </>

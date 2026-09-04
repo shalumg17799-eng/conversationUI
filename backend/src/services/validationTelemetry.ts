@@ -16,7 +16,9 @@ const metrics: ValidationMetrics = {
   totalValidated: 0,
   totalNodes: 0,
   totalViolations: 0,
-  byCategory: { unknown_render_type: 0, missing_prop: 0, invalid_prop_type: 0, invalid_structure: 0 },
+  // unsafe_artifact_content added for the rich-artifact types (Phase 2, Track D);
+  // stays 0 for every pre-existing component type.
+  byCategory: { unknown_render_type: 0, missing_prop: 0, invalid_prop_type: 0, invalid_structure: 0, unsafe_artifact_content: 0 },
   byComponent: {},
 };
 
@@ -75,6 +77,6 @@ export function resetValidationMetrics(): void {
   metrics.totalValidated = 0;
   metrics.totalNodes = 0;
   metrics.totalViolations = 0;
-  metrics.byCategory = { unknown_render_type: 0, missing_prop: 0, invalid_prop_type: 0, invalid_structure: 0 };
+  metrics.byCategory = { unknown_render_type: 0, missing_prop: 0, invalid_prop_type: 0, invalid_structure: 0, unsafe_artifact_content: 0 };
   metrics.byComponent = {};
 }

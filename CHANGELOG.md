@@ -6,7 +6,7 @@ video when it merges to `main` — no manual CLI run needed.
 ## Entry format
 
 ```
-- feature: <title> | <one-line summary> [| <bullet> | <bullet> ...]
+- feature: <title> | <one-line summary> [| scene:<id>] [| <bullet> | <bullet> ...]
 ```
 
 - Only `feature:` entries generate a video. `fix:`, `chore:`, `docs:`, etc. are
@@ -14,20 +14,36 @@ video when it merges to `main` — no manual CLI run needed.
 - `<title>` — short and benefit-framed (Claude may tighten it).
 - `<summary>` — one line describing what the user can now do; Claude turns it into
   the narration script.
+- `scene:<id>` (optional, anywhere in the line) picks the recreated-UI scene shown
+  for that feature. Omit it and the scene is inferred from the title/summary.
+  Scenes: `chat-kpi` (a report generating with KPI cards + chart · default),
+  `export-docs` (the Export menu with PDF/Word/PPT highlighted),
+  `export-video` (the Export menu with Video (MP4) highlighted). Add new scenes in
+  `src/remotion/mock/AppMock.tsx`.
 - Extra `|`-separated segments become **explicit bullets**. Omit them and Claude
   infers the bullets from the summary.
+
+Each release renders as ONE combined "tour" video — a cover, one scene per feature
+(a native recreation of the real Report Hub UI, not a slide), then an outro — with
+the narration word-timed into on-screen captions.
 
 Example:
 
 ```
-- feature: Export reports to PDF, Word, or PowerPoint | One-click export from the report toolbar, keeps charts and tables intact
-- feature: Saved views | Pin a filtered dashboard and return to it later | Pin from the toolbar | Access under Saved views | Shareable links
+- feature: Export reports to PDF, Word, or PowerPoint | One-click export from the report toolbar | scene:export-docs
+- feature: Saved views | Pin a filtered dashboard and return to it later | Pin from the toolbar | Shareable links
 ```
 
 On merge to `main`, all `feature:` entries in **Unreleased** are batched into one
-dated release (`YYYY.MM.DD`), rendered, and surfaced in the sidebar **Help** panel.
-The manual path — `npm run release:note -- --title "..." --summary "..."` — still
-works unchanged as a fallback/override.
+release, rendered, and surfaced in the sidebar **Help** panel. Cut a version
+manually with a friendly name via:
+
+```
+npm run release:note -- --input release.json --version v1.2.0 --name "Report Hub 1.2"
+```
+
+The single-feature flag form (`--title "..." --summary "..." --area "..."`) still
+works as a fallback/override.
 
 ---
 
